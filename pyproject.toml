@@ -39,9 +39,9 @@ dependencies = [
     "httpx[http2]>=0.28.0",
     "httpx-limiter>=0.6.0",
     "tenacity>=9.0.0",
-    # Web archiving (source of truth)
+    # Web archiving (orchestration layer; actual capture via fyi-cli)
     "warcio>=1.7.4",
-    "wacz>=1.1.0",
+    "wacz>=0.5.0",
     # Parsing
     "beautifulsoup4>=4.12.0",
     "lxml>=5.0.0",

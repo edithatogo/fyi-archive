@@ -1,0 +1,61 @@
+name: Mirror Sync
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Mirror to Secondary Git Remote
+        env:
+          GIT_MIRROR_URLS: ${{ secrets.GIT_MIRROR_URLS }}
+          GIT_MIRROR_URL: ${{ secrets.GIT_MIRROR_URL }}
+          GIT_MIRROR_SSH_PRIVATE_KEY: ${{ secrets.GIT_MIRROR_SSH_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          MIRROR_URLS="${GIT_MIRROR_URLS:-$GIT_MIRROR_URL}"
+
+          if [ -z "$MIRROR_URLS" ]; then
+            echo "GIT_MIRROR_URLS/GIT_MIRROR_URL is not set, skipping mirror."
+            exit 0
+          fi
+
+          if [ -z "$GIT_MIRROR_SSH_PRIVATE_KEY" ]; then
+            echo "GIT_MIRROR_SSH_PRIVATE_KEY is not set, skipping mirror."
+            exit 0
+          fi
+
+          mkdir -p ~/.ssh
+          echo "$GIT_MIRROR_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          MIRROR_INDEX=0
+          while IFS= read -r MIRROR_URL; do
+            if [ -z "$MIRROR_URL" ]; then
+              continue
+            fi
+
+            case "$MIRROR_URL" in
+              git@*:*) ;;
+              *)
+                echo "Each mirror URL must be an SSH remote in git@host:owner/repo.git form."
+                exit 1
+                ;;
+            esac
+
+            MIRROR_INDEX=$((MIRROR_INDEX + 1))
+            REMOTE_NAME="mirror_${MIRROR_INDEX}"
+            HOST=$(echo "$MIRROR_URL" | cut -d'@' -f2 | cut -d':' -f1)
+
+            ssh-keyscan -t ed25519 "$HOST" >> ~/.ssh/known_hosts
+            git remote add "$REMOTE_NAME" "$MIRROR_URL"
+            git push --force --prune "$REMOTE_NAME" "HEAD:${GITHUB_REF}"
+          done <<< "$MIRROR_URLS"

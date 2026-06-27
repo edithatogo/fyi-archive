@@ -1,0 +1,48 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.14"]
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        continue-on-error: ${{ matrix.python-version == '3.14' }}
+        run: |
+          set -euo pipefail
+          uv sync --extra dev --frozen
+      - name: Ruff lint
+        run: |
+          set -euo pipefail
+          uv run ruff check .
+      - name: Ruff format
+        run: |
+          set -euo pipefail
+          uv run ruff format --check .
+      - name: Run tests with coverage
+        run: |
+          set -euo pipefail
+          uv run pytest -q --cov=fyi_archive --cov-report=xml --cov-report=term-missing
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: false
+          files: ./coverage.xml
+      - name: Check version and release consistency
+        run: |
+          set -euo pipefail
+          uv run python scripts/check_version_consistency.py

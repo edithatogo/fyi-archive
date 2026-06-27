@@ -1,0 +1,76 @@
+name: Code quality and security tooling
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          uv sync --extra dev --frozen
+      - name: Ruff lint
+        run: |
+          set -euo pipefail
+          uv run ruff check .
+      - name: Ruff format
+        run: |
+          set -euo pipefail
+          uv run ruff format --check .
+      - name: ty strict type check
+        run: |
+          set -euo pipefail
+          uv run ty check src tests scripts
+      - name: Version and release consistency
+        run: |
+          set -euo pipefail
+          uv run python scripts/check_version_consistency.py
+
+  repository-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Typos
+        uses: crate-ci/typos@v1.47.2
+      - name: Set up Taplo
+        uses: uncenter/setup-taplo@v2
+        with:
+          version: "0.10.0"
+      - name: Taplo format
+        run: |
+          set -euo pipefail
+          taplo fmt --check pyproject.toml
+      - name: actionlint
+        uses: raven-actions/actionlint@v2
+        with:
+          shellcheck: false
+
+  zizmor-advisory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Zizmor workflow security audit
+        continue-on-error: true
+        uses: zizmorcore/zizmor-action@v0.5.6
+        with:
+          advanced-security: false
+          online-audits: false
+          inputs: .github/workflows

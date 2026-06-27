@@ -25,7 +25,7 @@ Track ID: `repo_bootstrap_20260627` — satisfies **R-07, R-11, R-12**
 Goal: Stand up the standalone `fyi-archive` git repo, remote, full root scaffolding, conductor setup (incl. MoSCoW requirements + Mermaid design), quality tooling, README, and wire it as a workspace submodule.
 Link: [./tracks/repo_bootstrap_20260627/](./tracks/repo_bootstrap_20260627/)
 
-### [ ] Track: CI/CD foundation
+### [x] Track: CI/CD foundation
 Track ID: `ci_cd_foundation_20260627` — satisfies **R-15, R-18**
 Goal: tests.yml + code_quality.yml (uv --frozen matrix, ruff, ty, pytest+cov, version-consistency) + codeql/scorecard/docs/mirror_sync/ci-learning-candidates.
 Link: [./tracks/ci_cd_foundation_20260627/](./tracks/ci_cd_foundation_20260627/)
