@@ -40,9 +40,8 @@
 - [x] 4.3 This track + the four other tracks (spec + plan each).
 
 ## Phase 5: Validate, commit, push, submodule
-
-- [ ] 5.1 `scripts/check_version_consistency.py` passes.
-- [ ] 5.2 First scaffold commit on `main` (conventional-commit message).
-- [ ] 5.3 `git push -u origin main`.
-- [ ] 5.4 Add `fyi-archive` submodule entry to `legal-nz/.gitmodules` (branch `main`)
+- [x] 5.1 `scripts/check_version_consistency.py` passes.
+- [x] 5.2 First scaffold commit on `main` (conventional-commit message).
+- [x] 5.3 `git push -u origin main`.
+- [x] 5.4 Add `fyi-archive` submodule entry to `legal-nz/.gitmodules` (branch `main`)
       consistent with siblings; commit in the workspace repo.

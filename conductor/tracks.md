@@ -20,7 +20,7 @@ Registry of all tracks for the project. Each track has its own folder with `spec
 
 ## Foundation tracks
 
-### [~] Track: Repo bootstrap
+### [x] Track: Repo bootstrap
 Track ID: `repo_bootstrap_20260627` — satisfies **R-07, R-11, R-12**
 Goal: Stand up the standalone `fyi-archive` git repo, remote, full root scaffolding, conductor setup (incl. MoSCoW requirements + Mermaid design), quality tooling, README, and wire it as a workspace submodule.
 Link: [./tracks/repo_bootstrap_20260627/](./tracks/repo_bootstrap_20260627/)
