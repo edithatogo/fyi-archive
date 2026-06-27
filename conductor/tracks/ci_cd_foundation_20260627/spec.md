@@ -30,13 +30,12 @@ family pattern (`corpus-cases-medilegal-nz`, `corpus-law-nz`).
   tracks. The release workflow — `versioning_releases`.
 
 ## Acceptance criteria
-
-- [ ] `tests.yml` green on a no-op push; matrix 3.12/3.14; coverage reported.
-- [ ] `code_quality.yml` enforces ruff + ty + typos + taplo + actionlint + zizmor.
-- [ ] `check_version_consistency.py` is a required gate.
-- [ ] `codeql` + `scorecard` run and publish results.
-- [ ] All workflows pass `actionlint` and `zizmor` clean.
-- [ ] Least-privilege `permissions:` declared on every workflow.
+- [x] `tests.yml` green on a no-op push; matrix 3.12/3.14; coverage reported.
+- [x] `code_quality.yml` enforces ruff + ty + typos + taplo + actionlint + zizmor.
+- [x] `check_version_consistency.py` is a required gate.
+- [x] `codeql` + `scorecard` run and publish results.
+- [x] All workflows pass `actionlint` and `zizmor` clean.
+- [x] Least-privilege `permissions:` declared on every workflow.
 
 ## Risks
 
