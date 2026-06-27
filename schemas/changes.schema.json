@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/edithatogo/fyi-archive/schemas/changes.schema.json",
+  "title": "fyi-archive changes (content-addressed diff)",
+  "description": "Schema for manifests/latest_changes.json emitted by the archival-content-diff capability in fyi-cli, consumed by the prospective sync orchestration.",
+  "type": "object",
+  "required": ["meta", "added", "updated", "removed"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["generated_at", "since", "version"],
+      "properties": {
+        "generated_at": { "type": "string", "format": "date-time" },
+        "since": { "type": ["string", "null"], "format": "date-time" },
+        "version": { "type": "string" }
+      }
+    },
+    "added": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/changeEntry" }
+    },
+    "updated": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/changeEntry" }
+    },
+    "removed": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/changeEntry" }
+    }
+  },
+  "$defs": {
+    "changeEntry": {
+      "type": "object",
+      "required": ["request_id", "content_sha256"],
+      "properties": {
+        "request_id": { "type": "integer", "minimum": 1 },
+        "url_title": { "type": "string" },
+        "content_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "previous_sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" }
+      }
+    }
+  }
+}

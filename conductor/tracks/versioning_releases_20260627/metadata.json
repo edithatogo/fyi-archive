@@ -1,0 +1,9 @@
+{
+  "track_id": "versioning_releases_20260627",
+  "type": "infra",
+  "status": "pending",
+  "created_at": "2026-06-27T17:03:00Z",
+  "updated_at": "2026-06-27T17:03:00Z",
+  "description": "Dynamic SemVer versioning and releases via GitHub Actions: release-please consuming Conventional Commits to produce bumps, CHANGELOG.md, and GitHub Releases; version-consistency CI gate; annual Zenodo DOI snapshot as the archival release. Satisfies R-16; supports R-24.",
+  "satisfies": ["R-16"]
+}

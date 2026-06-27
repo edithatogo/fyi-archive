@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits", ":dependencyDashboard"],
+  "schedule": ["before 6am on Monday"],
+  "rangeStrategy": "bump",
+  "pip": {
+    "enabled": false
+  },
+  "uv": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "description": "Group Python dev/quality tooling bumps",
+      "matchPackagePatterns": ["ruff", "^ty$", "pytest", "hypothesis", "pre-commit", "vulture", "deptry"],
+      "groupName": "python dev tooling"
+    },
+    {
+      "description": "Pin the fyi-cli dependency; require manual review of behavioural changes",
+      "matchPackageNames": ["fyi-cli"],
+      "enabled": false
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+*.whl
+*.so
+
+# --- Virtualenvs / package managers ---
+.venv/
+venv/
+.pixi/
+.envrc
+
+# --- Secrets / local env ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Archive data (kept out of git; lives on Hugging Face / Zenodo / OSF) ---
+data/raw/
+data/warc/
+data/_state/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite-journal
+outputs/
+
+# --- Built distribution artifacts ---
+dist/
+*.tar.gz
+*.wacz
+*.warc
+*.warc.gz
+*.parquet
+*.duckdb
+
+# --- Local manifests (only schemas + placeholders are committed) ---
+manifests/latest_manifest.json
+manifests/latest_manifest.parquet
+manifests/latest_changes.json
+manifests/authorities.json
+
+# --- Tooling caches ---
+.pytest_cache/
+.ruff_cache/
+.ty_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.scalene/
+.tox/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp

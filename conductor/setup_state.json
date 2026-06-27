@@ -1,0 +1,30 @@
+{
+  "project": "fyi-archive",
+  "initialized_at": "2026-06-27",
+  "phase": "setup",
+  "source_of_truth": "conductor/",
+  "conductor_version": "1",
+  "requirements_doc": "conductor/requirements.md",
+  "design_doc": "conductor/design.md",
+  "initial_concept": "conductor/initial-concept.md",
+  "track_count": 9,
+  "tracks": [
+    "repo_bootstrap_20260627",
+    "ci_cd_foundation_20260627",
+    "code_quality_gates_20260627",
+    "security_supply_chain_20260627",
+    "versioning_releases_20260627",
+    "historical_seed_orchestration_20260627",
+    "prospective_sync_orchestration_20260627",
+    "multi_mirror_publish_20260627",
+    "observability_quality_20260627"
+  ],
+  "companion_repo": "fyi-cli",
+  "companion_tracks": [
+    "bulk-site-enumeration",
+    "faithful-archive-capture",
+    "archival-content-diff",
+    "archive-health-doctor"
+  ],
+  "notes": "Read-only archive of fyi.org.nz. Two-repo split: fyi-cli owns capture (new capability tracks added there); fyi-archive owns orchestration + distribution only. Initial phase is storage only (no analysis). Remote wired: https://github.com/edithatogo/fyi-archive.git (empty)."
+}

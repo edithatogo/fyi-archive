@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/edithatogo/fyi-archive/schemas/manifest.schema.json",
+  "title": "fyi-archive manifest",
+  "description": "Schema for manifests/latest_manifest.json. Populated by the manifest assembly step in fyi-cli (faithful-archive-capture track) and fyi-archive orchestration.",
+  "type": "object",
+  "required": ["meta", "requests"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["generated_at", "source", "version", "record_count"],
+      "properties": {
+        "generated_at": { "type": ["string", "null"], "format": "date-time" },
+        "source": { "type": "string", "const": "https://fyi.org.nz/" },
+        "version": { "type": "string" },
+        "record_count": { "type": "integer", "minimum": 0 },
+        "schema": { "type": "string" },
+        "fyi_cli_version": { "type": "string" }
+      }
+    },
+    "requests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["request_id", "url_title", "content_sha256"],
+        "properties": {
+          "request_id": { "type": "integer", "minimum": 1 },
+          "url_title": { "type": "string" },
+          "title": { "type": "string" },
+          "authority": { "type": "string" },
+          "state": { "type": "string" },
+          "content_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+          "html_captured": { "type": "boolean" },
+          "attachments": { "type": "array" },
+          "warc_record_ids": { "type": "array", "items": { "type": "string" } },
+          "license": {
+            "type": ["string", "null"],
+            "description": "Source-declared licence for the captured item, recorded verbatim where present (e.g. 'CC-BY-4.0' under NZGOAL, 'no-known-rights', or null for private-author/undetermined). See docs/copyright-and-licensing.md."
+          },
+          "attribution": {
+            "type": ["string", "null"],
+            "description": "Source-declared attribution/notice text preserved verbatim, if any."
+          },
+          "first_seen": { "type": ["string", "null"], "format": "date-time" },
+          "last_updated": { "type": ["string", "null"], "format": "date-time" }
+        }
+      }
+    }
+  }
+}

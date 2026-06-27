@@ -1,0 +1,11 @@
+{
+  "track_id": "observability_quality_20260627",
+  "type": "feature",
+  "status": "pending",
+  "created_at": "2026-06-27T16:23:00Z",
+  "updated_at": "2026-06-27T17:10:00Z",
+  "description": "Observability & quality: fyi-archive doctor (freshness, coverage gaps, mirror parity); metadata parity CI; fyi-cli version-pin test; coverage ramp.",
+  "satisfies": ["R-19", "R-23"],
+  "supports": ["R-27"],
+  "depends_on": ["fyi-cli:archive-health-doctor"]
+}

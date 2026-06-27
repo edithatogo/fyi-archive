@@ -1,0 +1,10 @@
+{
+  "track_id": "prospective_sync_orchestration_20260627",
+  "type": "feature",
+  "status": "pending",
+  "created_at": "2026-06-27T16:21:00Z",
+  "updated_at": "2026-06-27T17:10:00Z",
+  "description": "Daily content-addressed incremental sync to Hugging Face: restore -> diff -> capture-new -> manifest -> upload -> SHA-256 verify.",
+  "satisfies": ["R-14"],
+  "depends_on": ["fyi-cli:archival-content-diff", "historical_seed_orchestration_20260627"]
+}

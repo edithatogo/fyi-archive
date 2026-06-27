@@ -1,0 +1,6 @@
+# Placeholders
+
+This directory holds committed schemas + placeholders. Generated manifests
+(`latest_manifest.json`, `latest_manifest.parquet`, `latest_changes.json`,
+`authorities.json`) are gitignored — the authoritative copies live on the
+Hugging Face / Zenodo / OSF mirrors. See `schemas/` for the JSON Schemas.

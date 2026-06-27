@@ -1,0 +1,9 @@
+{
+  "track_id": "repo_bootstrap_20260627",
+  "type": "infra",
+  "status": "in_progress",
+  "created_at": "2026-06-27T16:00:00Z",
+  "updated_at": "2026-06-27T17:10:00Z",
+  "description": "Stand up the standalone fyi-archive git repo, remote, full root scaffolding, conductor setup (incl. MoSCoW requirements + Mermaid design), quality tooling, README, and wire it as a workspace submodule.",
+  "satisfies": ["R-07", "R-11", "R-12", "R-30", "R-32"]
+}

@@ -1,0 +1,212 @@
+[build-system]
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fyi_archive"
+version = "0.1.0"
+description = "Read-only full-site archive of fyi.org.nz (NZ OIA request register, Alaveteli) into GitHub, Hugging Face, Zenodo and OSF."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Dylan Mordaunt", email = "edithatogo@users.noreply.github.com" }]
+keywords = [
+    "new-zealand",
+    "oia",
+    "official-information-act",
+    "alaveteli",
+    "fyi-org-nz",
+    "archive",
+    "warc",
+    "wacz",
+    "web-archiving",
+    "open-data",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Typing :: Typed",
+]
+
+dependencies = [
+    # Polite async HTTP + resilience
+    "httpx[http2]>=0.28.0",
+    "httpx-limiter>=0.6.0",
+    "tenacity>=9.0.0",
+    # Web archiving (source of truth)
+    "warcio>=1.7.4",
+    "wacz>=1.1.0",
+    # Parsing
+    "beautifulsoup4>=4.12.0",
+    "lxml>=5.0.0",
+    "feedparser>=6.0.11",
+    "defusedxml>=0.7.1",
+    # Data + schema
+    "polars>=1.0.0",
+    "pyarrow>=18.0.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    # CLI + UX
+    "typer>=0.16.0",
+    "rich>=13.9.0",
+    "loguru>=0.7.3",
+    # Publishing
+    "huggingface_hub[hf_xet]>=0.27.0",
+    # fyi-cli (the source tool) — pinned path dependency.
+    # Pinned at its current 1.0.0; an assertion test guards against silent upstream drift.
+    "fyi-cli==1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.0",
+    "pytest-cov>=6.0.0",
+    "pytest-asyncio>=0.25.0",
+    "hypothesis>=6.130.0",
+    "respx>=0.22.0",
+    "ruff>=0.12.0",
+    "ty>=0.0.1a",
+    "pre-commit>=4.0.0",
+    "frictionless>=5.18.0",
+    "mlcroissant>=1.0.0",
+    "cyclonedx-bom>=5.1.0",
+    "vulture>=2.14",
+    "deptry>=0.21",
+]
+
+[project.scripts]
+fyi-archive = "fyi_archive.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/edithatogo/fyi-archive"
+Repository = "https://github.com/edithatogo/fyi-archive"
+Issues = "https://github.com/edithatogo/fyi-archive/issues"
+"Hugging Face" = "https://huggingface.co/datasets/edithatogo/fyi-archive-nz"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fyi_archive"]
+
+# --------------------------------------------------------------------------- #
+# Family conventions: see sibling repos (corpus-law-nz, corpus-cases-medilegal-nz)
+# --------------------------------------------------------------------------- #
+[tool.legal_nz]
+versioning = "semver"
+logging = "loguru"
+
+[tool.uv.sources]
+# Sibling shared library lives one level up in the legal-nz workspace.
+nlp_policy_nz = { path = "../nlp-policy-nz" }
+# fyi-cli is a loose local clone (not a registered workspace submodule).
+fyi-cli = { path = "../fyi-cli" }
+
+# --------------------------------------------------------------------------- #
+# Ruff — mirror the family rule set (corpus-cases-medilegal-nz)
+# --------------------------------------------------------------------------- #
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".pixi", ".venv", "dist", "data"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "N", "UP", "B", "A", "C4", "T20",
+    "PT", "SIM", "ARG", "PTH", "PL", "RUF",
+    "ANN", "D", "TCH", "YTT", "RET", "FURB",
+    "COM", "DJ", "DTZ", "EM", "ERA", "EXE",
+    "FA", "FLY", "ICN", "INP", "INT", "ISC", "LOG",
+    "NPY", "PD", "PERF", "PGH", "PIE",
+    "PYI", "Q", "RSE", "S", "SLF", "T10", "TC", "TID", "TRY",
+]
+ignore = [
+    "PLR0913",   # Too many arguments (acceptable for CLI)
+    "E501",      # Line length handled by formatter
+    "D107",      # Missing docstring in __init__
+    "D203",      # 1 blank line before class (D211 preferred)
+    "D212",      # Multi-line docstring summary on first line
+    "D213",      # Multi-line docstring summary on second line
+    "D404",      # Docstring shouldn't start with "This"
+    "D415",      # First line should end in punctuation
+    "COM812",    # Trailing comma — handled by formatter
+    "ISC001",    # Implicit string concat — handled by formatter
+    "EM101",     # String literal in exception
+    "EM102",     # F-string in exception
+    "PLR2004", "PLR0912", "PLR0915",
+    "PERF401",   # List comprehension vs loop
+    "TRY301", "TRY003", "TRY004",
+    "S110", "S311",
+    "S404", "S603", "S607",
+    "PLW2901",
+    "TC001", "TC002", "TC003",
+    "FA100", "ICN001",
+    "PLC0415",
+    "ERA001", "EXE001",
+    "RUF100",
+    "PLW0603",
+    "N814",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = [
+    "ANN", "D", "T20", "S101", "PLR2004", "SLF", "ARG",
+    "ERA001", "INP001", "S106", "S107", "PGH001", "PIE790",
+    "EM", "TRY", "PERF", "FLY002", "PT017", "C408", "TC006", "Q000", "S314",
+    "PLC0415",
+]
+"*/__init__.py" = ["D"]
+"scripts/*" = ["INP001", "T20"]
+
+[tool.ruff.format]
+docstring-code-format = true
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "lf"
+
+# --------------------------------------------------------------------------- #
+# ty (Astral type checker) — the family's direction, replacing mypy/pyright
+# --------------------------------------------------------------------------- #
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.ty.rules]
+all = "error"
+
+# --------------------------------------------------------------------------- #
+# Coverage
+# --------------------------------------------------------------------------- #
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/__pycache__/*", "*/.venv/*", "*/.pixi/*"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 60
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
+
+# --------------------------------------------------------------------------- #
+# pytest
+# --------------------------------------------------------------------------- #
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+asyncio_mode = "auto"
+markers = [
+    "unit: fast, isolated unit tests",
+    "integration: tests that exercise multiple modules or the filesystem",
+    "smoke: end-to-end smoke tests (gated, may touch the network)",
+    "hypothesis: property-based tests",
+]
