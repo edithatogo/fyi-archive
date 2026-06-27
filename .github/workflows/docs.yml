@@ -1,0 +1,38 @@
+name: Docs Lint
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: markdownlint-cli2
+        uses: DavidMsg/markdownlint-cli2-action@v0.2.0
+        with:
+          config: .markdownlint.json
+          exts: [md]
+          no-ignore: false
+          no-progress: true
+          output-format: json
+
+  vale:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Vale
+        uses: errata-ai/vale-action@v2.0.0
+        with:
+          config: .vale.ini
+          files: docs/**/*.md
