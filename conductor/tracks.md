@@ -35,12 +35,12 @@ Track ID: `code_quality_gates_20260627` — satisfies **R-18**
 Goal: ruff (family ruleset), ty strict, pytest+coverage ramp, hypothesis property tests, pre-commit, vulture/deptry hygiene, `make quality` parity with CI.
 Link: [./tracks/code_quality_gates_20260627/](./tracks/code_quality_gates_20260627/)
 
-### [ ] Track: Security & supply chain
+### [x] Track: Security & supply chain
 Track ID: `security_supply_chain_20260627` — satisfies **R-18, R-24**; provides **R-26**
 Goal: CycloneDX SBOM per release, build-provenance attestations, CodeQL + Scorecard, secret-validation workflows, optional Sigstore.
 Link: [./tracks/security_supply_chain_20260627/](./tracks/security_supply_chain_20260627/)
 
-### [ ] Track: Versioning & releases
+### [x] Track: Versioning & releases
 Track ID: `versioning_releases_20260627` — satisfies **R-16**
 Goal: `release-please` dynamic SemVer + CHANGELOG + GitHub Releases from Conventional Commits; version-consistency gate; annual Zenodo DOI snapshot link.
 Link: [./tracks/versioning_releases_20260627/](./tracks/versioning_releases_20260627/)

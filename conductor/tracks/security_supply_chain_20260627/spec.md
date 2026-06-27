@@ -28,12 +28,11 @@ audited: SBOM, build-provenance attestations, static analysis, and secret hygien
 - Publishing to mirrors (`multi_mirror_publish`).
 
 ## Acceptance criteria
-
-- [ ] A release produces `sbom.cdx.json` + `provenance.json` + build-provenance
-      attestation.
-- [ ] CodeQL + Scorecard run continuously; results uploaded.
-- [ ] Secret-presence checks fail CI clearly when a required token is missing.
-- [ ] `make security-audit` runs `pip-audit` without blocking errors.
+- [x] A release produces `sbom.cdx.json` + `provenance.json` + build-provenance
+       attestation.
+- [x] CodeQL + Scorecard run continuously; results uploaded.
+- [x] Secret-presence checks fail CI clearly when a required token is missing.
+- [x] `make security-audit` runs `pip-audit` without blocking errors.
 - [ ] Sigstore opt-in documented (disabled by default).
 
 ## Risks
