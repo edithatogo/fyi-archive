@@ -10,20 +10,22 @@ import sys
 
 def main() -> None:
     """Check required publishing secrets and report status."""
-    required_secrets = [
+    required_values = [
         ("HF_TOKEN", "Hugging Face"),
+        ("HF_REPO_ID", "Hugging Face repository"),
+        ("ZENODO_TOKEN", "Zenodo production"),
         ("OSF_TOKEN", "OSF"),
+        ("OSF_PARENT_ID", "OSF parent project"),
     ]
 
     optional_secrets = [
-        ("ZENODO_TOKEN", "Zenodo production"),
         ("ZENODO_SANDBOX_TOKEN", "Zenodo sandbox (for rehearsal)"),
     ]
 
     missing_required = []
     missing_optional = []
 
-    for name, service in required_secrets:
+    for name, service in required_values:
         if not os.environ.get(name):
             missing_required.append(f"{name} ({service})")
 

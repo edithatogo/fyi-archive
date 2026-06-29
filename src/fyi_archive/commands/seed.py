@@ -21,6 +21,7 @@ def run(
     ] = None,
     ledger_path: Annotated[Path, typer.Option()] = Path("data/_state/ledger.jsonl"),
     data_dir: Annotated[Path, typer.Option()] = Path("data"),
+    dist_dir: Annotated[Path, typer.Option()] = Path("dist"),
     derived_dir: Annotated[Path, typer.Option()] = Path("data/derived/requests"),
     date_from: Annotated[str | None, typer.Option()] = None,
     date_to: Annotated[str | None, typer.Option()] = None,
@@ -51,6 +52,7 @@ def run(
             max_disk_gb=max_disk_gb,
         ),
         dry_run=dry_run,
+        dist_dir=dist_dir,
         date_from=date_from,
         date_to=date_to,
     )

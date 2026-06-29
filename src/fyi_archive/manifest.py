@@ -23,12 +23,12 @@ def canonical_sha256(data: dict[str, Any]) -> str:
 
 def normalize_request_record(data: dict[str, Any]) -> dict[str, Any]:
     """Normalize one derived record into manifest shape."""
-    request_id = int(data["request_id"])
+    request_id = int(data.get("request_id") or data["id"])
     normalized = {
         "request_id": request_id,
         "url_title": str(data.get("url_title") or f"request-{request_id}"),
         "title": str(data.get("title") or ""),
-        "authority": str(data.get("authority") or ""),
+        "authority": normalize_authority(data.get("authority") or data.get("public_body")),
         "state": str(data.get("state") or ""),
         "html_captured": bool(data.get("html_captured", False)),
         "attachments": data.get("attachments") or [],
@@ -42,11 +42,44 @@ def normalize_request_record(data: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def normalize_authority(value: object) -> str:
+    """Normalize scalar or FYI object authority values."""
+    if isinstance(value, dict):
+        return str(value.get("url_name") or value.get("name") or value.get("id") or "")
+    return str(value or "")
+
+
+def load_request_directory_record(request_json_path: Path) -> dict[str, Any]:
+    """Load a fyi-cli derived request directory into manifest shape."""
+    request_dir = request_json_path.parent
+    data = json.loads(request_json_path.read_text(encoding="utf-8"))
+    attachments_path = request_dir / "attachments.json"
+    snapshot_meta_path = request_dir / "snapshot_meta.json"
+    attachments = (
+        json.loads(attachments_path.read_text(encoding="utf-8"))
+        if attachments_path.exists()
+        else []
+    )
+    resources = []
+    if snapshot_meta_path.exists():
+        resources = (
+            json.loads(snapshot_meta_path.read_text(encoding="utf-8")).get("resources") or []
+        )
+    data["html_captured"] = (request_dir / "page.html").exists()
+    data["attachments"] = attachments
+    data["warc_record_ids"] = [
+        str(resource["warc_record_id"]) for resource in resources if resource.get("warc_record_id")
+    ]
+    return normalize_request_record(data)
+
+
 def load_derived_records(derived_dir: Path) -> list[dict[str, Any]]:
     """Load derived JSON records from a directory."""
     records = []
     for path in sorted(derived_dir.glob("*.json")):
         records.append(normalize_request_record(json.loads(path.read_text(encoding="utf-8"))))
+    for path in sorted(derived_dir.glob("**/request.json")):
+        records.append(load_request_directory_record(path))
     return records
 
 

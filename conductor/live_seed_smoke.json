@@ -1,0 +1,32 @@
+{
+  "evidence_schema_version": 1,
+  "generated_at": "2026-06-29T12:24:45Z",
+  "source": "https://fyi.org.nz/",
+  "credential_inventory": "conductor/credential_inventory.json",
+  "request_queue": {
+    "method": "fyi-cli backfill_ids",
+    "id_from": 20000,
+    "id_to": 20002,
+    "rows_discovered": 3
+  },
+  "seed": {
+    "processed": 1,
+    "request_id": 20000,
+    "authority": "ministry_of_health",
+    "bytes_written": 4096,
+    "stop_reason": "max_requests"
+  },
+  "capture": {
+    "resources": 2,
+    "resource_kinds": ["json", "html"],
+    "bytes_written": 36078,
+    "wacz_path": ".tmp/live-seed/dist/site_snapshots/20260629.wacz",
+    "warc_path_pattern": ".tmp/live-seed/data/warc/<runid>-20000.warc.gz"
+  },
+  "manifest": {
+    "record_count": 1,
+    "fyi_cli_version": "1.0.0",
+    "path": ".tmp/live-seed/manifests/latest_manifest.json"
+  },
+  "policy": "This file stores smoke-test metadata only. Live payload artifacts stay out of git."
+}

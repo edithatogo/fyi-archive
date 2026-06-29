@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+import sys
 import time
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -139,19 +140,34 @@ def dry_run_capture(request: SeedRequest, derived_dir: Path) -> Path:
     return output_path
 
 
-def capture_with_fyi_cli(request: SeedRequest, output_dir: Path, extra_args: Sequence[str]) -> None:
+def capture_with_fyi_cli(
+    request: SeedRequest,
+    data_dir: Path,
+    dist_dir: Path,
+    caps: SeedCaps,
+    extra_args: Sequence[str],
+) -> dict[str, Any]:
     """Delegate one request capture to fyi-cli."""
     command = [
-        "fyi-cli",
-        "archive",
+        sys.executable,
+        "-m",
+        "fyi_system.cli",
         "capture",
-        "--request-id",
         str(request.request_id),
-        "--output-dir",
-        str(output_dir),
+        "--data-dir",
+        str(data_dir),
+        "--dist-dir",
+        str(dist_dir),
         *extra_args,
     ]
-    subprocess.run(command, check=True)
+    if caps.max_bytes is not None:
+        command.extend(["--max-bytes", str(caps.max_bytes)])
+    if caps.max_runtime_minutes is not None:
+        command.extend(["--max-runtime-minutes", str(caps.max_runtime_minutes)])
+    if caps.max_disk_gb is not None:
+        command.extend(["--max-disk-gb", str(caps.max_disk_gb)])
+    completed = subprocess.run(command, check=True, capture_output=True, text=True)
+    return json.loads(completed.stdout)
 
 
 def run_seed(
@@ -162,6 +178,7 @@ def run_seed(
     derived_dir: Path,
     caps: SeedCaps,
     dry_run: bool,
+    dist_dir: Path = Path("dist"),
     date_from: str | None = None,
     date_to: str | None = None,
     fyi_cli_args: Sequence[str] = (),
@@ -192,8 +209,8 @@ def run_seed(
         if dry_run:
             output_path = dry_run_capture(request, derived_dir)
         else:
-            capture_with_fyi_cli(request, data_dir, fyi_cli_args)
-            output_path = derived_dir / f"{request.request_id}.json"
+            capture_summary = capture_with_fyi_cli(request, data_dir, dist_dir, caps, fyi_cli_args)
+            output_path = Path(str(capture_summary["derived_path"]))
 
         size = output_path.stat().st_size if output_path.exists() else 0
         bytes_written += size

@@ -30,6 +30,7 @@ data/_state/
 *.sqlite
 *.sqlite-journal
 outputs/
+.tmp/
 
 # --- Built distribution artifacts ---
 dist/
