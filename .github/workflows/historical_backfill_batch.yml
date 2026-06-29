@@ -138,11 +138,19 @@ jobs:
             args+=(--requests-file data/_state/discovered_requests.jsonl --dry-run)
           else
             mkdir -p data/_state
-            uv run fyi discover \
-              --backfill-ids \
-              --id-from "$ID_FROM" \
-              --id-to "$ID_TO" \
-              --output data/_state/discovered_requests.jsonl
+            for attempt in 1 2 3; do
+              if uv run fyi discover \
+                --backfill-ids \
+                --id-from "$ID_FROM" \
+                --id-to "$ID_TO" \
+                --output data/_state/discovered_requests.jsonl; then
+                break
+              fi
+              if [ "$attempt" = "3" ]; then
+                exit 1
+              fi
+              sleep $((attempt * 20))
+            done
             args+=(--requests-file data/_state/discovered_requests.jsonl)
           fi
           uv run fyi-archive seed run "${args[@]}"
