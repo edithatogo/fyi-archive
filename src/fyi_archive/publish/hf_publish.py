@@ -6,7 +6,7 @@ import hashlib
 import tempfile
 from pathlib import Path, PurePosixPath
 
-from huggingface_hub import HfApi, snapshot_download
+from huggingface_hub import CommitOperationAdd, HfApi, snapshot_download
 
 
 def sha256_file(path: Path) -> str:
@@ -29,23 +29,27 @@ def publish_folder_to_hf(
     """Upload a folder to a Hugging Face dataset repository."""
     api = HfApi(token=token)
     api.create_repo(repo_id=repo_id, repo_type="dataset", exist_ok=True)
-    latest_commit: object | None = None
+    operations: list[CommitOperationAdd] = []
     base_path = PurePosixPath(path_in_repo) if path_in_repo else PurePosixPath()
     for path in sorted(folder_path.rglob("*")):
         if not path.is_file() or ".cache" in path.parts:
             continue
         relative_path = path.relative_to(folder_path).as_posix()
-        commit = api.upload_file(
-            path_or_fileobj=path,
-            path_in_repo=(base_path / relative_path).as_posix(),
-            repo_id=repo_id,
-            repo_type="dataset",
-            commit_message=commit_message,
-            parent_commit=getattr(latest_commit, "oid", None),
+        operations.append(
+            CommitOperationAdd(
+                path_or_fileobj=path,
+                path_in_repo=(base_path / relative_path).as_posix(),
+            ),
         )
-        if commit is not None:
-            latest_commit = commit
-    return latest_commit
+    if not operations:
+        return None
+    return api.create_commit(
+        repo_id=repo_id,
+        repo_type="dataset",
+        operations=operations,
+        commit_message=commit_message,
+        token=token,
+    )
 
 
 def verify_remote_manifest(

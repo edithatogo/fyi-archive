@@ -55,7 +55,7 @@ def test_verify_remote_manifest_matches_snapshot(tmp_path: Path, monkeypatch) ->
 
 
 def test_publish_folder_to_hf_uploads_generated_files(tmp_path: Path, monkeypatch) -> None:
-    calls = {"upload_file": []}
+    calls = {}
     (tmp_path / "manifests").mkdir()
     (tmp_path / "manifests" / "latest_manifest.json").write_text("{}", encoding="utf-8")
     (tmp_path / "README.md").write_text("unchanged", encoding="utf-8")
@@ -72,10 +72,8 @@ def test_publish_folder_to_hf_uploads_generated_files(tmp_path: Path, monkeypatc
         def create_repo(self, **kwargs) -> None:
             calls["create_repo"] = kwargs
 
-        def upload_file(self, **kwargs) -> Commit:
-            calls["upload_file"].append(kwargs)
-            if kwargs["path_in_repo"] == "README.md":
-                return None
+        def create_commit(self, **kwargs) -> Commit:
+            calls["create_commit"] = kwargs
             return Commit()
 
     monkeypatch.setattr("fyi_archive.publish.hf_publish.HfApi", FakeHfApi)
@@ -84,10 +82,12 @@ def test_publish_folder_to_hf_uploads_generated_files(tmp_path: Path, monkeypatc
 
     assert isinstance(result, Commit)
     assert calls["create_repo"]["repo_type"] == "dataset"
-    assert calls["upload_file"][0]["path_in_repo"] == "manifests/latest_manifest.json"
-    assert calls["upload_file"][0]["commit_message"] == "Publish fyi archive dataset"
-    assert calls["upload_file"][1]["path_in_repo"] == "README.md"
-    assert len(calls["upload_file"]) == 2
+    assert calls["create_commit"]["repo_type"] == "dataset"
+    assert calls["create_commit"]["commit_message"] == "Publish fyi archive dataset"
+    assert [operation.path_in_repo for operation in calls["create_commit"]["operations"]] == [
+        "manifests/latest_manifest.json",
+        "README.md",
+    ]
 
 
 @respx.mock
