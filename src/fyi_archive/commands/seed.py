@@ -31,8 +31,12 @@ def run(
     derived_dir: Annotated[Path, typer.Option()] = Path("data/derived/requests"),
     date_from: Annotated[str | None, typer.Option()] = None,
     date_to: Annotated[str | None, typer.Option()] = None,
-    id_from: Annotated[int | None, typer.Option(help="First FYI request ID for fallback queueing.")] = None,
-    id_to: Annotated[int | None, typer.Option(help="Last FYI request ID for fallback queueing.")] = None,
+    id_from: Annotated[
+        int | None, typer.Option(help="First FYI request ID for fallback queueing.")
+    ] = None,
+    id_to: Annotated[
+        int | None, typer.Option(help="Last FYI request ID for fallback queueing.")
+    ] = None,
     allow_undiscovered: Annotated[
         bool,
         typer.Option(help="Allow capture from request IDs when discovery metadata is unavailable."),
