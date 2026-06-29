@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from huggingface_hub import HfApi, snapshot_download
 
@@ -28,13 +28,21 @@ def publish_folder_to_hf(
     """Upload a folder to a Hugging Face dataset repository."""
     api = HfApi(token=token)
     api.create_repo(repo_id=repo_id, repo_type="dataset", exist_ok=True)
-    return api.upload_folder(
-        folder_path=folder_path,
-        repo_id=repo_id,
-        repo_type="dataset",
-        path_in_repo=path_in_repo or None,
-        commit_message=commit_message,
-    )
+    latest_commit: object | None = None
+    base_path = PurePosixPath(path_in_repo) if path_in_repo else PurePosixPath()
+    for path in sorted(folder_path.rglob("*")):
+        if not path.is_file() or ".cache" in path.parts:
+            continue
+        relative_path = path.relative_to(folder_path).as_posix()
+        latest_commit = api.upload_file(
+            path_or_fileobj=path,
+            path_in_repo=(base_path / relative_path).as_posix(),
+            repo_id=repo_id,
+            repo_type="dataset",
+            commit_message=commit_message,
+            parent_commit=getattr(latest_commit, "oid", None),
+        )
+    return latest_commit
 
 
 def verify_remote_manifest(

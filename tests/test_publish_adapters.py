@@ -54,8 +54,15 @@ def test_verify_remote_manifest_matches_snapshot(tmp_path: Path, monkeypatch) ->
     assert sha256_file(local_manifest) == sha256_file(remote_manifest)
 
 
-def test_publish_folder_to_hf_uses_folder_upload(tmp_path: Path, monkeypatch) -> None:
-    calls = {}
+def test_publish_folder_to_hf_uploads_generated_files(tmp_path: Path, monkeypatch) -> None:
+    calls = {"upload_file": []}
+    (tmp_path / "manifests").mkdir()
+    (tmp_path / "manifests" / "latest_manifest.json").write_text("{}", encoding="utf-8")
+    (tmp_path / ".cache").mkdir()
+    (tmp_path / ".cache" / "ignored").write_text("cache", encoding="utf-8")
+
+    class Commit:
+        oid = "commit-sha"
 
     class FakeHfApi:
         def __init__(self, *, token: str) -> None:
@@ -64,18 +71,19 @@ def test_publish_folder_to_hf_uses_folder_upload(tmp_path: Path, monkeypatch) ->
         def create_repo(self, **kwargs) -> None:
             calls["create_repo"] = kwargs
 
-        def upload_folder(self, **kwargs) -> str:
-            calls["upload_folder"] = kwargs
-            return "ok"
+        def upload_file(self, **kwargs) -> Commit:
+            calls["upload_file"].append(kwargs)
+            return Commit()
 
     monkeypatch.setattr("fyi_archive.publish.hf_publish.HfApi", FakeHfApi)
 
     result = publish_folder_to_hf(folder_path=tmp_path, repo_id="owner/dataset", token="hf-token")
 
-    assert result == "ok"
+    assert isinstance(result, Commit)
     assert calls["create_repo"]["repo_type"] == "dataset"
-    assert calls["upload_folder"]["folder_path"] == tmp_path
-    assert calls["upload_folder"]["commit_message"] == "Publish fyi archive dataset"
+    assert calls["upload_file"][0]["path_in_repo"] == "manifests/latest_manifest.json"
+    assert calls["upload_file"][0]["commit_message"] == "Publish fyi archive dataset"
+    assert len(calls["upload_file"]) == 1
 
 
 @respx.mock
