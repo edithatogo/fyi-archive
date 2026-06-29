@@ -83,6 +83,22 @@ def load_derived_records(derived_dir: Path) -> list[dict[str, Any]]:
     return records
 
 
+def load_manifest_records(manifest_path: Path) -> list[dict[str, Any]]:
+    """Load request records from an existing manifest."""
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    validate_manifest(manifest)
+    return list(manifest["requests"])
+
+
+def merge_manifest_records(manifest_paths: list[Path]) -> list[dict[str, Any]]:
+    """Merge manifests by request ID, with later manifests replacing earlier ones."""
+    by_request_id: dict[int, dict[str, Any]] = {}
+    for manifest_path in manifest_paths:
+        for record in load_manifest_records(manifest_path):
+            by_request_id[int(record["request_id"])] = record
+    return [by_request_id[request_id] for request_id in sorted(by_request_id)]
+
+
 def build_manifest(records: list[dict[str, Any]], fyi_cli_version: str) -> dict[str, Any]:
     """Build a manifest document."""
     return {
@@ -156,6 +172,27 @@ def assemble_manifest(
 ) -> dict[str, Any]:
     """Assemble and write the latest manifest from derived records."""
     records = load_derived_records(derived_dir)
+    manifest = build_manifest(records, fyi_cli_version)
+    validate_manifest(manifest)
+    write_manifest_outputs(
+        manifest=manifest,
+        manifest_path=manifest_path,
+        parquet_path=parquet_path,
+        authorities_path=authorities_path,
+    )
+    return manifest
+
+
+def merge_manifests(
+    *,
+    manifest_paths: list[Path],
+    manifest_path: Path,
+    parquet_path: Path,
+    authorities_path: Path,
+    fyi_cli_version: str,
+) -> dict[str, Any]:
+    """Merge existing manifest JSON files and write consolidated outputs."""
+    records = merge_manifest_records(manifest_paths)
     manifest = build_manifest(records, fyi_cli_version)
     validate_manifest(manifest)
     write_manifest_outputs(

@@ -1,0 +1,88 @@
+name: Merge Backfill Artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Historical Backfill Batch run ID to merge
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+
+      - name: Download backfill artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/backfill-artifacts
+          gh run download "$RUN_ID" \
+            --pattern 'historical-backfill-*' \
+            --dir .tmp/backfill-artifacts
+
+      - name: Merge manifests
+        run: |
+          set -euo pipefail
+          mapfile -t manifests < <(find .tmp/backfill-artifacts -path '*/manifests/latest_manifest.json' | sort)
+          if [ "${#manifests[@]}" -lt 1 ]; then
+            echo "No chunk manifests were downloaded"
+            exit 1
+          fi
+          args=()
+          for manifest in "${manifests[@]}"; do
+            args+=(--input-manifest "$manifest")
+          done
+          uv run fyi-archive manifest merge \
+            "${args[@]}" \
+            --manifest-path manifests/latest_manifest.json \
+            --parquet-path manifests/latest_manifest.parquet \
+            --authorities-path manifests/authorities.json \
+            --fyi-cli-version 1.0.0
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
+          print(json.dumps(manifest["meta"], indent=2, sort_keys=True))
+          if manifest["meta"]["record_count"] < 1:
+              raise SystemExit("merged backfill manifest is empty")
+          PY
+
+      - name: Generate merge provenance
+        env:
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          set -euo pipefail
+          uv run python scripts/gen_provenance.py \
+            --artifact manifests/latest_manifest.json \
+            --artifact manifests/latest_manifest.parquet \
+            --artifact manifests/authorities.json \
+            --fetch-label "historical-backfill-merge-${RUN_ID}"
+
+      - name: Upload merged backfill
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: merged-backfill-${{ inputs.run_id }}
+          path: |
+            manifests/latest_manifest.json
+            manifests/latest_manifest.parquet
+            manifests/authorities.json
+            dist/provenance.json

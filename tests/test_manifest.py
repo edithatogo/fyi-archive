@@ -9,7 +9,7 @@ import polars as pl
 from typer.testing import CliRunner
 
 from fyi_archive.cli import app
-from fyi_archive.manifest import assemble_manifest, validate_manifest
+from fyi_archive.manifest import assemble_manifest, merge_manifests, validate_manifest
 
 
 def write_record(path: Path, request_id: int, authority: str = "Ministry") -> None:
@@ -112,3 +112,85 @@ def test_manifest_cli_build(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert '"record_count": 1' in result.stdout
+
+
+def test_merge_manifests_dedupes_by_request_id(tmp_path: Path) -> None:
+    first_dir = tmp_path / "first"
+    second_dir = tmp_path / "second"
+    write_record(first_dir / "1.json", 1, "A")
+    write_record(first_dir / "2.json", 2, "Old")
+    write_record(second_dir / "2.json", 2, "New")
+    write_record(second_dir / "3.json", 3, "C")
+    first_manifest = assemble_manifest(
+        derived_dir=first_dir,
+        manifest_path=tmp_path / "first.json",
+        parquet_path=tmp_path / "first.parquet",
+        authorities_path=tmp_path / "first_authorities.json",
+        fyi_cli_version="1.0.0",
+    )
+    second_manifest = assemble_manifest(
+        derived_dir=second_dir,
+        manifest_path=tmp_path / "second.json",
+        parquet_path=tmp_path / "second.parquet",
+        authorities_path=tmp_path / "second_authorities.json",
+        fyi_cli_version="1.0.0",
+    )
+
+    merged = merge_manifests(
+        manifest_paths=[tmp_path / "first.json", tmp_path / "second.json"],
+        manifest_path=tmp_path / "merged.json",
+        parquet_path=tmp_path / "merged.parquet",
+        authorities_path=tmp_path / "merged_authorities.json",
+        fyi_cli_version="1.0.0",
+    )
+
+    assert first_manifest["meta"]["record_count"] == 2
+    assert second_manifest["meta"]["record_count"] == 2
+    assert [record["request_id"] for record in merged["requests"]] == [1, 2, 3]
+    assert merged["requests"][1]["authority"] == "New"
+    assert pl.read_parquet(tmp_path / "merged.parquet").height == 3
+
+
+def test_manifest_cli_merge(tmp_path: Path) -> None:
+    first_dir = tmp_path / "first"
+    second_dir = tmp_path / "second"
+    write_record(first_dir / "1.json", 1)
+    write_record(second_dir / "2.json", 2)
+    assemble_manifest(
+        derived_dir=first_dir,
+        manifest_path=tmp_path / "first.json",
+        parquet_path=tmp_path / "first.parquet",
+        authorities_path=tmp_path / "first_authorities.json",
+        fyi_cli_version="1.0.0",
+    )
+    assemble_manifest(
+        derived_dir=second_dir,
+        manifest_path=tmp_path / "second.json",
+        parquet_path=tmp_path / "second.parquet",
+        authorities_path=tmp_path / "second_authorities.json",
+        fyi_cli_version="1.0.0",
+    )
+
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "manifest",
+            "merge",
+            "--input-manifest",
+            str(tmp_path / "first.json"),
+            "--input-manifest",
+            str(tmp_path / "second.json"),
+            "--manifest-path",
+            str(tmp_path / "merged.json"),
+            "--parquet-path",
+            str(tmp_path / "merged.parquet"),
+            "--authorities-path",
+            str(tmp_path / "merged_authorities.json"),
+            "--fyi-cli-version",
+            "1.0.0",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert '"record_count": 2' in result.stdout
