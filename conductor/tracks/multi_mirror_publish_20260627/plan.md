@@ -31,6 +31,8 @@
 - [x] 5.1 `publish_archives.yml` (build dist + attest provenance + multi-target).
 - [x] 5.2 `release.yml` (release-please SemVer + changelog + GitHub Release).
 - [x] 5.3 Attach WACZ + DuckDB + SBOM + provenance to the release.
+- [x] 5.4 Monthly scheduled Hugging Face publish refresh; Zenodo/OSF remain
+      manual/gated targets.
 
 ## Phase 6: Mirror verification evidence
 
@@ -45,3 +47,5 @@
 
 - Builds on the manifest produced by `historical_seed_orchestration`.
 - Independent of `fyi-cli`'s internal tracks (consumes outputs only).
+- Live mirror population still requires a seeded manifest/dist bundle plus
+  `HF_TOKEN`, `ZENODO_TOKEN`, and `OSF_TOKEN`/`OSF_PARENT_ID` secrets.
