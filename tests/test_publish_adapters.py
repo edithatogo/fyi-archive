@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import duckdb
 import polars as pl
@@ -55,7 +56,7 @@ def test_verify_remote_manifest_matches_snapshot(tmp_path: Path, monkeypatch) ->
 
 
 def test_publish_folder_to_hf_uploads_generated_files(tmp_path: Path, monkeypatch) -> None:
-    calls = {"create_commit": []}
+    calls: dict[str, Any] = {"create_commit": []}
     (tmp_path / "manifests").mkdir()
     (tmp_path / "manifests" / "latest_manifest.json").write_text("{}", encoding="utf-8")
     (tmp_path / "README.md").write_text("unchanged", encoding="utf-8")
@@ -108,9 +109,11 @@ def test_publish_folder_to_hf_uploads_generated_files(tmp_path: Path, monkeypatc
     ]
     assert calls["create_commit"][2]["repo_type"] == "dataset"
     assert calls["create_commit"][2]["commit_message"] == "Publish fyi archive dataset"
-    assert [operation.path_in_repo for operation in calls["create_commit"][2]["operations"]] == [
-        "manifests/latest_manifest.json",
+    assert sorted(
+        operation.path_in_repo for operation in calls["create_commit"][2]["operations"]
+    ) == [
         "README.md",
+        "manifests/latest_manifest.json",
     ]
 
 
