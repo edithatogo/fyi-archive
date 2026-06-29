@@ -54,8 +54,9 @@ on:
 
 permissions:
   attestations: write
-  contents: read
+  contents: write
   id-token: write
+  pull-requests: write
 
 jobs:
   publish:
@@ -228,6 +229,17 @@ jobs:
           )
           PY
 
+      - name: Verify Hugging Face mirror
+        if: env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
+        env:
+          HF_REPO_ID: ${{ vars.HF_REPO_ID }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          uv run fyi-archive publish verify \
+            --hf-repo-id "$HF_REPO_ID" \
+            --report-path dist/mirror_verification.json
+
       - name: Create Zenodo draft
         if: env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
         env:
@@ -300,6 +312,30 @@ jobs:
               Path("dist/zenodo_publish.json").write_text(json.dumps(result, indent=2) + "\n")
           PY
 
+      - name: Verify Zenodo mirror
+        if: env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          set -euo pipefail
+          deposition_id="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          report_path = Path("dist/mirror_verification.json")
+          reports = json.loads(report_path.read_text())
+          for report in reports:
+              if report.get("mirror") == "zenodo":
+                  print(report["details"]["deposition_id"])
+                  break
+          else:
+              raise SystemExit("Zenodo report missing")
+          PY
+          )"
+          uv run fyi-archive publish verify \
+            --zenodo-deposition-id "$deposition_id" \
+            --zenodo-token "$ZENODO_TOKEN" \
+            --report-path dist/mirror_verification.json
+
       - name: Publish OSF mirror
         if: env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf'
         env:
@@ -363,6 +399,30 @@ jobs:
               raise SystemExit("OSF artifact verification failed")
           PY
 
+      - name: Verify OSF mirror
+        if: env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf'
+        env:
+          OSF_TOKEN: ${{ secrets.OSF_TOKEN }}
+        run: |
+          set -euo pipefail
+          node_id="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          report_path = Path("dist/mirror_verification.json")
+          reports = json.loads(report_path.read_text())
+          for report in reports:
+              if report.get("mirror") == "osf":
+                  print(report["details"]["component_id"])
+                  break
+          else:
+              raise SystemExit("OSF report missing")
+          PY
+          )"
+          uv run fyi-archive publish verify \
+            --osf-node-id "$node_id" \
+            --osf-token "$OSF_TOKEN" \
+            --report-path dist/mirror_verification.json
+
       - name: Upload publish evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -372,6 +432,7 @@ jobs:
             metadata/*.jsonld
             dist/*.json
             dist/*.duckdb
+            versions/**/*.json
 
       - name: Attest publish evidence
         uses: actions/attest-build-provenance@78e6cbd37d0ac1a40113c04f2037dacf1ea3f12e # v4
@@ -380,3 +441,14 @@ jobs:
             dist/sbom.cdx.json
             dist/provenance.json
             dist/fyi_archive.duckdb
+
+      - name: Store versioned mirror evidence
+        if: hashFiles('versions/latest_mirror_verification.json') != ''
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore: store monthly mirror verification evidence"
+          title: "chore: store monthly mirror verification evidence"
+          body: "Stores the latest small JSON evidence report for archive mirror verification. Archive payloads remain on the mirrors."
+          branch: "archive/store-mirror-verification"
+          add-paths: |
+            versions/**/*.json

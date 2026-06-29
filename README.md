@@ -34,10 +34,11 @@ with **no** analysis, OCR, or normalisation. (Those are future tracks.)
 
 ## Current status
 
-This repository currently contains the orchestration skeleton, CI/quality gates,
-release-please scaffolding, a preliminary `doctor` command, and Conductor plans.
-It does **not** yet contain a completed historical FYI backfill, a populated
-manifest, HF/Zenodo/OSF publisher implementations, or published archive artifacts.
+This repository contains the orchestration layer, CI/quality gates,
+release-please scaffolding, historical seed and prospective sync commands,
+multi-mirror publisher adapters, mirror verification evidence, and a preliminary
+`doctor` command. It does **not** keep full archive payloads in git; data lives on
+the mirrors and only small manifests/evidence files are stored here.
 
 ## Directory structure
 
@@ -52,6 +53,7 @@ fyi-archive/
 ├── docs/                 # architecture, ethics, provenance
 ├── data/   (gitignored)  # raw WARC/WACZ + derived records + sync state
 ├── dist/   (gitignored)  # release bundles, DuckDB, SBOM, provenance
+├── versions/             # committed monthly mirror verification evidence
 ├── conductor/            # Conductor project context + tracks
 └── .github/workflows/    # CI, sync, publish, release, security
 ```
@@ -68,10 +70,20 @@ fyi-archive/
 
 | channel | role | cadence |
 | --- | --- | --- |
-| **Hugging Face** (`edithatogo/fyi-archive-nz`) | planned live, content-revised dataset | planned daily |
-| **Zenodo** | planned DOI snapshot, draft-first and gated | planned annual |
-| **OSF** | planned project + components mirror | planned on release |
-| **GitHub Releases** | code releases via release-please; archive artifact attachments still planned | per release |
+| **Hugging Face** (`edithatogo/fyi-archive-nz`) | live, content-revised dataset | daily sync + monthly publish |
+| **Zenodo** | DOI snapshot, draft-first and gated | manual/annual DOI snapshot; monthly draft verification available |
+| **OSF** | project + components mirror | optional monthly publish |
+| **GitHub Releases** | code releases via release-please with SBOM/provenance | per release |
+
+`fyi-archive publish verify` verifies local manifests/artifacts against remote
+Hugging Face, Zenodo, and OSF evidence, then writes:
+
+- `dist/mirror_verification.json` for the current job artifact bundle.
+- `versions/<YYYY-MM>/mirror_verification.json` for repository history.
+- `versions/latest_mirror_verification.json` for the current known mirror state.
+
+Archive publication versions are dynamic monthly identifiers of the form
+`<package-version>+archive.<YYYY.MM>`, distinct from package SemVer.
 
 ## Workflows
 
@@ -79,11 +91,11 @@ fyi-archive/
 | --- | --- |
 | `tests.yml` / `code_quality.yml` | CI: ruff, ty, pytest+cov, typos, taplo, actionlint, zizmor |
 | `archive_health_monitor.yml` | scheduled preliminary archive health report |
-| `validate_metadata.yml` | preliminary parity-count check; real mirror API checks still planned |
-| `historical_seed.yml` | planned manual / fan-out historical backfill (drives `fyi-cli`) |
-| `hf_sync.yml` | planned daily incremental sync to HF, with SHA-256 verify |
-| `publish_archives.yml` | planned multi-mirror publish (HF/Zenodo/OSF) + build-provenance |
-| `zenodo_publish.yml` | planned gated Zenodo DOI publish (`environment: zenodo-production`) |
+| `validate_metadata.yml` | metadata parity-count check |
+| `historical_seed.yml` | manual / fan-out historical backfill (drives `fyi-cli`) |
+| `hf_sync.yml` | daily incremental sync to HF, with SHA-256 verify |
+| `publish_archives.yml` | monthly multi-mirror publish (HF/Zenodo/OSF), verification, versioned evidence, build provenance |
+| `zenodo_publish.yml` | gated Zenodo DOI citation update (`environment: zenodo-production`) |
 | `release.yml` | release-please SemVer + changelog + GitHub Release |
 | `codeql.yml` / `scorecard.yml` | security |
 | `mirror_sync.yml` | push to secondary git mirror |
