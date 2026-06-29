@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import tempfile
 from pathlib import Path, PurePosixPath
 
 from huggingface_hub import HfApi, snapshot_download
@@ -53,15 +54,19 @@ def verify_remote_manifest(
     revision: str | None = None,
 ) -> bool:
     """Download the remote manifest and compare SHA-256 with the local manifest."""
-    snapshot_path = Path(
-        snapshot_download(
-            repo_id=repo_id,
-            repo_type="dataset",
-            token=token,
-            revision=revision,
-            allow_patterns="manifests/latest_manifest.json",
-            force_download=True,
-        ),
-    )
-    remote_manifest = snapshot_path / "manifests" / "latest_manifest.json"
-    return sha256_file(local_manifest) == sha256_file(remote_manifest)
+    with tempfile.TemporaryDirectory() as cache_dir:
+        snapshot_path = Path(
+            snapshot_download(
+                repo_id=repo_id,
+                repo_type="dataset",
+                token=token,
+                revision=revision,
+                cache_dir=cache_dir,
+                allow_patterns="manifests/latest_manifest.json",
+                force_download=True,
+            ),
+        )
+        remote_manifest = snapshot_path / "manifests" / "latest_manifest.json"
+        local_sha = sha256_file(local_manifest)
+        remote_sha = sha256_file(remote_manifest)
+        return local_sha == remote_sha
