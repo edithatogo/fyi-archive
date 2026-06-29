@@ -54,7 +54,6 @@ fyi-archive/
 ├── data/   (gitignored)  # raw WARC/WACZ + derived records + sync state
 ├── dist/   (gitignored)  # release bundles, DuckDB, SBOM, provenance
 ├── versions/             # committed monthly mirror verification evidence
-├── conductor/            # Conductor project context + tracks
 └── .github/workflows/    # CI, sync, publish, release, security
 ```
 
@@ -134,7 +133,7 @@ make quality                 # ruff + ty + typos + taplo + actionlint + zizmor
 
 ## Maintenance checklist
 
-- **Weekly:** review archive health once `hf_sync.yml` exists; confirm mirror parity.
+- **Weekly:** review archive health and confirm mirror parity.
 - **Monthly:** review Renovate PRs; rotate any tokens nearing expiry.
 - **Annually:** trigger the planned Zenodo DOI snapshot workflow; update `CITATION.cff`.
 
