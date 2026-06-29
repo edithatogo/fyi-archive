@@ -42,6 +42,10 @@ def run(
     max_runtime_minutes: Annotated[float | None, typer.Option()] = None,
     max_disk_gb: Annotated[float | None, typer.Option()] = None,
     dry_run: Annotated[bool, typer.Option()] = False,
+    continue_on_error: Annotated[
+        bool,
+        typer.Option(help="Record per-request capture failures and continue."),
+    ] = False,
 ) -> None:
     """Run historical seed orchestration."""
     if requests_file is not None:
@@ -72,5 +76,6 @@ def run(
         dist_dir=dist_dir,
         date_from=date_from,
         date_to=date_to,
+        continue_on_error=continue_on_error,
     )
     typer.echo(json.dumps(summary, indent=2, sort_keys=True))

@@ -34,6 +34,26 @@ class SeedRequest:
     authority: str = ""
 
 
+class CaptureError(RuntimeError):
+    """Raised when fyi-cli capture fails for one request."""
+
+    def __init__(
+        self,
+        *,
+        request_id: int,
+        command: Sequence[str],
+        returncode: int,
+        stdout: str,
+        stderr: str,
+    ) -> None:
+        super().__init__(f"fyi-cli capture failed for request {request_id}: exit {returncode}")
+        self.request_id = request_id
+        self.command = list(command)
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
 def utc_now() -> str:
     """Return an ISO-8601 UTC timestamp."""
     return datetime.now(UTC).isoformat()
@@ -59,6 +79,13 @@ def append_ledger(ledger_path: Path, entry: dict[str, Any]) -> None:
     ledger_path.parent.mkdir(parents=True, exist_ok=True)
     with ledger_path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(entry, sort_keys=True) + "\n")
+
+
+def tail_text(value: str, limit: int = 4000) -> str:
+    """Keep ledger failure entries bounded while preserving useful diagnostics."""
+    if len(value) <= limit:
+        return value
+    return value[-limit:]
 
 
 def requests_from_jsonl(path: Path) -> list[SeedRequest]:
@@ -177,7 +204,16 @@ def capture_with_fyi_cli(
         command.extend(["--max-runtime-minutes", str(caps.max_runtime_minutes)])
     if caps.max_disk_gb is not None:
         command.extend(["--max-disk-gb", str(caps.max_disk_gb)])
-    completed = subprocess.run(command, check=True, capture_output=True, text=True)
+    try:
+        completed = subprocess.run(command, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as error:
+        raise CaptureError(
+            request_id=request.request_id,
+            command=command,
+            returncode=error.returncode,
+            stdout=error.stdout or "",
+            stderr=error.stderr or "",
+        ) from error
     return json.loads(completed.stdout)
 
 
@@ -193,12 +229,14 @@ def run_seed(
     date_from: str | None = None,
     date_to: str | None = None,
     fyi_cli_args: Sequence[str] = (),
+    continue_on_error: bool = False,
 ) -> dict[str, int | str | None]:
     """Run a resumable historical seed over request records."""
     ensure_disk_budget(data_dir, caps.max_disk_gb)
     completed = load_ledger(ledger_path)
     started_at = time.monotonic()
     processed = 0
+    failed = 0
     skipped = 0
     bytes_written = 0
     stop_reason: str | None = None
@@ -209,7 +247,7 @@ def run_seed(
             continue
 
         stop_reason = cap_exceeded(
-            processed=processed,
+            processed=processed + failed,
             bytes_written=bytes_written,
             started_at=started_at,
             caps=caps,
@@ -220,7 +258,35 @@ def run_seed(
         if dry_run:
             output_path = dry_run_capture(request, derived_dir)
         else:
-            capture_summary = capture_with_fyi_cli(request, data_dir, dist_dir, caps, fyi_cli_args)
+            try:
+                capture_summary = capture_with_fyi_cli(
+                    request,
+                    data_dir,
+                    dist_dir,
+                    caps,
+                    fyi_cli_args,
+                )
+            except CaptureError as error:
+                failed += 1
+                append_ledger(
+                    ledger_path,
+                    {
+                        "request_id": request.request_id,
+                        "status": "failed",
+                        "completed_at": utc_now(),
+                        "date_from": date_from,
+                        "date_to": date_to,
+                        "dry_run": dry_run,
+                        "error": str(error),
+                        "returncode": error.returncode,
+                        "command": error.command,
+                        "stdout_tail": tail_text(error.stdout),
+                        "stderr_tail": tail_text(error.stderr),
+                    },
+                )
+                if continue_on_error:
+                    continue
+                raise
             output_path = Path(str(capture_summary["derived_path"]))
 
         size = output_path.stat().st_size if output_path.exists() else 0
@@ -242,6 +308,7 @@ def run_seed(
 
     return {
         "processed": processed,
+        "failed": failed,
         "skipped": skipped,
         "bytes_written": bytes_written,
         "date_from": date_from,

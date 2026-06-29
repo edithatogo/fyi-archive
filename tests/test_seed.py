@@ -11,6 +11,7 @@ from typer.testing import CliRunner
 
 from fyi_archive.cli import app
 from fyi_archive.seed import (
+    CaptureError,
     SeedCaps,
     SeedRequest,
     capture_with_fyi_cli,
@@ -154,6 +155,39 @@ def test_run_seed_non_dry_run_records_capture_summary(tmp_path: Path, monkeypatc
 
     assert summary["processed"] == 1
     assert load_ledger(tmp_path / "ledger.jsonl") == {20000}
+
+
+def test_run_seed_can_continue_after_capture_failure(tmp_path: Path, monkeypatch) -> None:
+    def fake_capture(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+        raise CaptureError(
+            request_id=20000,
+            command=["fyi", "capture", "20000"],
+            returncode=1,
+            stdout="out",
+            stderr="err",
+        )
+
+    monkeypatch.setattr("fyi_archive.seed.capture_with_fyi_cli", fake_capture)
+
+    summary = run_seed(
+        requests=[SeedRequest(20000, "request-20000")],
+        ledger_path=tmp_path / "ledger.jsonl",
+        data_dir=tmp_path / "data",
+        derived_dir=tmp_path / "unused",
+        dist_dir=tmp_path / "dist",
+        caps=SeedCaps(max_requests=1),
+        dry_run=False,
+        continue_on_error=True,
+    )
+
+    ledger = [
+        json.loads(line)
+        for line in (tmp_path / "ledger.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    assert summary["processed"] == 0
+    assert summary["failed"] == 1
+    assert ledger[0]["status"] == "failed"
+    assert ledger[0]["stderr_tail"] == "err"
 
 
 def test_seed_cli_dry_run(tmp_path: Path) -> None:

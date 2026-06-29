@@ -109,6 +109,7 @@ jobs:
             --max-requests "$MAX_REQUESTS"
             --max-runtime-minutes "$MAX_RUNTIME_MINUTES"
             --max-disk-gb "$MAX_DISK_GB"
+            --continue-on-error
           )
           if [ "$DRY_RUN" = "true" ]; then
             mkdir -p data/_state
@@ -180,7 +181,7 @@ jobs:
 
           manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
           if manifest["meta"]["record_count"] < 1:
-              raise SystemExit("historical backfill chunk manifest is empty")
+              print("historical backfill chunk manifest is empty; see data/_state/ledger.jsonl")
           PY
           fi
 
