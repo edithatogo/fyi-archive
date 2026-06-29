@@ -140,8 +140,8 @@ jobs:
             --artifact manifests/latest_manifest.json \
             --artifact manifests/latest_manifest.parquet \
             --artifact manifests/authorities.json \
-            --artifact metadata/*.json \
-            --artifact metadata/*.jsonld \
+            --artifact 'metadata/*.json' \
+            --artifact 'metadata/*.jsonld' \
             --artifact dist/fyi_archive.duckdb \
             --artifact dist/sbom.cdx.json
 
