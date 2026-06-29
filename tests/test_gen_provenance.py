@@ -46,7 +46,7 @@ def test_build_provenance_hashes_lockfile_and_artifacts(tmp_path, monkeypatch) -
     assert artifacts == [
         {
             "path": "dist/sample.wacz",
-            "size_bytes": 15,
+            "size_bytes": artifact.stat().st_size,
             "sha256": module.sha256_file(artifact),
         },
     ]
