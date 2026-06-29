@@ -65,7 +65,7 @@ Link: [./tracks/prospective_sync_orchestration_20260627/](./tracks/prospective_s
 
 ## Distribution & observability tracks
 
-### [ ] Track: Multi-mirror publish
+### [~] Track: Multi-mirror publish
 Track ID: `multi_mirror_publish_20260627` — satisfies **R-08, R-09, R-10, R-22, R-25**
 Goal: HF (live) + Zenodo (annual DOI, draft-first, gated) + OSF (project + components); Croissant/Frictionless metadata; DuckDB export; SBOM + provenance.
 Link: [./tracks/multi_mirror_publish_20260627/](./tracks/multi_mirror_publish_20260627/)

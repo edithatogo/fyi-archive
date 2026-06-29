@@ -1,0 +1,148 @@
+name: Publish Archives
+
+on:
+  workflow_dispatch:
+    inputs:
+      publication_target:
+        description: Mirror target
+        required: true
+        default: huggingface
+        type: choice
+        options:
+          - huggingface
+          - zenodo
+          - all
+      publish:
+        description: Publish final Zenodo DOI when target includes Zenodo
+        required: true
+        default: false
+        type: boolean
+      confirm:
+        description: Type publish-zenodo-doi for production Zenodo DOI publish
+        required: false
+        type: string
+
+permissions:
+  attestations: write
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.publish && 'zenodo-production' || '' }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          uv sync --extra dev --frozen
+
+      - name: Build release artifacts
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          from pathlib import Path
+          from fyi_archive.publish.export import build_duckdb_export
+          from fyi_archive.publish.metadata import write_metadata
+
+          manifest = Path("manifests/latest_manifest.json")
+          parquet = Path("manifests/latest_manifest.parquet")
+          if not manifest.exists() or not parquet.exists():
+              raise SystemExit("manifest outputs are required before publishing")
+          write_metadata(manifest, Path("metadata"))
+          build_duckdb_export(manifest_parquet=parquet, output_path=Path("dist/fyi_archive.duckdb"))
+          PY
+          uv run python scripts/gen_sbom.py
+          uv run python scripts/gen_provenance.py \
+            --artifact manifests/latest_manifest.json \
+            --artifact manifests/latest_manifest.parquet \
+            --artifact manifests/authorities.json \
+            --artifact metadata/*.json \
+            --artifact metadata/*.jsonld \
+            --artifact dist/fyi_archive.duckdb \
+            --artifact dist/sbom.cdx.json
+
+      - name: Publish Hugging Face dataset
+        if: inputs.publication_target == 'huggingface' || inputs.publication_target == 'all'
+        env:
+          HF_REPO_ID: ${{ vars.HF_REPO_ID }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import os
+          from pathlib import Path
+          from fyi_archive.publish.hf_publish import publish_folder_to_hf, verify_remote_manifest
+
+          repo_id = os.environ["HF_REPO_ID"]
+          token = os.environ["HF_TOKEN"]
+          publish_folder_to_hf(folder_path=Path("."), repo_id=repo_id, token=token)
+          if not verify_remote_manifest(
+              repo_id=repo_id,
+              local_manifest=Path("manifests/latest_manifest.json"),
+              token=token,
+          ):
+              raise SystemExit("remote manifest SHA-256 mismatch")
+          PY
+
+      - name: Create Zenodo draft
+        if: inputs.publication_target == 'zenodo' || inputs.publication_target == 'all'
+        env:
+          CONFIRM: ${{ inputs.confirm }}
+          PUBLISH: ${{ inputs.publish }}
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from fyi_archive.publish.zenodo_publish import create_draft, load_metadata, publish_draft, upload_file
+
+          token = os.environ["ZENODO_TOKEN"]
+          draft = create_draft(token=token, metadata=load_metadata())
+          bucket = draft["links"]["bucket"]
+          for path in [
+              Path("manifests/latest_manifest.json"),
+              Path("manifests/latest_manifest.parquet"),
+              Path("manifests/authorities.json"),
+              Path("dist/fyi_archive.duckdb"),
+              Path("dist/sbom.cdx.json"),
+              Path("dist/provenance.json"),
+          ]:
+              if path.exists():
+                  upload_file(token=token, bucket_url=bucket, path=path)
+          if os.environ["PUBLISH"] == "true":
+              result = publish_draft(
+                  token=token,
+                  deposition_id=int(draft["id"]),
+                  confirm=os.environ["CONFIRM"],
+              )
+              Path("dist/zenodo_publish.json").write_text(json.dumps(result, indent=2) + "\n")
+          PY
+
+      - name: Upload publish evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: publish-evidence
+          path: |
+            metadata/*.json
+            metadata/*.jsonld
+            dist/*.json
+            dist/*.duckdb
+
+      - name: Attest publish evidence
+        uses: actions/attest-build-provenance@78e6cbd37d0ac1a40113c04f2037dacf1ea3f12e # v4
+        with:
+          subject-path: |
+            dist/sbom.cdx.json
+            dist/provenance.json
+            dist/fyi_archive.duckdb

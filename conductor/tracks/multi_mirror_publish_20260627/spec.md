@@ -41,15 +41,15 @@ and `release-please` dynamic versioning/releases.
 
 ## Acceptance criteria
 
-- [ ] `publish_archives.yml` builds `dist/` and attests provenance; `publication_target=huggingface`
+- [~] `publish_archives.yml` builds `dist/` and attests provenance; `publication_target=huggingface`
        uploads successfully and the HF dataset is loadable.
-- [ ] Zenodo draft creation succeeds in sandbox; production publish is blocked unless
+- [~] Zenodo draft creation succeeds in sandbox; production publish is blocked unless
        run in `zenodo-production` with the confirm string.
-- [ ] OSF project + components created; a sample file uploaded and listed.
-- [ ] Croissant + Frictionless validate; HF auto-detects Croissant.
-- [~] `release.yml` cuts a `v0.1.0`-class release from a `feat:` commit with a
+- [~] OSF project + components created; a sample file uploaded and listed.
+- [~] Croissant + Frictionless validate; HF auto-detects Croissant.
+- [x] `release.yml` cuts a `v0.1.0`-class release from a `feat:` commit with a
        generated changelog.
-- [ ] SBOM generated and attached to a release.
+- [x] SBOM generated and attached to a release.
 
 ## Risks
 
