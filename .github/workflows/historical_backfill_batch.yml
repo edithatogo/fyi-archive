@@ -111,7 +111,31 @@ jobs:
             --max-disk-gb "$MAX_DISK_GB"
           )
           if [ "$DRY_RUN" = "true" ]; then
-            args+=(--dry-run)
+            mkdir -p data/_state
+            uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          id_from = int(os.environ["ID_FROM"])
+          id_to = int(os.environ["ID_TO"])
+          output = Path("data/_state/discovered_requests.jsonl")
+          with output.open("w", encoding="utf-8") as handle:
+              for request_id in range(id_from, id_to + 1):
+                  handle.write(
+                      json.dumps(
+                          {
+                              "request_id": request_id,
+                              "url_title": f"dry-run-request-{request_id}",
+                              "title": f"Dry-run backfill request {request_id}",
+                              "authority": "",
+                          },
+                          sort_keys=True,
+                      )
+                      + "\n"
+                  )
+          PY
+            args+=(--requests-file data/_state/discovered_requests.jsonl --dry-run)
           else
             mkdir -p data/_state
             uv run fyi discover \
