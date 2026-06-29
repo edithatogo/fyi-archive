@@ -154,6 +154,7 @@ jobs:
           set -euo pipefail
           uv run python - <<'PY'
           import os
+          import shutil
           from pathlib import Path
           from fyi_archive.publish.hf_publish import publish_folder_to_hf, sha256_file, verify_remote_manifest
           from fyi_archive.publish.verification import (
@@ -165,7 +166,29 @@ jobs:
 
           repo_id = os.environ["HF_REPO_ID"]
           token = os.environ["HF_TOKEN"]
-          publish_folder_to_hf(folder_path=Path("."), repo_id=repo_id, token=token)
+          publish_root = Path("dist/publish/huggingface")
+          if publish_root.exists():
+              shutil.rmtree(publish_root)
+          for source in [
+              Path("manifests"),
+              Path("metadata"),
+              Path("data/raw/requests"),
+              Path("data/warc"),
+              Path("data/attachments"),
+              Path("dist/site_snapshots"),
+              Path("dist/fyi_archive.duckdb"),
+              Path("dist/sbom.cdx.json"),
+              Path("dist/provenance.json"),
+          ]:
+              if not source.exists():
+                  continue
+              destination = publish_root / source
+              destination.parent.mkdir(parents=True, exist_ok=True)
+              if source.is_dir():
+                  shutil.copytree(source, destination, dirs_exist_ok=True)
+              else:
+                  shutil.copy2(source, destination)
+          publish_folder_to_hf(folder_path=publish_root, repo_id=repo_id, token=token)
           if not verify_remote_manifest(
               repo_id=repo_id,
               local_manifest=Path("manifests/latest_manifest.json"),
