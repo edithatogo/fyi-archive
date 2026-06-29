@@ -103,7 +103,12 @@ jobs:
             [ "$attempt" = "3" ] && break
             sleep $((attempt * 20))
           done
-          args=(--max-requests "$SEED_MAX_REQUESTS" --max-runtime-minutes 30 --max-disk-gb 5)
+          args=(
+            --max-requests "$SEED_MAX_REQUESTS"
+            --max-runtime-minutes 30
+            --max-disk-gb 5
+            --continue-on-error
+          )
           if [ "$discovered" = "true" ]; then
             args+=(--requests-file data/_state/discovered_requests.jsonl)
           else
@@ -442,6 +447,7 @@ jobs:
         with:
           name: publish-evidence
           path: |
+            data/_state/ledger.jsonl
             metadata/*.json
             metadata/*.jsonld
             dist/*.json
