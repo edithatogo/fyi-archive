@@ -33,7 +33,7 @@ audited: SBOM, build-provenance attestations, static analysis, and secret hygien
 - [x] CodeQL + Scorecard run continuously; results uploaded.
 - [x] Secret-presence checks fail CI clearly when a required token is missing.
 - [x] `make security-audit` runs `pip-audit` without blocking errors.
-- [ ] Sigstore opt-in documented (disabled by default).
+- [x] Sigstore opt-in documented (disabled by default).
 
 ## Risks
 

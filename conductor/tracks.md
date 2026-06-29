@@ -30,7 +30,7 @@ Track ID: `ci_cd_foundation_20260627` — satisfies **R-15, R-18**
 Goal: tests.yml + code_quality.yml (uv --frozen matrix, ruff, ty, pytest+cov, version-consistency) + codeql/scorecard/docs/mirror_sync/ci-learning-candidates.
 Link: [./tracks/ci_cd_foundation_20260627/](./tracks/ci_cd_foundation_20260627/)
 
-### [ ] Track: Code quality gates
+### [x] Track: Code quality gates
 Track ID: `code_quality_gates_20260627` — satisfies **R-18**
 Goal: ruff (family ruleset), ty strict, pytest+coverage ramp, hypothesis property tests, pre-commit, vulture/deptry hygiene, `make quality` parity with CI.
 Link: [./tracks/code_quality_gates_20260627/](./tracks/code_quality_gates_20260627/)
@@ -40,7 +40,7 @@ Track ID: `security_supply_chain_20260627` — satisfies **R-18, R-24**; provide
 Goal: CycloneDX SBOM per release, build-provenance attestations, CodeQL + Scorecard, secret-validation workflows, optional Sigstore.
 Link: [./tracks/security_supply_chain_20260627/](./tracks/security_supply_chain_20260627/)
 
-### [x] Track: Versioning & releases
+### [~] Track: Versioning & releases
 Track ID: `versioning_releases_20260627` — satisfies **R-16**
 Goal: `release-please` dynamic SemVer + CHANGELOG + GitHub Releases from Conventional Commits; version-consistency gate; annual Zenodo DOI snapshot link.
 Link: [./tracks/versioning_releases_20260627/](./tracks/versioning_releases_20260627/)
@@ -70,7 +70,7 @@ Track ID: `multi_mirror_publish_20260627` — satisfies **R-08, R-09, R-10, R-22
 Goal: HF (live) + Zenodo (annual DOI, draft-first, gated) + OSF (project + components); Croissant/Frictionless metadata; DuckDB export; SBOM + provenance.
 Link: [./tracks/multi_mirror_publish_20260627/](./tracks/multi_mirror_publish_20260627/)
 
-### [ ] Track: Observability & quality
+### [~] Track: Observability & quality
 Track ID: `observability_quality_20260627` — satisfies **R-19, R-23**; supports **R-27**
 Goal: `fyi-archive doctor` (freshness, coverage gaps, mirror parity); metadata parity CI; fyi-cli version-pin test; coverage ramp.
 Depends on: fyi-cli `archive-health-doctor`.

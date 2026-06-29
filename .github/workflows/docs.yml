@@ -20,7 +20,7 @@ jobs:
         uses: DavidMsg/markdownlint-cli2-action@v0.2.0
         with:
           config: .markdownlint.json
-          exts: [md]
+          exts: md
           no-ignore: false
           no-progress: true
           output-format: json

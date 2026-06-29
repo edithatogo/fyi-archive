@@ -45,6 +45,7 @@ manifests/latest_manifest.json
 manifests/latest_manifest.parquet
 manifests/latest_changes.json
 manifests/authorities.json
+conductor/archive_health.json
 
 # --- Tooling caches ---
 .pytest_cache/

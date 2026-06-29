@@ -26,13 +26,12 @@ family repos.
   *configuration* and the `make` surface.
 
 ## Acceptance criteria
-
-- [ ] `make quality` runs the full gate locally and matches CI.
-- [ ] `ruff check` + `ruff format --check` clean on `src/ tests/ scripts/`.
-- [ ] `ty check src` clean.
-- [ ] `pytest --cov` passes the current `fail_under`; coverage target ramp documented.
-- [ ] At least one hypothesis property test exists for a core invariant.
-- [ ] `vulture` + `deptry` run without blocking errors.
+- [x] `make quality` runs the full gate locally and matches CI.
+- [x] `ruff check` + `ruff format --check` clean on `src/ tests/ scripts/`.
+- [x] `ty check src` clean.
+- [x] `pytest --cov` passes the current `fail_under`; coverage target ramp documented.
+- [x] At least one hypothesis property test exists for a core invariant.
+- [x] `vulture` + `deptry` run without blocking errors.
 
 ## Risks
 

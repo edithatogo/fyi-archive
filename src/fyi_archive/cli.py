@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import typer
 
+from fyi_archive.commands.doctor import app as doctor_app
 from fyi_archive.version import __version__
 
 app = typer.Typer(
@@ -23,6 +24,9 @@ app = typer.Typer(
 def version() -> None:
     """Print the package version."""
     typer.echo(__version__)
+
+
+app.add_typer(doctor_app, name="doctor")
 
 
 if __name__ == "__main__":

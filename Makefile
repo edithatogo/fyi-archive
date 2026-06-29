@@ -51,7 +51,7 @@ workflow-syntax: ## actionlint workflow syntax
 	actionlint || true
 
 security-audit: ## pip-audit over the installed env
-	uv run pip-audit || true
+	uv run --extra dev pip-audit || true
 
 sbom: ## Generate CycloneDX SBOM
 	uv run cyclonedx-py environment --output-format json --output-file dist/sbom.cdx.json

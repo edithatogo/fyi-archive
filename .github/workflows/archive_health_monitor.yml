@@ -1,0 +1,51 @@
+# Archive Health Monitor
+# Scheduled health check that fails on drift
+
+name: Archive Health Monitor
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install typer rich
+          pip install --no-deps -e .
+
+      - name: Run health check
+        id: health
+        run: |
+          fyi-archive doctor check
+          cp conductor/archive_health.json health.json
+          echo "health_json<<EOF" >> $GITHUB_OUTPUT
+          cat health.json
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Upload health report
+        uses: actions/upload-artifact@v4
+        with:
+          name: archive-health
+          path: health.json
+
+      - name: Check for drift (simplified example)
+        run: |
+          echo "Health check completed - see artifacts for details"

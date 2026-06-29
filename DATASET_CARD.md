@@ -24,9 +24,13 @@ configs:
 
 # fyi-archive-nz
 
-A faithful, read-only full-site archive of **[fyi.org.nz](https://fyi.org.nz/)** — the
-New Zealand Official Information Act (OIA) request register, running on
-[Alaveteli](https://alaveteli.org/).
+Planned dataset card for a faithful, read-only full-site archive of
+**[fyi.org.nz](https://fyi.org.nz/)** — the New Zealand Official Information Act
+(OIA) request register, running on [Alaveteli](https://alaveteli.org/).
+
+This dataset has not been published yet. The repository currently contains the
+orchestration scaffold and schemas; the historical backfill and mirror publication
+workflows are still pending.
 
 ## Source provenance
 
@@ -66,7 +70,7 @@ FROM 'hf://datasets/edithatogo/fyi-archive-nz/requests/*.parquet'
 GROUP BY 1, 2 ORDER BY n DESC;
 ```
 
-## Intended use
+## Intended use once published
 
 Research, legal-tech NLP, journalism, and government-transparency workloads.
 

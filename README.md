@@ -1,12 +1,11 @@
 # fyi-archive
 
-> A **read-only, full-site archive** of [fyi.org.nz](https://fyi.org.nz/) — the New
+> Work in progress toward a **read-only, full-site archive** of [fyi.org.nz](https://fyi.org.nz/) — the New
 > Zealand Official Information Act (OIA) request register (Alaveteli) — into
 > **GitHub**, **Hugging Face**, **Zenodo**, and **OSF**.
 
 [![CI](https://github.com/edithatogo/fyi-archive/actions/workflows/tests.yml/badge.svg)](https://github.com/edithatogo/fyi-archive/actions/workflows/tests.yml)
 [![Quality](https://github.com/edithatogo/fyi-archive/actions/workflows/code_quality.yml/badge.svg)](https://github.com/edithatogo/fyi-archive/actions/workflows/code_quality.yml)
-[![HF dataset](https://img.shields.io/badge/%F0%9F%A4%97-Hugging%20Face-ffd21f)](https://huggingface.co/datasets/edithatogo/fyi-archive-nz)
 [![Python 3.12](https://img.shields.io/badge/python-3.12+-blue)](https://www.python.org/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -26,12 +25,19 @@ flowchart LR
 | repo | role |
 | --- | --- |
 | [`fyi-cli`](https://github.com/edithatogo/fyi-cli) | **Capture tool.** Owns all network access: full-site enumeration, faithful WARC/WACZ capture (request JSON, rendered HTML, attachments), content-addressed dedup, archival content diff, archive health. |
-| **`fyi-archive`** (this repo) | **Orchestration + distribution.** Thin consumer of `fyi-cli` commands. Adds GitHub Actions workflows (historical seed, daily sync, multi-mirror publish), mirror adapters (HF/Zenodo/OSF), metadata (Croissant/Frictionless), DuckDB export, versioning/releases, provenance. Contains **no** fetching/archiving logic. |
+| **`fyi-archive`** (this repo) | **Orchestration + distribution.** Thin consumer of `fyi-cli` commands. Planned scope includes historical seed, daily sync, multi-mirror publish, mirror adapters (HF/Zenodo/OSF), metadata (Croissant/Frictionless), DuckDB export, versioning/releases, and provenance. Contains **no** fetching/archiving logic. |
 
 ## Initial phase — read-only storage
 
 The first phase is **storage only**: capture and mirror the public site faithfully,
 with **no** analysis, OCR, or normalisation. (Those are future tracks.)
+
+## Current status
+
+This repository currently contains the orchestration skeleton, CI/quality gates,
+release-please scaffolding, a preliminary `doctor` command, and Conductor plans.
+It does **not** yet contain a completed historical FYI backfill, a populated
+manifest, HF/Zenodo/OSF publisher implementations, or published archive artifacts.
 
 ## Directory structure
 
@@ -62,21 +68,23 @@ fyi-archive/
 
 | channel | role | cadence |
 | --- | --- | --- |
-| **Hugging Face** (`edithatogo/fyi-archive-nz`) | live, content-revised dataset | daily |
-| **Zenodo** | annual DOI snapshot (draft-first, gated) | annual |
-| **OSF** | project + components mirror | on release |
-| **GitHub Releases** | code + WACZ + DuckDB + SBOM + provenance | per release (`release-please`) |
+| **Hugging Face** (`edithatogo/fyi-archive-nz`) | planned live, content-revised dataset | planned daily |
+| **Zenodo** | planned DOI snapshot, draft-first and gated | planned annual |
+| **OSF** | planned project + components mirror | planned on release |
+| **GitHub Releases** | code releases via release-please; archive artifact attachments still planned | per release |
 
 ## Workflows
 
 | workflow | purpose |
 | --- | --- |
 | `tests.yml` / `code_quality.yml` | CI: ruff, ty, pytest+cov, typos, taplo, actionlint, zizmor |
-| `historical_seed.yml` | manual / fan-out historical backfill (drives `fyi-cli`) |
-| `hf_sync.yml` | daily incremental sync → HF, with SHA-256 verify |
-| `publish_archives.yml` | multi-mirror publish (HF/Zenodo/OSF) + build-provenance |
-| `zenodo_publish.yml` | gated Zenodo DOI publish (`environment: zenodo-production`) |
-| `release-please.yml` | automated SemVer + changelog + GitHub Release |
+| `archive_health_monitor.yml` | scheduled preliminary archive health report |
+| `validate_metadata.yml` | preliminary parity-count check; real mirror API checks still planned |
+| `historical_seed.yml` | planned manual / fan-out historical backfill (drives `fyi-cli`) |
+| `hf_sync.yml` | planned daily incremental sync to HF, with SHA-256 verify |
+| `publish_archives.yml` | planned multi-mirror publish (HF/Zenodo/OSF) + build-provenance |
+| `zenodo_publish.yml` | planned gated Zenodo DOI publish (`environment: zenodo-production`) |
+| `release.yml` | release-please SemVer + changelog + GitHub Release |
 | `codeql.yml` / `scorecard.yml` | security |
 | `mirror_sync.yml` | push to secondary git mirror |
 
@@ -114,9 +122,9 @@ make quality                 # ruff + ty + typos + taplo + actionlint + zizmor
 
 ## Maintenance checklist
 
-- **Weekly:** review `hf_sync.yml` run + `archive_health.json`; confirm mirror parity.
+- **Weekly:** review archive health once `hf_sync.yml` exists; confirm mirror parity.
 - **Monthly:** review Renovate PRs; rotate any tokens nearing expiry.
-- **Annually:** trigger `zenodo_publish.yml` for the DOI snapshot; update `CITATION.cff`.
+- **Annually:** trigger the planned Zenodo DOI snapshot workflow; update `CITATION.cff`.
 
 ## Ethics & compliance
 

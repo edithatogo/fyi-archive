@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import List, Tuple
 
 
 def parse_args() -> argparse.Namespace:
@@ -65,7 +64,7 @@ def section_has_entry(section_lines: list[str], candidate_lines: list[str]) -> b
     return "\n".join(candidate_lines) in raw
 
 
-def append_candidate(path: Path, message: str, evidence: List[str]) -> Tuple[bool, List[str]]:
+def append_candidate(path: Path, message: str, evidence: list[str]) -> tuple[bool, list[str]]:
     lines = read_text_lines(path)
     candidate_lines = build_entry_lines(message, evidence)
 
@@ -86,7 +85,7 @@ def append_candidate(path: Path, message: str, evidence: List[str]) -> Tuple[boo
 
     insert_at = end
     if section_body and section_body[-1].strip():
-        candidate_lines = [""] + candidate_lines
+        candidate_lines = ["", *candidate_lines]
 
     updated_lines = lines[:insert_at] + candidate_lines + lines[insert_at:]
     output = "\n".join(updated_lines).rstrip() + "\n"

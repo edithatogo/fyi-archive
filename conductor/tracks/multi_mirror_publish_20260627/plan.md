@@ -9,7 +9,7 @@
 ## Phase 2: Zenodo adapter (annual, gated)
 
 - [ ] 2.1 `zenodo_publish.py`: draft-first deposition via raw `requests`; sandbox +
-      production endpoints.
+       production endpoints.
 - [ ] 2.2 `zenodo_publish.yml` protected environment + confirm string.
 - [ ] 2.3 Tests for draft creation + publish-gating.
 
@@ -24,12 +24,12 @@
 - [ ] 4.1 `metadata.py`: Croissant (JSON-LD), Frictionless, schema.org → `metadata/`.
 - [ ] 4.2 `export.py`: Parquet-backed DuckDB read-only export → `dist/fyi_archive.duckdb`.
 - [ ] 4.3 `scripts/gen_sbom.py` (CycloneDX) → `dist/sbom.cdx.json`.
-- [ ] 4.4 `validate_metadata.yml`: schema validation + parity cross-check.
+- [~] 4.4 `validate_metadata.yml`: schema validation + parity cross-check.
 
 ## Phase 5: Release machinery
 
 - [ ] 5.1 `publish_archives.yml` (build dist + attest provenance + multi-target).
-- [ ] 5.2 `release-please.yml` (SemVer + changelog + GitHub Release).
+- [~] 5.2 `release.yml` (release-please SemVer + changelog + GitHub Release).
 - [ ] 5.3 Attach WACZ + DuckDB + SBOM + provenance to the release.
 
 ## Dependencies

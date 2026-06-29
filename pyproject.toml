@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "fyi_archive"
 version = "0.1.0"
-description = "Read-only full-site archive of fyi.org.nz (NZ OIA request register, Alaveteli) into GitHub, Hugging Face, Zenodo and OSF."
+description = "Orchestration scaffold for a read-only full-site archive of fyi.org.nz (NZ OIA request register, Alaveteli)."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
@@ -41,7 +41,6 @@ dependencies = [
     "tenacity>=9.0.0",
     # Web archiving (orchestration layer; actual capture via fyi-cli)
     "warcio>=1.7.4",
-    "wacz>=0.5.0",
     # Parsing
     "beautifulsoup4>=4.12.0",
     "lxml>=5.0.0",
@@ -76,6 +75,7 @@ dev = [
     "frictionless>=5.18.0",
     "mlcroissant>=1.0.0",
     "cyclonedx-bom>=5.1.0",
+    "pip-audit>=2.9.0",
     "vulture>=2.14",
     "deptry>=0.21",
 ]
@@ -87,7 +87,7 @@ fyi-archive = "fyi_archive.cli:app"
 Homepage = "https://github.com/edithatogo/fyi-archive"
 Repository = "https://github.com/edithatogo/fyi-archive"
 Issues = "https://github.com/edithatogo/fyi-archive/issues"
-"Hugging Face" = "https://huggingface.co/datasets/edithatogo/fyi-archive-nz"
+"Planned Hugging Face Dataset" = "https://huggingface.co/datasets/edithatogo/fyi-archive-nz"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fyi_archive"]
@@ -159,7 +159,7 @@ ignore = [
     "PLC0415",
 ]
 "*/__init__.py" = ["D"]
-"scripts/*" = ["INP001", "T20"]
+"scripts/*" = ["D103", "INP001", "T20"]
 
 [tool.ruff.format]
 docstring-code-format = true
