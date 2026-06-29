@@ -16,7 +16,7 @@ app = typer.Typer(name="sync", help="Run prospective incremental sync.")
 @app.command()
 def run(
     state_path: Annotated[Path, typer.Option()] = Path("data/_state/sync_state.json"),
-    derived_dir: Annotated[Path, typer.Option()] = Path("data/derived/requests"),
+    derived_dir: Annotated[Path, typer.Option()] = Path("data/raw/requests"),
     manifest_path: Annotated[Path, typer.Option()] = Path("manifests/latest_manifest.json"),
     parquet_path: Annotated[Path, typer.Option()] = Path("manifests/latest_manifest.parquet"),
     authorities_path: Annotated[Path, typer.Option()] = Path("manifests/authorities.json"),

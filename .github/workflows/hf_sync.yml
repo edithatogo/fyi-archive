@@ -38,7 +38,7 @@ jobs:
       - name: Run prospective sync
         env:
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
-          HF_REPO_ID: ${{ vars.HF_DATASET_REPO_ID || 'edithatogo/fyi-archive-nz' }}
+          HF_REPO_ID: ${{ vars.HF_REPO_ID || 'edithatogo/fyi-archive-nz' }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           set -euo pipefail

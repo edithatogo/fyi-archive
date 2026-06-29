@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
+import tempfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+from huggingface_hub import snapshot_download
 
 from fyi_archive.manifest import assemble_manifest
 from fyi_archive.publish.hf_publish import sha256_file, verify_remote_manifest
@@ -179,15 +183,60 @@ def dry_run_materialize_changes(changes: dict[str, Any], derived_dir: Path) -> i
 def run_fyi_cli_diff(
     *,
     since: str | None,
+    derived_dir: Path,
+    previous_manifest: Path,
     output_path: Path,
     extra_args: Sequence[str] = (),
 ) -> None:
     """Delegate prospective diff generation to fyi-cli."""
-    command = ["fyi-cli", "archive", "diff", "--output", str(output_path)]
+    command = [
+        "fyi",
+        "diff",
+        "--derived-dir",
+        str(derived_dir),
+        "--previous-manifest",
+        str(previous_manifest),
+        "--output",
+        str(output_path),
+    ]
     if since is not None:
         command.extend(["--since", since])
     command.extend(extra_args)
     subprocess.run(command, check=True)
+
+
+def restore_hf_dataset(
+    *,
+    repo_id: str,
+    token: str | None,
+    manifest_dir: Path,
+    derived_dir: Path,
+) -> None:
+    """Restore the manifest and raw request store from the Hugging Face dataset."""
+    with tempfile.TemporaryDirectory() as cache_dir:
+        snapshot_path = Path(
+            snapshot_download(
+                repo_id=repo_id,
+                repo_type="dataset",
+                token=token,
+                allow_patterns=["manifests/*", "data/raw/requests/**"],
+                cache_dir=cache_dir,
+                force_download=True,
+            ),
+        )
+        restored_manifest_dir = snapshot_path / "manifests"
+        if restored_manifest_dir.exists():
+            manifest_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(restored_manifest_dir, manifest_dir, dirs_exist_ok=True)
+        restored_requests = snapshot_path / "data" / "raw" / "requests"
+        if restored_requests.exists():
+            derived_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copytree(restored_requests, derived_dir, dirs_exist_ok=True)
+
+
+def changes_have_records(changes: dict[str, Any]) -> bool:
+    """Return true when a changes document contains any changed request rows."""
+    return any(changes[bucket] for bucket in ("added", "updated", "removed"))
 
 
 def run_sync(
@@ -213,18 +262,34 @@ def run_sync(
         changes = load_changes(changes_path, since)
         materialized = dry_run_materialize_changes(changes, derived_dir)
     else:
-        run_fyi_cli_diff(since=since, output_path=changes_path, extra_args=fyi_cli_args)
+        if hf_repo_id is not None:
+            restore_hf_dataset(
+                repo_id=hf_repo_id,
+                token=hf_token,
+                manifest_dir=manifest_path.parent,
+                derived_dir=derived_dir,
+            )
+        run_fyi_cli_diff(
+            since=since,
+            derived_dir=derived_dir,
+            previous_manifest=manifest_path,
+            output_path=changes_path,
+            extra_args=fyi_cli_args,
+        )
         changes = load_changes(changes_path, since)
         materialized = 0
 
     write_changes(changes_path, changes)
-    manifest = assemble_manifest(
-        derived_dir=derived_dir,
-        manifest_path=manifest_path,
-        parquet_path=parquet_path,
-        authorities_path=authorities_path,
-        fyi_cli_version=fyi_cli_version,
-    )
+    if not dry_run and not changes_have_records(changes) and manifest_path.exists():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    else:
+        manifest = assemble_manifest(
+            derived_dir=derived_dir,
+            manifest_path=manifest_path,
+            parquet_path=parquet_path,
+            authorities_path=authorities_path,
+            fyi_cli_version=fyi_cli_version,
+        )
     manifest_sha256 = sha256_file(manifest_path)
 
     verified = True
