@@ -47,5 +47,6 @@
 
 - Builds on the manifest produced by `historical_seed_orchestration`.
 - Independent of `fyi-cli`'s internal tracks (consumes outputs only).
-- Live mirror population still requires a seeded manifest/dist bundle plus
-  `HF_TOKEN`, `ZENODO_TOKEN`, and `OSF_TOKEN`/`OSF_PARENT_ID` secrets.
+- Live mirror population is evidence-backed by GHA run 28378172250 at 3d9296c:
+  HF remote manifest SHA-256 verified, Zenodo draft artifacts verified, OSF
+  mirror artifacts verified, publish evidence uploaded, and provenance attested.

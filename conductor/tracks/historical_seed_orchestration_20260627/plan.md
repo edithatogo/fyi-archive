@@ -25,7 +25,10 @@
 ## Phase 4: Smoke seed validation
 
 - [x] 4.1 Dry-run smoke (≤50 requests, single window) on GHA; assert manifest rows.
-- [!] 4.2 Full-path smoke including HF upload + remote manifest SHA-256 verify.
+- [x] 4.2 Full-path smoke including HF upload + remote manifest SHA-256 verify
+      (GHA run 28378172250 at 3d9296c; HF commit
+      f13d7b22f97bfa5434e593edf871b69c18004b09; manifest SHA-256
+      49aa057e7c02cdf50e71825c0b474734553e8799563a95e837a5a2a19a1c4718).
 - [x] 4.3 Document the full-crawl runbook (windows, caps, expected duration) in
       `docs/`.
 
@@ -33,5 +36,6 @@
 
 - UNBLOCKED locally: `fyi-cli discover`, `fyi-cli capture`, `fyi diff`, and
   `fyi archive-health` are implemented with focused mocked tests.
-- BLOCKED for full live proof on a populated real corpus run and publish
-  credentials for HF/Zenodo/OSF verification.
+- UNBLOCKED: full live proof passed on GHA run 28378172250, including capped
+  FYI capture, HF upload + remote SHA-256 verification, Zenodo draft artifact
+  verification, OSF artifact verification, evidence upload, and attestation.
