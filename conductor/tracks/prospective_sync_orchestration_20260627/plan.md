@@ -2,8 +2,10 @@
 
 ## Phase 1: Sync command
 
-- [~] 1.1 `fyi-archive sync --since last` subcommand: restore HF state, invoke
-      `fyi-cli` diff + selective capture, assemble manifest + changes.
+- [x] 1.1 `fyi-archive sync --since last` subcommand: restore HF state, invoke
+      `fyi-cli` diff + selective capture, assemble manifest + changes
+      (GHA run 28378940339 at d575583 proved restore + real `fyi diff` +
+      empty-change verification against HF).
 - [x] 1.2 `sync_state.json` high-water management; only advance on verified success.
 - [x] 1.3 Unit tests: empty-diff idempotency; new-record propagation; rollback on
       verify failure.
@@ -23,7 +25,7 @@
 
 ## Dependencies / blocking
 
-- `fyi-cli` archive tracks are implemented; live empty-day proof still requires a
-  seeded corpus and credentials.
-- BLOCKED for seeded-corpus proof on this repo's
-  `historical_seed_orchestration`.
+- UNBLOCKED: seeded-corpus empty-diff proof passed on GHA run 28378940339 with
+  `added: []`, `updated: []`, `removed: []`, record_count 1, and remote HF
+  manifest verification true. A preceding normalization run 28378701221 proved
+  non-empty sync changes publish before verification.

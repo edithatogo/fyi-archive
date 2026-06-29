@@ -55,7 +55,7 @@ Goal: Resumable, date-windowed, capped historical backfill driving `fyi-cli` cap
 Depends on: fyi-cli `bulk-site-enumeration`, `faithful-archive-capture`.
 Link: [./tracks/historical_seed_orchestration_20260627/](./tracks/historical_seed_orchestration_20260627/)
 
-### [~] Track: Prospective sync orchestration
+### [x] Track: Prospective sync orchestration
 Track ID: `prospective_sync_orchestration_20260627` — satisfies **R-14**
 Goal: Daily content-addressed incremental sync → HF, with restore → diff → capture-new → manifest → upload → SHA-256 verify.
 Depends on: fyi-cli `archival-content-diff`; this repo's `historical_seed_orchestration`.
