@@ -108,10 +108,29 @@ jobs:
           uv run fyi-archive seed run "${args[@]}"
 
       - name: Build manifest
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          MAX_REQUESTS: ${{ inputs.max_requests }}
         run: |
           set -euo pipefail
-          uv run fyi-archive manifest build --fyi-cli-version 1.0.0
+          manifest_derived_dir=data/derived/requests
+          if [ "$DRY_RUN" != "true" ]; then
+            manifest_derived_dir=data/raw/requests
+          fi
+          uv run fyi-archive manifest build \
+            --derived-dir "$manifest_derived_dir" \
+            --fyi-cli-version 1.0.0
           uv run python -m json.tool manifests/latest_manifest.json > /dev/null
+          if [ "$MAX_REQUESTS" != "0" ]; then
+            uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
+          if manifest["meta"]["record_count"] < 1:
+              raise SystemExit("historical seed manifest is empty")
+          PY
+          fi
 
       - name: Generate provenance
         env:
