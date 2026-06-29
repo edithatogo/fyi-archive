@@ -90,17 +90,25 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p data/_state
-          uv run fyi discover \
-            --backfill-ids \
-            --id-from "$SEED_ID_FROM" \
-            --id-to "$SEED_ID_TO" \
-            --output data/_state/discovered_requests.jsonl
-          args=(
-            --requests-file data/_state/discovered_requests.jsonl
-            --max-requests "$SEED_MAX_REQUESTS"
-            --max-runtime-minutes 30
-            --max-disk-gb 5
-          )
+          discovered=false
+          for attempt in 1 2 3; do
+            if uv run fyi discover \
+              --backfill-ids \
+              --id-from "$SEED_ID_FROM" \
+              --id-to "$SEED_ID_TO" \
+              --output data/_state/discovered_requests.jsonl; then
+              discovered=true
+              break
+            fi
+            [ "$attempt" = "3" ] && break
+            sleep $((attempt * 20))
+          done
+          args=(--max-requests "$SEED_MAX_REQUESTS" --max-runtime-minutes 30 --max-disk-gb 5)
+          if [ "$discovered" = "true" ]; then
+            args+=(--requests-file data/_state/discovered_requests.jsonl)
+          else
+            args+=(--id-from "$SEED_ID_FROM" --id-to "$SEED_ID_TO" --allow-undiscovered)
+          fi
           if [ "$SEED_DRY_RUN" = "true" ]; then
             args+=(--dry-run)
             manifest_derived_dir=data/derived/requests

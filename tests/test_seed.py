@@ -15,6 +15,7 @@ from fyi_archive.seed import (
     SeedRequest,
     capture_with_fyi_cli,
     load_ledger,
+    requests_from_id_range,
     requests_from_jsonl,
     run_seed,
 )
@@ -90,6 +91,16 @@ def test_requests_from_jsonl_loads_discovered_rows(tmp_path: Path) -> None:
     rows = requests_from_jsonl(requests_path)
 
     assert rows == [SeedRequest(20000, "request-20000", "Title", "agency")]
+
+
+def test_requests_from_id_range_builds_fallback_queue() -> None:
+    rows = requests_from_id_range(20000, 20002)
+
+    assert rows == [
+        SeedRequest(20000, "request-20000"),
+        SeedRequest(20001, "request-20001"),
+        SeedRequest(20002, "request-20002"),
+    ]
 
 
 def test_capture_with_fyi_cli_builds_current_capture_command(tmp_path: Path, monkeypatch) -> None:

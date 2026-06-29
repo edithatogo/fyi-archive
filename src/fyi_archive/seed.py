@@ -89,6 +89,17 @@ def synthetic_requests(max_requests: int | None) -> list[SeedRequest]:
     ]
 
 
+def requests_from_id_range(id_from: int, id_to: int) -> list[SeedRequest]:
+    """Create request placeholders from an explicit FYI request ID range."""
+    if id_from < 1 or id_to < id_from:
+        msg = "Request ID range must be positive and ordered"
+        raise ValueError(msg)
+    return [
+        SeedRequest(request_id=request_id, url_title=f"request-{request_id}")
+        for request_id in range(id_from, id_to + 1)
+    ]
+
+
 def ensure_disk_budget(path: Path, max_disk_gb: float | None) -> None:
     """Fail early if free disk space is below the configured budget."""
     if max_disk_gb is None:
