@@ -166,7 +166,7 @@ jobs:
 
           repo_id = os.environ["HF_REPO_ID"]
           token = os.environ["HF_TOKEN"]
-          publish_root = Path("dist/publish/huggingface")
+          publish_root = Path("publish/huggingface")
           if publish_root.exists():
               shutil.rmtree(publish_root)
           for source in [
@@ -188,6 +188,9 @@ jobs:
                   shutil.copytree(source, destination, dirs_exist_ok=True)
               else:
                   shutil.copy2(source, destination)
+          staged_manifest = publish_root / "manifests/latest_manifest.json"
+          if sha256_file(staged_manifest) != sha256_file(Path("manifests/latest_manifest.json")):
+              raise SystemExit("staged manifest SHA-256 mismatch")
           commit_info = publish_folder_to_hf(
               folder_path=publish_root,
               repo_id=repo_id,
