@@ -11,6 +11,16 @@ on:
         description: Inclusive window end date
         required: false
         type: string
+      id_from:
+        description: First FYI request ID for backfill discovery
+        required: true
+        default: "1"
+        type: string
+      id_to:
+        description: Last FYI request ID for backfill discovery
+        required: true
+        default: "20000"
+        type: string
       max_requests:
         description: Maximum requests to process
         required: true
@@ -66,6 +76,8 @@ jobs:
           DATE_FROM: ${{ inputs.date_from }}
           DATE_TO: ${{ inputs.date_to }}
           DRY_RUN: ${{ inputs.dry_run }}
+          ID_FROM: ${{ inputs.id_from }}
+          ID_TO: ${{ inputs.id_to }}
           MAX_BYTES: ${{ inputs.max_bytes }}
           MAX_DISK_GB: ${{ inputs.max_disk_gb }}
           MAX_REQUESTS: ${{ inputs.max_requests }}
@@ -84,6 +96,14 @@ jobs:
           fi
           if [ "$DRY_RUN" = "true" ]; then
             args+=(--dry-run)
+          else
+            mkdir -p data/_state
+            uv run fyi discover \
+              --backfill-ids \
+              --id-from "$ID_FROM" \
+              --id-to "$ID_TO" \
+              --output data/_state/discovered_requests.jsonl
+            args+=(--requests-file data/_state/discovered_requests.jsonl)
           fi
           uv run fyi-archive seed run "${args[@]}"
 
