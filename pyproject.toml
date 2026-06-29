@@ -103,8 +103,6 @@ versioning = "semver"
 logging = "loguru"
 
 [tool.uv.sources]
-# Sibling shared library lives one level up in the legal-nz workspace.
-nlp_policy_nz = { path = "../nlp-policy-nz" }
 # fyi-cli is locked from GitHub so CI does not depend on a sibling checkout.
 fyi-cli = { git = "https://github.com/edithatogo/fyi-cli", branch = "master" }
 
