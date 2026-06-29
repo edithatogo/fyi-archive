@@ -41,12 +41,13 @@ def publish_folder_to_hf(
     token: str,
     path_in_repo: str = "",
     commit_message: str = "Publish fyi archive dataset",
+    clean_stale: bool = True,
 ) -> object:
     """Upload a folder to a Hugging Face dataset repository."""
     api = HfApi(token=token)
     api.create_repo(repo_id=repo_id, repo_type="dataset", exist_ok=True)
     base_path = PurePosixPath(path_in_repo) if path_in_repo else PurePosixPath()
-    if not path_in_repo:
+    if clean_stale and not path_in_repo:
         _prepare_dataset_repo(api=api, repo_id=repo_id, token=token)
     operations: list[CommitOperationAdd] = []
     for path in sorted(folder_path.rglob("*")):

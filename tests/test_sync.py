@@ -167,6 +167,78 @@ def test_run_sync_live_empty_diff_restores_before_verify(tmp_path: Path, monkeyp
     assert load_sync_state(paths["state_path"]).record_count == 1
 
 
+def test_run_sync_live_changes_publish_and_verify_revision(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    paths = sync_paths(tmp_path)
+    calls = {}
+
+    class Commit:
+        oid = "new-commit"
+
+    def fake_restore_hf_dataset(**kwargs) -> None:
+        paths["manifest_path"].parent.mkdir(parents=True, exist_ok=True)
+        paths["manifest_path"].write_text(
+            json.dumps(
+                {
+                    "meta": {"generated_at": "2026-01-01T00:00:00+00:00", "record_count": 1},
+                    "requests": [{"request_id": 123, "content_sha256": "b" * 64}],
+                },
+            ),
+            encoding="utf-8",
+        )
+        request_dir = paths["derived_dir"] / "authority" / "123"
+        request_dir.mkdir(parents=True)
+        (request_dir / "request.json").write_text(
+            json.dumps(
+                {
+                    "request_id": 123,
+                    "url_title": "changed",
+                    "title": "Changed",
+                    "content_sha256": HEX,
+                },
+            ),
+            encoding="utf-8",
+        )
+
+    def fake_run_fyi_cli_diff(**kwargs) -> None:
+        write_changes(
+            paths["changes_path"],
+            added=[],
+        )
+        changes = json.loads(paths["changes_path"].read_text(encoding="utf-8"))
+        changes["updated"] = [
+            {"request_id": 123, "content_sha256": HEX, "previous_sha256": "b" * 64}
+        ]
+        paths["changes_path"].write_text(json.dumps(changes), encoding="utf-8")
+
+    def fake_publish_sync_to_hf(**kwargs) -> Commit:
+        calls["publish"] = kwargs
+        return Commit()
+
+    def fake_verify_remote(**kwargs) -> bool:
+        calls["verify"] = kwargs
+        return kwargs["revision"] == "new-commit"
+
+    monkeypatch.setattr("fyi_archive.sync.restore_hf_dataset", fake_restore_hf_dataset)
+    monkeypatch.setattr("fyi_archive.sync.run_fyi_cli_diff", fake_run_fyi_cli_diff)
+    monkeypatch.setattr("fyi_archive.sync.publish_sync_to_hf", fake_publish_sync_to_hf)
+
+    summary = run_sync(
+        **paths,
+        fyi_cli_version="1.0.0",
+        dry_run=False,
+        hf_repo_id="owner/dataset",
+        hf_token="token",
+        verify_remote=fake_verify_remote,
+    )
+
+    assert summary["record_count"] == 1
+    assert calls["publish"]["repo_id"] == "owner/dataset"
+    assert calls["verify"]["revision"] == "new-commit"
+
+
 def test_write_sync_health(tmp_path: Path) -> None:
     health_path = tmp_path / "conductor" / "archive_health.json"
 

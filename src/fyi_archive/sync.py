@@ -15,7 +15,7 @@ from typing import Any
 from huggingface_hub import snapshot_download
 
 from fyi_archive.manifest import assemble_manifest
-from fyi_archive.publish.hf_publish import sha256_file, verify_remote_manifest
+from fyi_archive.publish.hf_publish import publish_folder_to_hf, sha256_file, verify_remote_manifest
 from fyi_archive.version import __version__
 
 
@@ -239,6 +239,33 @@ def changes_have_records(changes: dict[str, Any]) -> bool:
     return any(changes[bucket] for bucket in ("added", "updated", "removed"))
 
 
+def publish_sync_to_hf(
+    *,
+    repo_id: str,
+    token: str,
+    manifest_dir: Path,
+    derived_dir: Path,
+) -> object:
+    """Publish changed sync artifacts without cleaning existing dataset exports."""
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        publish_root = Path(tmp_dir) / "huggingface"
+        if manifest_dir.exists():
+            shutil.copytree(manifest_dir, publish_root / "manifests", dirs_exist_ok=True)
+        if derived_dir.exists():
+            shutil.copytree(
+                derived_dir,
+                publish_root / "data" / "raw" / "requests",
+                dirs_exist_ok=True,
+            )
+        return publish_folder_to_hf(
+            folder_path=publish_root,
+            repo_id=repo_id,
+            token=token,
+            commit_message="Sync fyi archive dataset",
+            clean_stale=False,
+        )
+
+
 def run_sync(
     *,
     state_path: Path,
@@ -292,12 +319,26 @@ def run_sync(
         )
     manifest_sha256 = sha256_file(manifest_path)
 
+    sync_has_changes = changes_have_records(changes)
+    revision = None
     verified = True
     if hf_repo_id is not None:
+        if sync_has_changes and not dry_run:
+            if hf_token is None:
+                msg = "HF token is required to publish prospective sync changes"
+                raise RuntimeError(msg)
+            commit_info = publish_sync_to_hf(
+                repo_id=hf_repo_id,
+                token=hf_token,
+                manifest_dir=manifest_path.parent,
+                derived_dir=derived_dir,
+            )
+            revision = getattr(commit_info, "oid", None)
         verified = verify_remote(
             repo_id=hf_repo_id,
             local_manifest=manifest_path,
             token=hf_token,
+            revision=revision,
         )
     if not verified:
         msg = "Remote manifest SHA-256 verification failed"
