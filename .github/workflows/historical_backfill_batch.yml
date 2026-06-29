@@ -1,0 +1,173 @@
+name: Historical Backfill Batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      id_from:
+        description: First FYI request ID for the batch
+        required: true
+        default: "1"
+        type: string
+      id_to:
+        description: Last FYI request ID for the batch
+        required: true
+        default: "20000"
+        type: string
+      chunk_size:
+        description: Inclusive request-ID span per job
+        required: true
+        default: "100"
+        type: string
+      max_chunks:
+        description: Maximum chunks to run from this batch
+        required: true
+        default: "1"
+        type: string
+      max_requests_per_chunk:
+        description: Maximum captured requests per chunk
+        required: true
+        default: "50"
+        type: string
+      max_runtime_minutes:
+        description: Maximum runtime per chunk
+        required: true
+        default: "30"
+        type: string
+      max_disk_gb:
+        description: Minimum free disk budget in GiB
+        required: true
+        default: "5"
+        type: string
+      dry_run:
+        description: Use deterministic dry-run records instead of fyi-cli capture
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - id: plan
+        name: Plan chunks
+        env:
+          CHUNK_SIZE: ${{ inputs.chunk_size }}
+          ID_FROM: ${{ inputs.id_from }}
+          ID_TO: ${{ inputs.id_to }}
+          MAX_CHUNKS: ${{ inputs.max_chunks }}
+        run: |
+          set -euo pipefail
+          matrix="$(python scripts/plan_backfill_chunks.py \
+            --id-from "$ID_FROM" \
+            --id-to "$ID_TO" \
+            --chunk-size "$CHUNK_SIZE" \
+            --max-chunks "$MAX_CHUNKS")"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "$matrix"
+
+  seed:
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+
+      - name: Run historical seed chunk
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          ID_FROM: ${{ matrix.id_from }}
+          ID_TO: ${{ matrix.id_to }}
+          MAX_DISK_GB: ${{ inputs.max_disk_gb }}
+          MAX_REQUESTS: ${{ inputs.max_requests_per_chunk }}
+          MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes }}
+        run: |
+          set -euo pipefail
+          args=(
+            --max-requests "$MAX_REQUESTS"
+            --max-runtime-minutes "$MAX_RUNTIME_MINUTES"
+            --max-disk-gb "$MAX_DISK_GB"
+          )
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          else
+            mkdir -p data/_state
+            uv run fyi discover \
+              --backfill-ids \
+              --id-from "$ID_FROM" \
+              --id-to "$ID_TO" \
+              --output data/_state/discovered_requests.jsonl
+            args+=(--requests-file data/_state/discovered_requests.jsonl)
+          fi
+          uv run fyi-archive seed run "${args[@]}"
+
+      - name: Build chunk manifest
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          MAX_REQUESTS: ${{ inputs.max_requests_per_chunk }}
+        run: |
+          set -euo pipefail
+          manifest_derived_dir=data/derived/requests
+          if [ "$DRY_RUN" != "true" ]; then
+            manifest_derived_dir=data/raw/requests
+          fi
+          uv run fyi-archive manifest build \
+            --derived-dir "$manifest_derived_dir" \
+            --fyi-cli-version 1.0.0
+          uv run python -m json.tool manifests/latest_manifest.json > /dev/null
+          if [ "$MAX_REQUESTS" != "0" ]; then
+            uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
+          if manifest["meta"]["record_count"] < 1:
+              raise SystemExit("historical backfill chunk manifest is empty")
+          PY
+          fi
+
+      - name: Generate chunk provenance
+        run: |
+          set -euo pipefail
+          uv run python scripts/gen_provenance.py \
+            --artifact manifests/latest_manifest.json \
+            --artifact manifests/latest_manifest.parquet \
+            --artifact manifests/authorities.json \
+            --fetch-start "${{ matrix.id_from }}" \
+            --fetch-end "${{ matrix.id_to }}" \
+            --fetch-label "historical-backfill-${{ matrix.label }}"
+
+      - name: Upload chunk artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: historical-backfill-${{ matrix.label }}
+          path: |
+            data/_state/ledger.jsonl
+            data/derived/requests/*.json
+            data/raw/requests/**
+            manifests/latest_manifest.json
+            manifests/latest_manifest.parquet
+            manifests/authorities.json
+            dist/provenance.json
