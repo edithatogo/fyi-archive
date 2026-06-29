@@ -5,7 +5,10 @@
       "package-name": "fyi_archive",
       "changelog-path": "CHANGELOG.md",
       "extra-files": [
-        "VERSION",
+        {
+          "type": "generic",
+          "path": "VERSION"
+        },
         "src/fyi_archive/version.py"
       ]
     }
