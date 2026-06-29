@@ -191,11 +191,15 @@ jobs:
           staged_manifest = publish_root / "manifests/latest_manifest.json"
           if sha256_file(staged_manifest) != sha256_file(Path("manifests/latest_manifest.json")):
               raise SystemExit("staged manifest SHA-256 mismatch")
+          print("local manifest sha256", sha256_file(Path("manifests/latest_manifest.json")))
+          print("staged manifest sha256", sha256_file(staged_manifest))
+          print("local manifest head", Path("manifests/latest_manifest.json").read_text()[:220])
           commit_info = publish_folder_to_hf(
               folder_path=publish_root,
               repo_id=repo_id,
               token=token,
           )
+          print("hf upload commit", getattr(commit_info, "oid", None))
           if not verify_remote_manifest(
               repo_id=repo_id,
               local_manifest=Path("manifests/latest_manifest.json"),
