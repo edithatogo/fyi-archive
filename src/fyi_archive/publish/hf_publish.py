@@ -7,6 +7,7 @@ import tempfile
 from pathlib import Path, PurePosixPath
 
 from huggingface_hub import CommitOperationAdd, CommitOperationDelete, HfApi, snapshot_download
+from huggingface_hub.errors import HfHubHTTPError
 
 DATASET_GITIGNORE = """# Generated dataset mirror.
 .cache/
@@ -45,7 +46,7 @@ def publish_folder_to_hf(
 ) -> object:
     """Upload a folder to a Hugging Face dataset repository."""
     api = HfApi(token=token)
-    api.create_repo(repo_id=repo_id, repo_type="dataset", exist_ok=True)
+    ensure_dataset_repo(api=api, repo_id=repo_id)
     base_path = PurePosixPath(path_in_repo) if path_in_repo else PurePosixPath()
     if clean_stale and not path_in_repo:
         _prepare_dataset_repo(api=api, repo_id=repo_id, token=token)
@@ -69,6 +70,16 @@ def publish_folder_to_hf(
         commit_message=commit_message,
         token=token,
     )
+
+
+def ensure_dataset_repo(*, api: HfApi, repo_id: str) -> None:
+    """Create the dataset repo if needed, tolerating HF rate limits for existing repos."""
+    try:
+        api.create_repo(repo_id=repo_id, repo_type="dataset", exist_ok=True)
+    except HfHubHTTPError as exc:
+        if getattr(exc.response, "status_code", None) == 429:
+            return
+        raise
 
 
 def _prepare_dataset_repo(*, api: HfApi, repo_id: str, token: str) -> None:

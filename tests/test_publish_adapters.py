@@ -10,7 +10,8 @@ import duckdb
 import polars as pl
 import pytest
 import respx
-from httpx import Response
+from httpx import Request, Response
+from huggingface_hub.errors import HfHubHTTPError
 
 from fyi_archive.publish.export import build_duckdb_export
 from fyi_archive.publish.hf_publish import publish_folder_to_hf, sha256_file, verify_remote_manifest
@@ -115,6 +116,46 @@ def test_publish_folder_to_hf_uploads_generated_files(tmp_path: Path, monkeypatc
         "README.md",
         "manifests/latest_manifest.json",
     ]
+
+
+def test_publish_folder_to_hf_tolerates_create_repo_rate_limit(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    calls: dict[str, Any] = {"create_commit": []}
+    (tmp_path / "manifests").mkdir()
+    (tmp_path / "manifests" / "latest_manifest.json").write_text("{}", encoding="utf-8")
+
+    class Commit:
+        oid = "commit-sha"
+
+    class FakeHfApi:
+        def __init__(self, *, token: str) -> None:
+            calls["token"] = token
+
+        def create_repo(self, **kwargs) -> None:
+            calls["create_repo"] = kwargs
+            response = Response(
+                429,
+                request=Request("POST", "https://huggingface.co/api/repos/create"),
+            )
+            raise HfHubHTTPError("rate limited", response=response)
+
+        def list_repo_tree(self, **kwargs) -> list[object]:
+            calls["list_repo_tree"] = kwargs
+            return []
+
+        def create_commit(self, **kwargs) -> Commit:
+            calls["create_commit"].append(kwargs)
+            return Commit()
+
+    monkeypatch.setattr("fyi_archive.publish.hf_publish.HfApi", FakeHfApi)
+
+    result = publish_folder_to_hf(folder_path=tmp_path, repo_id="owner/dataset", token="hf-token")
+
+    assert isinstance(result, Commit)
+    assert calls["create_repo"]["repo_type"] == "dataset"
+    assert calls["create_commit"][-1]["commit_message"] == "Publish fyi archive dataset"
 
 
 @respx.mock
