@@ -39,9 +39,9 @@ to HF, and **SHA-256-verify** the remote manifest against local.
       run.
 - [x] Concurrency: a second run while one is in flight does not cancel the first.
 
-Live cron/capture proof remains blocked until `fyi-cli archival-content-diff` and the
-historical seed corpus are available; dry-run unit coverage validates empty-diff and
-new-record propagation locally.
+Live cron/capture proof remains blocked until the historical seed corpus is available;
+`fyi-cli archival-content-diff` is now implemented, and dry-run unit coverage validates
+empty-diff and new-record propagation locally.
 
 ## Risks
 

@@ -49,7 +49,8 @@ assemble the initial manifest. This repo owns the orchestration + manifest assem
 
 ## Risks
 
-- `fyi-cli` capture tracks not yet delivered → this track is blocked until they land.
+- `fyi-cli` discovery/capture commands now exist; this track remains blocked on the
+  remaining hardening and a live seeded corpus + HF verification run.
 - fyi.org.nz pagination edge cases (empty windows, redirects) → handled in
   `fyi-cli`'s enumeration, asserted here via manifest row counts.
 - Long crawl vs the 6h job limit → mitigated by date-window fan-out + resume ledger.

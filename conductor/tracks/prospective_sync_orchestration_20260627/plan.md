@@ -23,7 +23,7 @@
 
 ## Dependencies / blocking
 
-- BLOCKED for live capture/empty-day proof on `fyi-cli` track
-  `archival-content-diff`.
+- `fyi-cli` track `archival-content-diff` is implemented; live empty-day proof still
+  requires a seeded corpus and credentials.
 - BLOCKED for seeded-corpus proof on this repo's
   `historical_seed_orchestration`.

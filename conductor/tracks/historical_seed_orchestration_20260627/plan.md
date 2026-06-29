@@ -31,5 +31,7 @@
 
 ## Dependencies / blocking
 
-- BLOCKED on `fyi-cli` tracks `bulk-site-enumeration` and `faithful-archive-capture`
-  plus this repo's HF publisher from `multi_mirror_publish` for the full live smoke.
+- PARTIALLY UNBLOCKED: `fyi-cli discover`, `fyi-cli capture`, and `fyi archive-health`
+  now exist with mocked tests.
+- BLOCKED for full live smoke on remaining `fyi-cli` enumeration/capture hardening,
+  a populated real corpus run, and publish credentials for HF verification.
