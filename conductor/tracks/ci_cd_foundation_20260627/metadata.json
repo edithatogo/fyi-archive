@@ -1,9 +1,9 @@
 {
   "track_id": "ci_cd_foundation_20260627",
   "type": "infra",
-  "status": "pending",
+  "status": "complete",
   "created_at": "2026-06-27T17:00:00Z",
-  "updated_at": "2026-06-27T17:00:00Z",
+  "updated_at": "2026-06-29T00:00:00Z",
   "description": "CI/CD foundation: tests.yml + code_quality.yml (uv --frozen matrix, ruff, ty, pytest+cov, version-consistency) plus supporting workflows (codeql, scorecard, docs, mirror_sync, ci-learning-candidates). Satisfies R-15, R-18.",
   "satisfies": ["R-15", "R-18"]
 }

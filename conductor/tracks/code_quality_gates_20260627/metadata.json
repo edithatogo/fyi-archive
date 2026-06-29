@@ -1,9 +1,9 @@
 {
   "track_id": "code_quality_gates_20260627",
   "type": "infra",
-  "status": "pending",
+  "status": "complete",
   "created_at": "2026-06-27T17:01:00Z",
-  "updated_at": "2026-06-27T17:01:00Z",
+  "updated_at": "2026-06-29T00:00:00Z",
   "description": "Code-quality standards: ruff (family ruleset), ty strict types, pytest+coverage with fail_under ramp, hypothesis property tests, pre-commit, dead-code/dep hygiene. Satisfies R-18.",
   "satisfies": ["R-18"]
 }
