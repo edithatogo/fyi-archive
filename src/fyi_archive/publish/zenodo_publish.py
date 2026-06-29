@@ -8,6 +8,8 @@ from typing import Any
 
 import httpx
 
+from fyi_archive.publish.verification import RemoteArtifact
+
 ZENODO_API = "https://zenodo.org/api"
 ZENODO_SANDBOX_API = "https://sandbox.zenodo.org/api"
 
@@ -65,3 +67,45 @@ def publish_draft(
     )
     response.raise_for_status()
     return response.json()
+
+
+def get_deposition(*, token: str, deposition_id: int, api_url: str = ZENODO_API) -> dict[str, Any]:
+    """Fetch one Zenodo deposition with its uploaded file evidence."""
+    response = httpx.get(
+        f"{api_url}/deposit/depositions/{deposition_id}",
+        params={"access_token": token},
+        timeout=60,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def deposition_artifacts(deposition: dict[str, Any]) -> list[RemoteArtifact]:
+    """Normalize Zenodo deposition files into remote artifact evidence."""
+    artifacts = []
+    for file_data in deposition.get("files", []):
+        filename = str(file_data.get("filename") or file_data.get("key") or "")
+        if not filename:
+            continue
+        links = file_data.get("links") if isinstance(file_data.get("links"), dict) else {}
+        artifacts.append(
+            RemoteArtifact(
+                name=Path(filename).name,
+                size=file_size(file_data),
+                checksum=file_checksum(file_data),
+                url=links.get("self") or links.get("download"),
+            ),
+        )
+    return artifacts
+
+
+def file_size(file_data: dict[str, Any]) -> int | None:
+    """Extract Zenodo file size if available."""
+    value = file_data.get("filesize") or file_data.get("size")
+    return int(value) if value is not None else None
+
+
+def file_checksum(file_data: dict[str, Any]) -> str | None:
+    """Extract Zenodo checksum if available."""
+    checksum = file_data.get("checksum")
+    return str(checksum) if checksum else None

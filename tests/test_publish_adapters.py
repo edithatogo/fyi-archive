@@ -14,8 +14,26 @@ from httpx import Response
 from fyi_archive.publish.export import build_duckdb_export
 from fyi_archive.publish.hf_publish import publish_folder_to_hf, sha256_file, verify_remote_manifest
 from fyi_archive.publish.metadata import write_metadata
-from fyi_archive.publish.osf_publish import create_component, create_project
-from fyi_archive.publish.zenodo_publish import create_draft, publish_draft, upload_file
+from fyi_archive.publish.osf_publish import (
+    create_component,
+    create_project,
+    ensure_component,
+    get_osfstorage_upload_url,
+    list_files,
+)
+from fyi_archive.publish.verification import (
+    RemoteArtifact,
+    build_local_artifacts,
+    compare_artifacts,
+    mirror_verified,
+)
+from fyi_archive.publish.zenodo_publish import (
+    create_draft,
+    deposition_artifacts,
+    get_deposition,
+    publish_draft,
+    upload_file,
+)
 
 
 def test_verify_remote_manifest_matches_snapshot(tmp_path: Path, monkeypatch) -> None:
@@ -98,6 +116,39 @@ def test_zenodo_create_upload_and_publish_are_draft_first(tmp_path: Path) -> Non
     assert published["doi"] == "10.5281/zenodo.1"
 
 
+@respx.mock
+def test_zenodo_deposition_artifacts_are_verifiable(tmp_path: Path) -> None:
+    file_path = tmp_path / "latest_manifest.json"
+    file_path.write_text('{"meta": {"record_count": 1}}\n', encoding="utf-8")
+    local_artifacts = build_local_artifacts([file_path])
+    respx.get("https://zenodo.example/api/deposit/depositions/1").mock(
+        return_value=Response(
+            200,
+            json={
+                "files": [
+                    {
+                        "filename": "latest_manifest.json",
+                        "filesize": file_path.stat().st_size,
+                        "checksum": f"sha256:{local_artifacts[0].sha256}",
+                        "links": {"download": "https://zenodo.example/file"},
+                    },
+                ],
+            },
+        ),
+    )
+
+    deposition = get_deposition(
+        token="token", deposition_id=1, api_url="https://zenodo.example/api"
+    )
+    results = compare_artifacts(
+        local_artifacts=local_artifacts,
+        remote_artifacts=deposition_artifacts(deposition),
+    )
+
+    assert mirror_verified(results)
+    assert results[0].checksum_matches is True
+
+
 def test_metadata_and_duckdb_export(tmp_path: Path) -> None:
     manifest = {
         "meta": {
@@ -144,3 +195,95 @@ def test_osf_create_project_and_component() -> None:
     )
 
     assert component["data"]["id"] == "child123"
+
+
+@respx.mock
+def test_osf_ensure_component_reuses_existing_component() -> None:
+    respx.get("https://osf.example/v2/nodes/abc123/children/").mock(
+        return_value=Response(
+            200,
+            json={
+                "data": [
+                    {
+                        "id": "existing",
+                        "attributes": {"title": "Hugging Face mirror"},
+                    },
+                ],
+            },
+        ),
+    )
+
+    component = ensure_component(
+        token="token",
+        parent_id="abc123",
+        title="Hugging Face mirror",
+        api_url="https://osf.example/v2",
+    )
+
+    assert component["data"]["id"] == "existing"
+
+
+@respx.mock
+def test_osf_file_listing_and_upload_url_are_verifiable(tmp_path: Path) -> None:
+    file_path = tmp_path / "latest_manifest.json"
+    file_path.write_text('{"meta": {"record_count": 1}}\n', encoding="utf-8")
+    local_artifacts = build_local_artifacts([file_path])
+    respx.get("https://osf.example/v2/nodes/child123/files/").mock(
+        return_value=Response(
+            200,
+            json={
+                "data": [
+                    {
+                        "id": "osfstorage",
+                        "attributes": {"provider": "osfstorage"},
+                        "links": {"upload": "https://files.osf.example/upload"},
+                    },
+                ],
+            },
+        ),
+    )
+    respx.get("https://osf.example/v2/nodes/child123/files/osfstorage/").mock(
+        return_value=Response(
+            200,
+            json={
+                "data": [
+                    {
+                        "attributes": {
+                            "name": "latest_manifest.json",
+                            "size": file_path.stat().st_size,
+                            "extra": {"hashes": {"sha256": local_artifacts[0].sha256}},
+                        },
+                        "links": {"download": "https://files.osf.example/file"},
+                    },
+                ],
+            },
+        ),
+    )
+
+    upload_url = get_osfstorage_upload_url(
+        token="token",
+        node_id="child123",
+        api_url="https://osf.example/v2",
+    )
+    results = compare_artifacts(
+        local_artifacts=local_artifacts,
+        remote_artifacts=list_files(
+            token="token", node_id="child123", api_url="https://osf.example/v2"
+        ),
+    )
+
+    assert upload_url == "https://files.osf.example/upload"
+    assert mirror_verified(results)
+
+
+def test_missing_remote_artifact_fails_verification(tmp_path: Path) -> None:
+    file_path = tmp_path / "latest_manifest.json"
+    file_path.write_text("{}\n", encoding="utf-8")
+
+    results = compare_artifacts(
+        local_artifacts=build_local_artifacts([file_path]),
+        remote_artifacts=[RemoteArtifact(name="other.json")],
+    )
+
+    assert not mirror_verified(results)
+    assert results[0].present is False

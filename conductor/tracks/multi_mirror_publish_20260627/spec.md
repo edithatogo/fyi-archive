@@ -14,7 +14,10 @@ and `release-please` dynamic versioning/releases.
   `publication_target ∈ {huggingface, zenodo, osf, all, all_with_osf}` and a `publish`
   gate. Builds `dist/` (tar.gz, `.manifest.json`, `.SHA256SUMS`, `.release-evidence.json`,
   `fyi_archive.duckdb`, `*.wacz`, `provenance.json`, `sbom.cdx.json`); runs
-  `actions/attest-build-provenance@v4`.
+  `actions/attest-build-provenance@v4`. Each attempted mirror writes a normalized
+  `dist/mirror_verification.json` entry containing record count, required artifact
+  filenames, local SHA-256 digests, remote checksums/URLs where exposed, and an
+  enforced pass/fail comparison.
 - Mirror adapters:
   - HF: `upload_large_folder` + hf-xet (live dataset).
   - Zenodo: raw `requests` to the deposition API; **draft-first**; `publish` requires
@@ -50,6 +53,8 @@ and `release-please` dynamic versioning/releases.
 - [x] `release.yml` cuts a `v0.1.0`-class release from a `feat:` commit with a
        generated changelog.
 - [x] SBOM generated and attached to a release.
+- [x] Publish jobs produce machine-readable mirror verification evidence and fail when
+      required artifacts are missing or known remote checksums/sizes disagree.
 
 ## Risks
 

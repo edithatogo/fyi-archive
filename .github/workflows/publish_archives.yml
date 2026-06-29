@@ -11,7 +11,9 @@ on:
         options:
           - huggingface
           - zenodo
+          - osf
           - all
+          - all_with_osf
       publish:
         description: Publish final Zenodo DOI when target includes Zenodo
         required: true
@@ -71,7 +73,7 @@ jobs:
             --artifact dist/sbom.cdx.json
 
       - name: Publish Hugging Face dataset
-        if: inputs.publication_target == 'huggingface' || inputs.publication_target == 'all'
+        if: inputs.publication_target == 'huggingface' || inputs.publication_target == 'all' || inputs.publication_target == 'all_with_osf'
         env:
           HF_REPO_ID: ${{ vars.HF_REPO_ID }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -80,7 +82,13 @@ jobs:
           uv run python - <<'PY'
           import os
           from pathlib import Path
-          from fyi_archive.publish.hf_publish import publish_folder_to_hf, verify_remote_manifest
+          from fyi_archive.publish.hf_publish import publish_folder_to_hf, sha256_file, verify_remote_manifest
+          from fyi_archive.publish.verification import (
+              ArtifactVerification,
+              MirrorVerification,
+              append_verification_report,
+              manifest_record_count,
+          )
 
           repo_id = os.environ["HF_REPO_ID"]
           token = os.environ["HF_TOKEN"]
@@ -91,10 +99,29 @@ jobs:
               token=token,
           ):
               raise SystemExit("remote manifest SHA-256 mismatch")
+          append_verification_report(
+              Path("dist/mirror_verification.json"),
+              MirrorVerification(
+                  mirror="huggingface",
+                  verified=True,
+                  record_count=manifest_record_count(Path("manifests/latest_manifest.json")),
+                  artifacts=[
+                      ArtifactVerification(
+                          name="latest_manifest.json",
+                          present=True,
+                          size_matches=True,
+                          checksum_matches=True,
+                          local_sha256=sha256_file(Path("manifests/latest_manifest.json")),
+                          remote_checksum="sha256:" + sha256_file(Path("manifests/latest_manifest.json")),
+                      ),
+                  ],
+                  details={"repo_id": repo_id, "manifest_sha256_verified": True},
+              ),
+          )
           PY
 
       - name: Create Zenodo draft
-        if: inputs.publication_target == 'zenodo' || inputs.publication_target == 'all'
+        if: inputs.publication_target == 'zenodo' || inputs.publication_target == 'all' || inputs.publication_target == 'all_with_osf'
         env:
           CONFIRM: ${{ inputs.confirm }}
           PUBLISH: ${{ inputs.publish }}
@@ -105,21 +132,57 @@ jobs:
           import json
           import os
           from pathlib import Path
-          from fyi_archive.publish.zenodo_publish import create_draft, load_metadata, publish_draft, upload_file
+          from fyi_archive.publish.verification import (
+              MirrorVerification,
+              append_verification_report,
+              build_local_artifacts,
+              compare_artifacts,
+              manifest_record_count,
+              mirror_verified,
+          )
+          from fyi_archive.publish.zenodo_publish import (
+              create_draft,
+              deposition_artifacts,
+              get_deposition,
+              load_metadata,
+              publish_draft,
+              upload_file,
+          )
 
           token = os.environ["ZENODO_TOKEN"]
           draft = create_draft(token=token, metadata=load_metadata())
           bucket = draft["links"]["bucket"]
-          for path in [
+          artifact_paths = [
               Path("manifests/latest_manifest.json"),
               Path("manifests/latest_manifest.parquet"),
               Path("manifests/authorities.json"),
               Path("dist/fyi_archive.duckdb"),
               Path("dist/sbom.cdx.json"),
               Path("dist/provenance.json"),
-          ]:
+          ]
+          for path in artifact_paths:
               if path.exists():
                   upload_file(token=token, bucket_url=bucket, path=path)
+          local_artifacts = build_local_artifacts(artifact_paths)
+          remote_artifacts = deposition_artifacts(
+              get_deposition(token=token, deposition_id=int(draft["id"]))
+          )
+          artifact_results = compare_artifacts(
+              local_artifacts=local_artifacts,
+              remote_artifacts=remote_artifacts,
+          )
+          append_verification_report(
+              Path("dist/mirror_verification.json"),
+              MirrorVerification(
+                  mirror="zenodo",
+                  verified=mirror_verified(artifact_results),
+                  record_count=manifest_record_count(Path("manifests/latest_manifest.json")),
+                  artifacts=artifact_results,
+                  details={"deposition_id": draft["id"], "published": os.environ["PUBLISH"] == "true"},
+              ),
+          )
+          if not mirror_verified(artifact_results):
+              raise SystemExit("Zenodo artifact verification failed")
           if os.environ["PUBLISH"] == "true":
               result = publish_draft(
                   token=token,
@@ -127,6 +190,69 @@ jobs:
                   confirm=os.environ["CONFIRM"],
               )
               Path("dist/zenodo_publish.json").write_text(json.dumps(result, indent=2) + "\n")
+          PY
+
+      - name: Publish OSF mirror
+        if: inputs.publication_target == 'osf' || inputs.publication_target == 'all_with_osf'
+        env:
+          OSF_PARENT_ID: ${{ vars.OSF_PARENT_ID }}
+          OSF_TOKEN: ${{ secrets.OSF_TOKEN }}
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import os
+          from pathlib import Path
+          from fyi_archive.publish.osf_publish import (
+              ensure_component,
+              get_osfstorage_upload_url,
+              list_files,
+              upload_file,
+          )
+          from fyi_archive.publish.verification import (
+              MirrorVerification,
+              append_verification_report,
+              build_local_artifacts,
+              compare_artifacts,
+              manifest_record_count,
+              mirror_verified,
+          )
+
+          token = os.environ["OSF_TOKEN"]
+          parent_id = os.environ["OSF_PARENT_ID"]
+          component = ensure_component(
+              token=token,
+              parent_id=parent_id,
+              title="fyi-archive data mirror",
+          )
+          component_id = component["data"]["id"]
+          upload_url = get_osfstorage_upload_url(token=token, node_id=component_id)
+          artifact_paths = [
+              Path("manifests/latest_manifest.json"),
+              Path("manifests/latest_manifest.parquet"),
+              Path("manifests/authorities.json"),
+              Path("dist/fyi_archive.duckdb"),
+              Path("dist/sbom.cdx.json"),
+              Path("dist/provenance.json"),
+          ]
+          for path in artifact_paths:
+              if path.exists():
+                  upload_file(token=token, upload_url=upload_url, path=path)
+          artifact_results = compare_artifacts(
+              local_artifacts=build_local_artifacts(artifact_paths),
+              remote_artifacts=list_files(token=token, node_id=component_id),
+          )
+          append_verification_report(
+              Path("dist/mirror_verification.json"),
+              MirrorVerification(
+                  mirror="osf",
+                  verified=mirror_verified(artifact_results),
+                  record_count=manifest_record_count(Path("manifests/latest_manifest.json")),
+                  artifacts=artifact_results,
+                  details={"parent_id": parent_id, "component_id": component_id},
+              ),
+          )
+          if not mirror_verified(artifact_results):
+              raise SystemExit("OSF artifact verification failed")
           PY
 
       - name: Upload publish evidence
