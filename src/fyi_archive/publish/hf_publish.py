@@ -35,7 +35,7 @@ def publish_folder_to_hf(
         if not path.is_file() or ".cache" in path.parts:
             continue
         relative_path = path.relative_to(folder_path).as_posix()
-        latest_commit = api.upload_file(
+        commit = api.upload_file(
             path_or_fileobj=path,
             path_in_repo=(base_path / relative_path).as_posix(),
             repo_id=repo_id,
@@ -43,6 +43,8 @@ def publish_folder_to_hf(
             commit_message=commit_message,
             parent_commit=getattr(latest_commit, "oid", None),
         )
+        if commit is not None:
+            latest_commit = commit
     return latest_commit
 
 

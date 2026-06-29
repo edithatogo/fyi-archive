@@ -58,6 +58,7 @@ def test_publish_folder_to_hf_uploads_generated_files(tmp_path: Path, monkeypatc
     calls = {"upload_file": []}
     (tmp_path / "manifests").mkdir()
     (tmp_path / "manifests" / "latest_manifest.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "README.md").write_text("unchanged", encoding="utf-8")
     (tmp_path / ".cache").mkdir()
     (tmp_path / ".cache" / "ignored").write_text("cache", encoding="utf-8")
 
@@ -73,6 +74,8 @@ def test_publish_folder_to_hf_uploads_generated_files(tmp_path: Path, monkeypatc
 
         def upload_file(self, **kwargs) -> Commit:
             calls["upload_file"].append(kwargs)
+            if kwargs["path_in_repo"] == "README.md":
+                return None
             return Commit()
 
     monkeypatch.setattr("fyi_archive.publish.hf_publish.HfApi", FakeHfApi)
@@ -83,7 +86,8 @@ def test_publish_folder_to_hf_uploads_generated_files(tmp_path: Path, monkeypatc
     assert calls["create_repo"]["repo_type"] == "dataset"
     assert calls["upload_file"][0]["path_in_repo"] == "manifests/latest_manifest.json"
     assert calls["upload_file"][0]["commit_message"] == "Publish fyi archive dataset"
-    assert len(calls["upload_file"]) == 1
+    assert calls["upload_file"][1]["path_in_repo"] == "README.md"
+    assert len(calls["upload_file"]) == 2
 
 
 @respx.mock
