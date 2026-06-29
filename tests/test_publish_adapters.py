@@ -12,7 +12,7 @@ import respx
 from httpx import Response
 
 from fyi_archive.publish.export import build_duckdb_export
-from fyi_archive.publish.hf_publish import sha256_file, verify_remote_manifest
+from fyi_archive.publish.hf_publish import publish_folder_to_hf, sha256_file, verify_remote_manifest
 from fyi_archive.publish.metadata import write_metadata
 from fyi_archive.publish.osf_publish import create_component, create_project
 from fyi_archive.publish.zenodo_publish import create_draft, publish_draft, upload_file
@@ -34,6 +34,30 @@ def test_verify_remote_manifest_matches_snapshot(tmp_path: Path, monkeypatch) ->
 
     assert verify_remote_manifest(repo_id="owner/dataset", local_manifest=local_manifest)
     assert sha256_file(local_manifest) == sha256_file(remote_manifest)
+
+
+def test_publish_folder_to_hf_uses_large_folder_upload(tmp_path: Path, monkeypatch) -> None:
+    calls = {}
+
+    class FakeHfApi:
+        def __init__(self, *, token: str) -> None:
+            calls["token"] = token
+
+        def create_repo(self, **kwargs) -> None:
+            calls["create_repo"] = kwargs
+
+        def upload_large_folder(self, **kwargs) -> str:
+            calls["upload_large_folder"] = kwargs
+            return "ok"
+
+    monkeypatch.setattr("fyi_archive.publish.hf_publish.HfApi", FakeHfApi)
+
+    result = publish_folder_to_hf(folder_path=tmp_path, repo_id="owner/dataset", token="hf-token")
+
+    assert result == "ok"
+    assert calls["create_repo"]["repo_type"] == "dataset"
+    assert calls["upload_large_folder"]["folder_path"] == tmp_path
+    assert calls["upload_large_folder"]["print_report"] is False
 
 
 @respx.mock

@@ -34,10 +34,14 @@ to HF, and **SHA-256-verify** the remote manifest against local.
 
 - [ ] Daily cron runs green on an empty-diff day (idempotent, no churn).
 - [ ] A deliberately-added test request is captured and appears in `latest_changes.json`.
-- [ ] Remote manifest SHA-256 mismatch fails the job.
-- [ ] `sync_state.json` advances its high-water mark only on a successful, verified
+- [x] Remote manifest SHA-256 mismatch fails the job.
+- [x] `sync_state.json` advances its high-water mark only on a successful, verified
       run.
-- [ ] Concurrency: a second run while one is in flight does not cancel the first.
+- [x] Concurrency: a second run while one is in flight does not cancel the first.
+
+Live cron/capture proof remains blocked until `fyi-cli archival-content-diff` and the
+historical seed corpus are available; dry-run unit coverage validates empty-diff and
+new-record propagation locally.
 
 ## Risks
 

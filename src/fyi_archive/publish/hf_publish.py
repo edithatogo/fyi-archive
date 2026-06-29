@@ -26,14 +26,19 @@ def publish_folder_to_hf(
     commit_message: str = "Publish fyi archive dataset",
 ) -> object:
     """Upload a folder to a Hugging Face dataset repository."""
+    del commit_message
     api = HfApi(token=token)
     api.create_repo(repo_id=repo_id, repo_type="dataset", exist_ok=True)
-    return api.upload_folder(
+    if path_in_repo:
+        msg = (
+            "upload_large_folder publishes from the local folder root; path_in_repo is unsupported"
+        )
+        raise ValueError(msg)
+    return api.upload_large_folder(
         folder_path=folder_path,
         repo_id=repo_id,
         repo_type="dataset",
-        path_in_repo=path_in_repo,
-        commit_message=commit_message,
+        print_report=False,
     )
 
 

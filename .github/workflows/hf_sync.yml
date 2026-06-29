@@ -1,0 +1,77 @@
+name: Hugging Face Sync
+
+on:
+  schedule:
+    - cron: "17 14 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Run without fyi-cli network diff/capture
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hf-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+
+      - name: Run prospective sync
+        env:
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          HF_REPO_ID: ${{ vars.HF_DATASET_REPO_ID || 'edithatogo/fyi-archive-nz' }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          args=(
+            --hf-repo-id "$HF_REPO_ID"
+            --fyi-cli-version 1.0.0
+            --health-path conductor/archive_health.json
+          )
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          uv run fyi-archive sync run "${args[@]}" | tee sync-summary.json
+
+      - name: Summarize sync
+        run: |
+          set -euo pipefail
+          {
+            echo "## HF sync"
+            echo
+            echo '```json'
+            cat sync-summary.json
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload sync artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hf-sync
+          path: |
+            data/_state/sync_state.json
+            manifests/latest_changes.json
+            manifests/latest_manifest.json
+            manifests/latest_manifest.parquet
+            manifests/authorities.json
+            conductor/archive_health.json
+            sync-summary.json

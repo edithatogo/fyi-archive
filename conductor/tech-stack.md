@@ -37,7 +37,7 @@ This repo is the **orchestration + distribution** layer. Capture tooling lives i
 
 - **Lint/format:** `ruff` (ruleset mirrors `corpus-cases-medilegal-nz`).
 - **Type check:** `ty` (Astral; the family's direction, replacing mypy/pyright).
-- **Tests:** `pytest` + `pytest-cov` (`fail_under = 60`, ramping), `pytest-asyncio`,
+- **Tests:** `pytest` + `pytest-cov` (`fail_under = 80`), `pytest-asyncio`,
   `hypothesis`, `respx` (HTTP mocking).
 - **Workflow lint:** `actionlint`; **workflow security:** `zizmor`.
 - **TOML:** `taplo`; **spelling:** `typos`; **markdown:** `markdownlint-cli`;
