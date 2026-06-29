@@ -1,65 +1,65 @@
 {
   "archive_publication_version": "0.1.0+archive.2026.06",
-  "generated_at": "2026-06-29T19:25:20.485931+00:00",
+  "generated_at": "2026-06-29T20:41:44.546931+00:00",
   "manifest": {
     "path": "/home/runner/work/fyi-archive/fyi-archive/manifests/latest_manifest.json",
-    "record_count": 1,
-    "sha256": "ea1062cb9dc7848972626ad927b0ffdacb2102d7f1479fc02eeddf4d566b7e68"
+    "record_count": 6,
+    "sha256": "7cbde2a9ae92dd5e18f9fb67238e98fd123e9774240c2fa7091c1d2c63cb84f5"
   },
   "mirrors": [
     {
       "artifacts": [
         {
           "checksum_matches": true,
-          "local_sha256": "ea1062cb9dc7848972626ad927b0ffdacb2102d7f1479fc02eeddf4d566b7e68",
+          "local_sha256": "7cbde2a9ae92dd5e18f9fb67238e98fd123e9774240c2fa7091c1d2c63cb84f5",
           "name": "latest_manifest.json",
           "present": true,
-          "remote_checksum": "sha256:ea1062cb9dc7848972626ad927b0ffdacb2102d7f1479fc02eeddf4d566b7e68",
+          "remote_checksum": "sha256:7cbde2a9ae92dd5e18f9fb67238e98fd123e9774240c2fa7091c1d2c63cb84f5",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/manifests/latest_manifest.json",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "13d553958ea1924f13ef9da35ac773dc08aab0c225f72744f3537a97e93c45a7",
+          "local_sha256": "2489f6470732805fe9b6cc354d01f75e0705ff81ed4e58f24ff8da68daae64f8",
           "name": "latest_manifest.parquet",
           "present": true,
-          "remote_checksum": "sha256:13d553958ea1924f13ef9da35ac773dc08aab0c225f72744f3537a97e93c45a7",
+          "remote_checksum": "sha256:2489f6470732805fe9b6cc354d01f75e0705ff81ed4e58f24ff8da68daae64f8",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/manifests/latest_manifest.parquet",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "25f6dc239784d4a347fabe5d9ebf8799ce1b3cf73c4bdad6cc0292105d163d0f",
+          "local_sha256": "e54d20c5afa6095a384f0c559f03ffc5dd2c7f75334249354d2470de286ff209",
           "name": "authorities.json",
           "present": true,
-          "remote_checksum": "sha256:25f6dc239784d4a347fabe5d9ebf8799ce1b3cf73c4bdad6cc0292105d163d0f",
+          "remote_checksum": "sha256:e54d20c5afa6095a384f0c559f03ffc5dd2c7f75334249354d2470de286ff209",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/manifests/authorities.json",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "60588054c4df7edd0401696486df22e104263026b4a4d3bf04749296aa57b131",
+          "local_sha256": "531cf7aaaaebc4757a7b9b124f0212c5d60d5e43167ecf6f595116fef91738f0",
           "name": "croissant.jsonld",
           "present": true,
-          "remote_checksum": "sha256:60588054c4df7edd0401696486df22e104263026b4a4d3bf04749296aa57b131",
+          "remote_checksum": "sha256:531cf7aaaaebc4757a7b9b124f0212c5d60d5e43167ecf6f595116fef91738f0",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/metadata/croissant.jsonld",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "bcff844fa26fee7eeb79ee16df8c6630f076a65a0fb0aff0a35b5e6972eeea02",
+          "local_sha256": "b005aad287679acf2001b4142cb71c78a8e566a6c366cd769f61ec4bf7bdf522",
           "name": "frictionless.json",
           "present": true,
-          "remote_checksum": "sha256:bcff844fa26fee7eeb79ee16df8c6630f076a65a0fb0aff0a35b5e6972eeea02",
+          "remote_checksum": "sha256:b005aad287679acf2001b4142cb71c78a8e566a6c366cd769f61ec4bf7bdf522",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/metadata/frictionless.json",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "73efbf996b2556afea528d3a43c4f4e519eaddf831fcece4c968d128a7e2edf6",
+          "local_sha256": "0b1d558b5f732911a8c95df2abb4726be5ccc07ef19e07e6201971e96d7739a3",
           "name": "schema.org.jsonld",
           "present": true,
-          "remote_checksum": "sha256:73efbf996b2556afea528d3a43c4f4e519eaddf831fcece4c968d128a7e2edf6",
+          "remote_checksum": "sha256:0b1d558b5f732911a8c95df2abb4726be5ccc07ef19e07e6201971e96d7739a3",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/metadata/schema.org.jsonld",
           "size_matches": true
         },
@@ -74,19 +74,19 @@
         },
         {
           "checksum_matches": true,
-          "local_sha256": "833cc820225a68ab178ad09c73c550bcd2c620f1a2df05c948217c3bc51d798c",
+          "local_sha256": "40a901db97032708b16cab5c4c82b576cb5b6d8b84a14047fbaebfe75ca2928e",
           "name": "sbom.cdx.json",
           "present": true,
-          "remote_checksum": "sha256:833cc820225a68ab178ad09c73c550bcd2c620f1a2df05c948217c3bc51d798c",
+          "remote_checksum": "sha256:40a901db97032708b16cab5c4c82b576cb5b6d8b84a14047fbaebfe75ca2928e",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/dist/sbom.cdx.json",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "ba7df3fc4b6056ecff8ad0b1241cc78c07ae08d087afade1cb4f99e2d98c16c4",
+          "local_sha256": "9606bdf2834725bd7d587ff531cac3794a95d3ba2da23e71069df8948337d417",
           "name": "provenance.json",
           "present": true,
-          "remote_checksum": "sha256:ba7df3fc4b6056ecff8ad0b1241cc78c07ae08d087afade1cb4f99e2d98c16c4",
+          "remote_checksum": "sha256:9606bdf2834725bd7d587ff531cac3794a95d3ba2da23e71069df8948337d417",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/dist/provenance.json",
           "size_matches": true
         }
@@ -96,63 +96,63 @@
         "revision": null
       },
       "mirror": "huggingface",
-      "record_count": 1,
+      "record_count": 6,
       "verified": true
     },
     {
       "artifacts": [
         {
           "checksum_matches": null,
-          "local_sha256": "ea1062cb9dc7848972626ad927b0ffdacb2102d7f1479fc02eeddf4d566b7e68",
+          "local_sha256": "7cbde2a9ae92dd5e18f9fb67238e98fd123e9774240c2fa7091c1d2c63cb84f5",
           "name": "latest_manifest.json",
           "present": true,
-          "remote_checksum": "eed853ded1b4168f0359ec0ff2ddf01b",
-          "remote_url": "https://zenodo.org/api/deposit/depositions/21044812/files/633db511-6600-49a2-bb9c-f7228500049e",
+          "remote_checksum": "3c4bb204ce01ea9d1e82626be6c21cc6",
+          "remote_url": "https://zenodo.org/api/deposit/depositions/21046535/files/8f8c2252-5155-4d6b-97ce-21d27213ef53",
           "size_matches": true
         },
         {
           "checksum_matches": null,
-          "local_sha256": "13d553958ea1924f13ef9da35ac773dc08aab0c225f72744f3537a97e93c45a7",
+          "local_sha256": "2489f6470732805fe9b6cc354d01f75e0705ff81ed4e58f24ff8da68daae64f8",
           "name": "latest_manifest.parquet",
           "present": true,
-          "remote_checksum": "6e48113099246d8eb561af946cffa0dd",
-          "remote_url": "https://zenodo.org/api/deposit/depositions/21044812/files/a0788c79-5c93-45e5-afda-544121812294",
+          "remote_checksum": "6c061619b0ea4ceb15c65a396620cfb1",
+          "remote_url": "https://zenodo.org/api/deposit/depositions/21046535/files/0718e45f-a8b7-4008-9846-3a3f71780bee",
           "size_matches": true
         },
         {
           "checksum_matches": null,
-          "local_sha256": "25f6dc239784d4a347fabe5d9ebf8799ce1b3cf73c4bdad6cc0292105d163d0f",
+          "local_sha256": "e54d20c5afa6095a384f0c559f03ffc5dd2c7f75334249354d2470de286ff209",
           "name": "authorities.json",
           "present": true,
-          "remote_checksum": "9c8efae8b6a356d73eda7d4a59e7b3c0",
-          "remote_url": "https://zenodo.org/api/deposit/depositions/21044812/files/9fa657a3-db2f-42aa-bb06-d1569c1f1268",
+          "remote_checksum": "1d435d0f8269ce14537997c5032963b4",
+          "remote_url": "https://zenodo.org/api/deposit/depositions/21046535/files/e6bfc6f5-8aba-4e9a-abdd-ce5fa550363c",
           "size_matches": true
         },
         {
           "checksum_matches": null,
-          "local_sha256": "60588054c4df7edd0401696486df22e104263026b4a4d3bf04749296aa57b131",
+          "local_sha256": "531cf7aaaaebc4757a7b9b124f0212c5d60d5e43167ecf6f595116fef91738f0",
           "name": "croissant.jsonld",
           "present": true,
-          "remote_checksum": "f049e56589ed4cde0767f1783e04435d",
-          "remote_url": "https://zenodo.org/api/deposit/depositions/21044812/files/2da6f88d-aaf6-40a4-b6ff-8dbc86cf65a9",
+          "remote_checksum": "2226f5384d0d8d57d5d55cef232a9bd4",
+          "remote_url": "https://zenodo.org/api/deposit/depositions/21046535/files/c6912d24-7649-4d0e-8bb9-b242c3b533ac",
           "size_matches": true
         },
         {
           "checksum_matches": null,
-          "local_sha256": "bcff844fa26fee7eeb79ee16df8c6630f076a65a0fb0aff0a35b5e6972eeea02",
+          "local_sha256": "b005aad287679acf2001b4142cb71c78a8e566a6c366cd769f61ec4bf7bdf522",
           "name": "frictionless.json",
           "present": true,
-          "remote_checksum": "374002a5e995091584bf25aba9b8a7bc",
-          "remote_url": "https://zenodo.org/api/deposit/depositions/21044812/files/cb3110bd-0bdf-4138-ad8a-2de7e6c2143d",
+          "remote_checksum": "bcaa9f18120fdd10c2431d3ad58ca891",
+          "remote_url": "https://zenodo.org/api/deposit/depositions/21046535/files/6e9d8f21-f8a2-46c5-9612-952502f2c7d6",
           "size_matches": true
         },
         {
           "checksum_matches": null,
-          "local_sha256": "73efbf996b2556afea528d3a43c4f4e519eaddf831fcece4c968d128a7e2edf6",
+          "local_sha256": "0b1d558b5f732911a8c95df2abb4726be5ccc07ef19e07e6201971e96d7739a3",
           "name": "schema.org.jsonld",
           "present": true,
-          "remote_checksum": "7a4e9a64ed05e73f420571fb84f87023",
-          "remote_url": "https://zenodo.org/api/deposit/depositions/21044812/files/7055b2c3-7094-423a-956d-8e593c5029f3",
+          "remote_checksum": "31e0347595ebcf9d4dfb44fa9df5c993",
+          "remote_url": "https://zenodo.org/api/deposit/depositions/21046535/files/f4ae993b-32f7-45ed-ba19-aed037b270db",
           "size_matches": true
         },
         {
@@ -161,35 +161,35 @@
           "name": "fyi_archive.duckdb",
           "present": true,
           "remote_checksum": "9a49eaadece6c4946d275e31ef6aa74b",
-          "remote_url": "https://zenodo.org/api/deposit/depositions/21044812/files/396e1c02-f652-4ed3-bb15-ea4a0c9147f6",
+          "remote_url": "https://zenodo.org/api/deposit/depositions/21046535/files/0c268f7c-d294-40f5-a883-58170e8e9f19",
           "size_matches": true
         },
         {
           "checksum_matches": null,
-          "local_sha256": "833cc820225a68ab178ad09c73c550bcd2c620f1a2df05c948217c3bc51d798c",
+          "local_sha256": "40a901db97032708b16cab5c4c82b576cb5b6d8b84a14047fbaebfe75ca2928e",
           "name": "sbom.cdx.json",
           "present": true,
-          "remote_checksum": "be8f3d4885129c40e2d8e47f14d20869",
-          "remote_url": "https://zenodo.org/api/deposit/depositions/21044812/files/b1a96574-2aa3-4756-b819-ef7e809c7218",
+          "remote_checksum": "5af70eb2589315aa64d477efc2aaf2bc",
+          "remote_url": "https://zenodo.org/api/deposit/depositions/21046535/files/406eddd9-0bd2-42a2-a688-39833e29f62d",
           "size_matches": true
         },
         {
           "checksum_matches": null,
-          "local_sha256": "ba7df3fc4b6056ecff8ad0b1241cc78c07ae08d087afade1cb4f99e2d98c16c4",
+          "local_sha256": "9606bdf2834725bd7d587ff531cac3794a95d3ba2da23e71069df8948337d417",
           "name": "provenance.json",
           "present": true,
-          "remote_checksum": "94e052101a1f9675b8d53fc8cc39b3d1",
-          "remote_url": "https://zenodo.org/api/deposit/depositions/21044812/files/39820354-9454-4a91-bece-b62ab1935151",
+          "remote_checksum": "61995c22639ac1d7e19e896711781e32",
+          "remote_url": "https://zenodo.org/api/deposit/depositions/21046535/files/bea5f97a-7408-4f11-acde-61b6a8736245",
           "size_matches": true
         }
       ],
       "details": {
         "api_url": "https://zenodo.org/api",
-        "deposition_id": 21044812,
+        "deposition_id": 21046535,
         "doi": null
       },
       "mirror": "zenodo",
-      "record_count": 1,
+      "record_count": 6,
       "verified": true
     }
   ],
