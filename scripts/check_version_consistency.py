@@ -19,7 +19,11 @@ PKG_VERSION_FILE = ROOT / "src" / "fyi_archive" / "version.py"
 
 
 def read_version_file() -> str:
-    return VERSION_FILE.read_text(encoding="utf-8").strip()
+    text = VERSION_FILE.read_text(encoding="utf-8").strip()
+    match = re.match(r"^([0-9]+(?:\.[0-9]+)+(?:[a-z0-9.+-]*)?)\b", text)
+    if not match:
+        sys.exit(f"Could not find version in {VERSION_FILE}")
+    return match.group(1)
 
 
 def read_pyproject_version() -> str:
