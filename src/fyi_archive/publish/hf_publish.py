@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import tempfile
+import time
+from collections.abc import Sequence
 from pathlib import Path, PurePosixPath
 
 from huggingface_hub import CommitOperationAdd, CommitOperationDelete, HfApi, snapshot_download
 from huggingface_hub.errors import HfHubHTTPError
+from huggingface_hub.hf_api import CommitOperation
 
 DATASET_GITIGNORE = """# Generated dataset mirror.
 .cache/
@@ -24,6 +27,10 @@ PRESERVED_DATASET_ROOTS = {
     "NOTICE.md",
     "README.md",
 }
+
+TRANSIENT_HF_STATUS_CODES = {429, 500, 502, 503, 504}
+HF_COMMIT_RETRY_ATTEMPTS = 4
+HF_COMMIT_RETRY_BACKOFF_SECONDS = 10
 
 
 def sha256_file(path: Path) -> str:
@@ -63,7 +70,8 @@ def publish_folder_to_hf(
         )
     if not operations:
         return None
-    return api.create_commit(
+    return _create_commit_with_retry(
+        api=api,
         repo_id=repo_id,
         repo_type="dataset",
         operations=operations,
@@ -84,7 +92,8 @@ def ensure_dataset_repo(*, api: HfApi, repo_id: str) -> None:
 
 def _prepare_dataset_repo(*, api: HfApi, repo_id: str, token: str) -> None:
     """Replace source-repo ignores and remove stale top-level files before publishing."""
-    api.create_commit(
+    _create_commit_with_retry(
+        api=api,
         repo_id=repo_id,
         repo_type="dataset",
         operations=[
@@ -102,13 +111,41 @@ def _prepare_dataset_repo(*, api: HfApi, repo_id: str, token: str) -> None:
         if item.path not in PRESERVED_DATASET_ROOTS
     ]
     if delete_operations:
-        api.create_commit(
+        _create_commit_with_retry(
+            api=api,
             repo_id=repo_id,
             repo_type="dataset",
             operations=delete_operations,
             commit_message="Clean stale fyi archive dataset artifacts",
             token=token,
         )
+
+
+def _create_commit_with_retry(
+    *,
+    api: HfApi,
+    repo_id: str,
+    repo_type: str,
+    operations: Sequence[CommitOperation],
+    commit_message: str,
+    token: str,
+) -> object:
+    """Create an HF commit, retrying transient Hub/API failures."""
+    for attempt in range(1, HF_COMMIT_RETRY_ATTEMPTS + 1):
+        try:
+            return api.create_commit(
+                repo_id=repo_id,
+                repo_type=repo_type,
+                operations=operations,
+                commit_message=commit_message,
+                token=token,
+            )
+        except HfHubHTTPError as exc:
+            status_code = getattr(exc.response, "status_code", None)
+            if status_code not in TRANSIENT_HF_STATUS_CODES or attempt == HF_COMMIT_RETRY_ATTEMPTS:
+                raise
+            time.sleep(HF_COMMIT_RETRY_BACKOFF_SECONDS * attempt)
+    raise RuntimeError("unreachable Hugging Face commit retry state")
 
 
 def verify_remote_manifest(

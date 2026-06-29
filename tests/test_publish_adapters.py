@@ -158,6 +158,66 @@ def test_publish_folder_to_hf_tolerates_create_repo_rate_limit(
     assert calls["create_commit"][-1]["commit_message"] == "Publish fyi archive dataset"
 
 
+def test_publish_folder_to_hf_retries_transient_commit_failure(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    calls: dict[str, Any] = {"create_commit": [], "sleep": []}
+    (tmp_path / "manifests").mkdir()
+    (tmp_path / "manifests" / "latest_manifest.json").write_text("{}", encoding="utf-8")
+
+    class Commit:
+        oid = "commit-sha"
+
+    class FakeHfApi:
+        final_publish_attempts = 0
+
+        def __init__(self, *, token: str) -> None:
+            calls["token"] = token
+
+        def create_repo(self, **kwargs) -> None:
+            calls["create_repo"] = kwargs
+
+        def list_repo_tree(self, **kwargs) -> list[object]:
+            calls["list_repo_tree"] = kwargs
+            return []
+
+        def create_commit(self, **kwargs) -> Commit:
+            calls["create_commit"].append(kwargs)
+            if kwargs["commit_message"] == "Publish fyi archive dataset":
+                self.final_publish_attempts += 1
+                if self.final_publish_attempts == 1:
+                    response = Response(
+                        504,
+                        request=Request(
+                            "POST",
+                            "https://huggingface.co/api/datasets/owner/dataset/commit/main",
+                        ),
+                    )
+                    raise HfHubHTTPError("gateway timeout", response=response)
+            return Commit()
+
+    monkeypatch.setattr("fyi_archive.publish.hf_publish.HfApi", FakeHfApi)
+
+    def fake_sleep(seconds: int) -> None:
+        calls["sleep"].append(seconds)
+
+    monkeypatch.setattr("fyi_archive.publish.hf_publish.time.sleep", fake_sleep)
+
+    result = publish_folder_to_hf(folder_path=tmp_path, repo_id="owner/dataset", token="hf-token")
+
+    assert isinstance(result, Commit)
+    assert calls["sleep"] == [10]
+    assert [
+        call["commit_message"]
+        for call in calls["create_commit"]
+        if call["commit_message"] == "Publish fyi archive dataset"
+    ] == [
+        "Publish fyi archive dataset",
+        "Publish fyi archive dataset",
+    ]
+
+
 @respx.mock
 def test_zenodo_create_upload_and_publish_are_draft_first(tmp_path: Path) -> None:
     respx.post("https://zenodo.example/api/deposit/depositions").mock(
