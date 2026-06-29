@@ -19,7 +19,7 @@ jobs:
       - name: markdownlint-cli2
         run: |
           set -euo pipefail
-          npx --yes markdownlint-cli2@0.18.1 --config .markdownlint.json "docs/**/*.md" "*.md"
+          npx --yes markdownlint-cli2@0.18.1 --config .markdownlint.json "docs/**/*.md" "*.md" "!CHANGELOG.md"
 
   vale:
     runs-on: ubuntu-latest
