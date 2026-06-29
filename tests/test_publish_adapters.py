@@ -309,6 +309,7 @@ def test_metadata_and_duckdb_export(tmp_path: Path) -> None:
 
     db_path = tmp_path / "dist/fyi_archive.duckdb"
     build_duckdb_export(manifest_parquet=parquet_path, output_path=db_path)
+    parquet_path.unlink()
 
     assert (metadata_dir / "croissant.jsonld").exists()
     assert (metadata_dir / "frictionless.json").exists()

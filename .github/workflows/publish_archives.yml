@@ -448,6 +448,8 @@ jobs:
           name: publish-evidence
           path: |
             data/_state/ledger.jsonl
+            manifests/*.json
+            manifests/*.parquet
             metadata/*.json
             metadata/*.jsonld
             dist/*.json
