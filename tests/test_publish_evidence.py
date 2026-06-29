@@ -11,6 +11,7 @@ import respx
 from httpx import Response
 from typer.testing import CliRunner
 
+from fyi_archive import __version__
 from fyi_archive.cli import app
 from fyi_archive.publish.evidence import (
     archive_publication_version,
@@ -44,7 +45,7 @@ def test_write_versioned_verification_bundle(tmp_path: Path) -> None:
         generated_at=datetime(2026, 6, 30, tzinfo=UTC),
     )
 
-    assert bundle["archive_publication_version"] == "0.1.0+archive.2026.06"
+    assert bundle["archive_publication_version"] == f"{__version__}+archive.2026.06"
     assert (tmp_path / "versions/2026-06/mirror_verification.json").exists()
     assert (tmp_path / "versions/latest_mirror_verification.json").exists()
 
