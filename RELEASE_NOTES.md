@@ -8,6 +8,7 @@ automatically from [Conventional Commits](https://www.conventionalcommits.org/) 
 ## [Unreleased]
 
 ### Added
+
 - Initial repository scaffold: standalone git repo, `pyproject.toml` (uv, ruff, ty),
   conductor setup, quality tooling (pre-commit, markdownlint, vale, taplo, typos,
   zizmor, actionlint), Renovate.
@@ -17,6 +18,7 @@ automatically from [Conventional Commits](https://www.conventionalcommits.org/) 
   `faithful-archive-capture`, `archival-content-diff`, `archive-health-doctor`.
 
 ### Notes
+
 - The first release will be cut automatically by `release-please` once a
   `feat:` commit lands on `main`.
 

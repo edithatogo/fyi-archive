@@ -1,0 +1,9 @@
+extends: existence
+message: "Replace placeholder term '%s' before publishing docs."
+level: error
+ignorecase: true
+tokens:
+  - '\bTODO\b'
+  - '\bTBD\b'
+  - '\bFIXME\b'
+  - '\blorem ipsum\b'

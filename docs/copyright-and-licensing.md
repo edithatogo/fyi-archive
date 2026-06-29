@@ -105,14 +105,14 @@ subsequent mirror publications pending resolution.
 ## Citations
 
 - Copyright Act 1994, NZ public act 1994 No 143 —
-  https://www.legislation.govt.nz/act/public/1994/0143/latest/DLM345634.html
+  <https://www.legislation.govt.nz/act/public/1994/0143/latest/DLM345634.html>
   (s.26 Crown copyright; s.27 no copyright in certain works; s.2 interpretation)
-- IPONZ — Copyright — https://www.iponz.govt.nz/get-ip/copyright/
-- IPONZ — Duration of copyright — https://www.iponz.govt.nz/get-ip/copyright/duration/
+- IPONZ — Copyright — <https://www.iponz.govt.nz/get-ip/copyright/>
+- IPONZ — Duration of copyright — <https://www.iponz.govt.nz/get-ip/copyright/duration/>
 - NZGOAL (OEGL Public Research Data Toolkit entry) —
-  https://www.oecd.org/en/publications/access-to-public-research-data-toolkit_a12e8998-en/new-zealand-government-open-access-and-licensing-nzgoal-framework_02e176d7-en.html
-- NZGOAL (data.govt.nz) — https://www.data.govt.nz/manage-data/policies/nzgoal
+  <https://www.oecd.org/en/publications/access-to-public-research-data-toolkit_a12e8998-en/new-zealand-government-open-access-and-licensing-nzgoal-framework_02e176d7-en.html>
+- NZGOAL (data.govt.nz) — <https://www.data.govt.nz/manage-data/policies/nzgoal>
 - NZ Digital Government — Copyright and licensing —
-  https://www.digital.govt.nz/standards-and-guidance/governance/copyright-and-licensing
+  <https://www.digital.govt.nz/standards-and-guidance/governance/copyright-and-licensing>
 - MBIE — Copyright protection in New Zealand —
-  https://www.mbie.govt.nz/business-and-employment/business/intellectual-property/copyright/copyright-protection-in-new-zealand
+  <https://www.mbie.govt.nz/business-and-employment/business/intellectual-property/copyright/copyright-protection-in-new-zealand>

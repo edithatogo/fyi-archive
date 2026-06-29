@@ -41,7 +41,7 @@ manifest, HF/Zenodo/OSF publisher implementations, or published archive artifact
 
 ## Directory structure
 
-```
+```text
 fyi-archive/
 ├── src/fyi_archive/      # orchestration CLI + mirror adapters (thin)
 ├── scripts/              # version consistency, SBOM
@@ -90,7 +90,7 @@ fyi-archive/
 
 ## Required GitHub Actions secrets
 
-```
+```env
 HF_TOKEN
 ZENODO_TOKEN
 ZENODO_SANDBOX_TOKEN        # optional, for draft rehearsal
@@ -100,7 +100,7 @@ GIT_MIRROR_SSH_PRIVATE_KEY  # if secondary mirror enabled
 
 ## Repository variables
 
-```
+```env
 HF_REPO_ID            = edithatogo/fyi-archive-nz
 FYI_ARCHIVE_BASE_URL  = https://fyi.org.nz
 ARCHIVE_TITLE         = fyi-archive (fyi.org.nz OIA register)

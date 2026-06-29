@@ -17,13 +17,9 @@ jobs:
         uses: actions/checkout@v6
 
       - name: markdownlint-cli2
-        uses: DavidMsg/markdownlint-cli2-action@v0.2.0
-        with:
-          config: .markdownlint.json
-          exts: md
-          no-ignore: false
-          no-progress: true
-          output-format: json
+        run: |
+          set -euo pipefail
+          npx --yes markdownlint-cli2@0.18.1 --config .markdownlint.json "docs/**/*.md" "*.md"
 
   vale:
     runs-on: ubuntu-latest
@@ -32,7 +28,10 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Vale
-        uses: errata-ai/vale-action@v2.0.0
-        with:
-          config: .vale.ini
-          files: docs/**/*.md
+        run: |
+          set -euo pipefail
+          VALE_VERSION=3.15.1
+          mkdir -p /tmp/vale
+          curl -sSL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o /tmp/vale.tar.gz
+          tar -xzf /tmp/vale.tar.gz -C /tmp/vale
+          /tmp/vale/vale --config=.vale.ini docs README.md DATASET_CARD.md RELEASE_NOTES.md CONTRIBUTING.md SECURITY.md
