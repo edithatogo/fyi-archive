@@ -49,7 +49,7 @@ Link: [./tracks/versioning_releases_20260627/](./tracks/versioning_releases_2026
 
 ## Archive tracks (historical → prospective)
 
-### [ ] Track: Historical-seed orchestration
+### [!] Track: Historical-seed orchestration
 Track ID: `historical_seed_orchestration_20260627` — satisfies **R-01, R-02, R-03, R-13, R-20, R-21**
 Goal: Resumable, date-windowed, capped historical backfill driving `fyi-cli` capture; assemble initial manifest; capped smoke seed.
 Depends on: fyi-cli `bulk-site-enumeration`, `faithful-archive-capture`.

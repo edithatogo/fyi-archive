@@ -38,13 +38,13 @@ assemble the initial manifest. This repo owns the orchestration + manifest assem
 
 ## Acceptance criteria
 
-- [ ] `historical_seed.yml` runs to completion on a capped dry-run with no secrets
+- [x] `historical_seed.yml` runs to completion on a capped dry-run with no secrets
       errors and produces a populated `latest_manifest.json`.
-- [ ] Manifest validates against `schemas/manifest.schema.json`.
-- [ ] Re-running after interrupt resumes from `ledger.jsonl` (no re-capture of done IDs).
-- [ ] Hard caps (`--max-requests`/`--max-bytes`/`--max-runtime-minutes`/`--max-disk-gb`)
+- [x] Manifest validates against `schemas/manifest.schema.json`.
+- [x] Re-running after interrupt resumes from `ledger.jsonl` (no re-capture of done IDs).
+- [x] Hard caps (`--max-requests`/`--max-bytes`/`--max-runtime-minutes`/`--max-disk-gb`)
       are enforced and documented.
-- [ ] Capped smoke seed (≤50 requests) completes the full path including HF upload and
+- [!] Capped smoke seed (≤50 requests) completes the full path including HF upload and
       SHA-256 verify.
 
 ## Risks

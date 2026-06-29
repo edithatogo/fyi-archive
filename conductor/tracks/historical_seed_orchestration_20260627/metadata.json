@@ -1,9 +1,9 @@
 {
   "track_id": "historical_seed_orchestration_20260627",
   "type": "feature",
-  "status": "pending",
+  "status": "blocked",
   "created_at": "2026-06-27T16:20:00Z",
-  "updated_at": "2026-06-27T17:10:00Z",
+  "updated_at": "2026-06-29T00:00:00Z",
   "description": "Resumable, date-windowed, capped historical backfill of fyi.org.nz by driving fyi-cli capture; assemble initial manifest; capped smoke seed.",
   "satisfies": ["R-01", "R-02", "R-03", "R-13", "R-20", "R-21"],
   "depends_on": ["fyi-cli:bulk-site-enumeration", "fyi-cli:faithful-archive-capture"]

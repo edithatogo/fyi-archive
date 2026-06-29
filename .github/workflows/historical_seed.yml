@@ -1,0 +1,120 @@
+name: Historical Seed
+
+on:
+  workflow_dispatch:
+    inputs:
+      date_from:
+        description: Inclusive window start date
+        required: false
+        type: string
+      date_to:
+        description: Inclusive window end date
+        required: false
+        type: string
+      max_requests:
+        description: Maximum requests to process
+        required: true
+        default: "50"
+        type: string
+      max_bytes:
+        description: Maximum bytes to write
+        required: false
+        type: string
+      max_runtime_minutes:
+        description: Maximum runtime in minutes
+        required: true
+        default: "30"
+        type: string
+      max_disk_gb:
+        description: Minimum free disk budget in GiB
+        required: true
+        default: "5"
+        type: string
+      dry_run:
+        description: Use deterministic dry-run records instead of fyi-cli capture
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          uv sync --extra dev --frozen
+
+      - name: Disk precheck
+        run: |
+          set -euo pipefail
+          df -h .
+
+      - name: Run historical seed
+        env:
+          DATE_FROM: ${{ inputs.date_from }}
+          DATE_TO: ${{ inputs.date_to }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          MAX_BYTES: ${{ inputs.max_bytes }}
+          MAX_DISK_GB: ${{ inputs.max_disk_gb }}
+          MAX_REQUESTS: ${{ inputs.max_requests }}
+          MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes }}
+        run: |
+          set -euo pipefail
+          args=(
+            --date-from "$DATE_FROM"
+            --date-to "$DATE_TO"
+            --max-requests "$MAX_REQUESTS"
+            --max-runtime-minutes "$MAX_RUNTIME_MINUTES"
+            --max-disk-gb "$MAX_DISK_GB"
+          )
+          if [ -n "$MAX_BYTES" ]; then
+            args+=(--max-bytes "$MAX_BYTES")
+          fi
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          uv run fyi-archive seed run "${args[@]}"
+
+      - name: Build manifest
+        run: |
+          set -euo pipefail
+          uv run fyi-archive manifest build --fyi-cli-version 1.0.0
+          uv run python -m json.tool manifests/latest_manifest.json > /dev/null
+
+      - name: Generate provenance
+        env:
+          DATE_FROM: ${{ inputs.date_from }}
+          DATE_TO: ${{ inputs.date_to }}
+        run: |
+          set -euo pipefail
+          uv run python scripts/gen_provenance.py \
+            --artifact manifests/latest_manifest.json \
+            --artifact manifests/latest_manifest.parquet \
+            --artifact manifests/authorities.json \
+            --fetch-start "$DATE_FROM" \
+            --fetch-end "$DATE_TO" \
+            --fetch-label historical-seed
+
+      - name: Upload seed artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: historical-seed
+          path: |
+            data/_state/ledger.jsonl
+            data/derived/requests/*.json
+            manifests/latest_manifest.json
+            manifests/latest_manifest.parquet
+            manifests/authorities.json
+            dist/provenance.json
