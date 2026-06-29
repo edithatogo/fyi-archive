@@ -8,7 +8,14 @@ from typing import TypedDict
 
 import pytest
 
-from fyi_archive.sync import load_sync_state, restore_hf_dataset, run_sync, write_sync_health
+from fyi_archive.sync import (
+    fyi_diff_content_sha256,
+    load_sync_state,
+    restore_hf_dataset,
+    run_sync,
+    write_diff_baseline_manifest,
+    write_sync_health,
+)
 
 HEX = "a" * 64
 
@@ -128,6 +135,21 @@ def test_restore_hf_dataset_copies_manifest_and_requests(tmp_path: Path, monkeyp
 
     assert (tmp_path / "manifests" / "latest_manifest.json").exists()
     assert (tmp_path / "data" / "raw" / "requests" / "authority" / "1" / "request.json").exists()
+
+
+def test_write_diff_baseline_manifest_uses_raw_request_hash(tmp_path: Path) -> None:
+    request_dir = tmp_path / "data" / "raw" / "requests" / "authority" / "123"
+    request_dir.mkdir(parents=True)
+    request = {"request_id": 123, "url_title": "one", "title": "One"}
+    (request_dir / "request.json").write_text(json.dumps(request), encoding="utf-8")
+
+    baseline_path = write_diff_baseline_manifest(
+        derived_dir=tmp_path / "data" / "raw" / "requests",
+        output_path=tmp_path / "data" / "_state" / "diff_baseline_manifest.json",
+    )
+    baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
+
+    assert baseline["requests"][0]["content_sha256"] == fyi_diff_content_sha256(request)
 
 
 def test_run_sync_live_empty_diff_restores_before_verify(tmp_path: Path, monkeypatch) -> None:

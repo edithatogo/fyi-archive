@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 import subprocess
@@ -205,6 +206,35 @@ def run_fyi_cli_diff(
     subprocess.run(command, check=True)
 
 
+def fyi_diff_content_sha256(data: dict[str, Any]) -> str:
+    """Return the raw request hash used by fyi-cli archive diffs."""
+    if data.get("content_sha256"):
+        return str(data["content_sha256"])
+    payload = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def write_diff_baseline_manifest(*, derived_dir: Path, output_path: Path) -> Path:
+    """Write a previous-manifest view whose hashes match fyi-cli diff semantics."""
+    records = []
+    for path in sorted(derived_dir.glob("*/*/request.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        request_id = int(data["id"] if "id" in data else data["request_id"])
+        records.append(
+            {
+                "request_id": request_id,
+                "url_title": str(data.get("url_title") or f"request-{request_id}"),
+                "content_sha256": fyi_diff_content_sha256(data),
+            },
+        )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(
+        json.dumps({"requests": records}, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return output_path
+
+
 def restore_hf_dataset(
     *,
     repo_id: str,
@@ -289,6 +319,7 @@ def run_sync(
         changes = load_changes(changes_path, since)
         materialized = dry_run_materialize_changes(changes, derived_dir)
     else:
+        previous_manifest = manifest_path
         if hf_repo_id is not None:
             restore_hf_dataset(
                 repo_id=hf_repo_id,
@@ -296,10 +327,14 @@ def run_sync(
                 manifest_dir=manifest_path.parent,
                 derived_dir=derived_dir,
             )
+            previous_manifest = write_diff_baseline_manifest(
+                derived_dir=derived_dir,
+                output_path=state_path.parent / "diff_baseline_manifest.json",
+            )
         run_fyi_cli_diff(
             since=since,
             derived_dir=derived_dir,
-            previous_manifest=manifest_path,
+            previous_manifest=previous_manifest,
             output_path=changes_path,
             extra_args=fyi_cli_args,
         )
