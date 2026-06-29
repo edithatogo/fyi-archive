@@ -14,6 +14,7 @@ from typer.testing import CliRunner
 from fyi_archive.cli import app
 from fyi_archive.publish.evidence import (
     archive_publication_version,
+    repo_relative_path,
     verify_huggingface_dataset,
     write_versioned_verification_bundle,
 )
@@ -76,6 +77,17 @@ def test_verify_huggingface_dataset_compares_snapshot_artifacts(
 
     assert report.verified is True
     assert report.artifacts[0].checksum_matches is True
+
+
+def test_repo_relative_path_handles_relative_root(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    manifest = Path("mirror-root/manifests/latest_manifest.json")
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text("{}", encoding="utf-8")
+
+    relative = repo_relative_path(manifest.resolve(), Path("mirror-root").resolve())
+
+    assert relative.as_posix() == "manifests/latest_manifest.json"
 
 
 @respx.mock

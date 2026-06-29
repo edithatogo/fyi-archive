@@ -46,6 +46,7 @@ def verify(
     osf_api_url: Annotated[str, typer.Option(envvar="OSF_API_URL")] = "https://api.osf.io/v2",
 ) -> None:
     """Verify remote mirror contents and store versioned evidence."""
+    root = root.resolve()
     resolved_manifest = manifest_path if manifest_path.is_absolute() else root / manifest_path
     artifacts = existing_artifact_paths(root=root, artifact_paths=artifact)
     if not resolved_manifest.exists():
