@@ -171,8 +171,9 @@ jobs:
               shutil.rmtree(publish_root)
           for source in [
               Path("manifests"),
-              Path("metadata"),
-              Path("data/raw/requests"),
+            Path("metadata"),
+            Path("schemas"),
+            Path("data/raw/requests"),
               Path("data/warc"),
               Path("data/attachments"),
               Path("dist/site_snapshots"),

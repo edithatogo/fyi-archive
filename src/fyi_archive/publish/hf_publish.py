@@ -6,7 +6,23 @@ import hashlib
 import tempfile
 from pathlib import Path, PurePosixPath
 
-from huggingface_hub import CommitOperationAdd, HfApi, snapshot_download
+from huggingface_hub import CommitOperationAdd, CommitOperationDelete, HfApi, snapshot_download
+
+DATASET_GITIGNORE = """# Generated dataset mirror.
+.cache/
+__pycache__/
+*.py[cod]
+"""
+
+PRESERVED_DATASET_ROOTS = {
+    ".gitattributes",
+    ".gitignore",
+    "CITATION.cff",
+    "DATASET_CARD.md",
+    "LICENSE",
+    "NOTICE.md",
+    "README.md",
+}
 
 
 def sha256_file(path: Path) -> str:
@@ -29,8 +45,10 @@ def publish_folder_to_hf(
     """Upload a folder to a Hugging Face dataset repository."""
     api = HfApi(token=token)
     api.create_repo(repo_id=repo_id, repo_type="dataset", exist_ok=True)
-    operations: list[CommitOperationAdd] = []
     base_path = PurePosixPath(path_in_repo) if path_in_repo else PurePosixPath()
+    if not path_in_repo:
+        _prepare_dataset_repo(api=api, repo_id=repo_id, token=token)
+    operations: list[CommitOperationAdd] = []
     for path in sorted(folder_path.rglob("*")):
         if not path.is_file() or ".cache" in path.parts:
             continue
@@ -50,6 +68,35 @@ def publish_folder_to_hf(
         commit_message=commit_message,
         token=token,
     )
+
+
+def _prepare_dataset_repo(*, api: HfApi, repo_id: str, token: str) -> None:
+    """Replace source-repo ignores and remove stale top-level files before publishing."""
+    api.create_commit(
+        repo_id=repo_id,
+        repo_type="dataset",
+        operations=[
+            CommitOperationAdd(
+                path_or_fileobj=DATASET_GITIGNORE.encode("utf-8"),
+                path_in_repo=".gitignore",
+            ),
+        ],
+        commit_message="Prepare fyi archive dataset mirror",
+        token=token,
+    )
+    delete_operations = [
+        CommitOperationDelete(path_in_repo=item.path, is_folder=hasattr(item, "tree_id"))
+        for item in api.list_repo_tree(repo_id=repo_id, repo_type="dataset")
+        if item.path not in PRESERVED_DATASET_ROOTS
+    ]
+    if delete_operations:
+        api.create_commit(
+            repo_id=repo_id,
+            repo_type="dataset",
+            operations=delete_operations,
+            commit_message="Clean stale fyi archive dataset artifacts",
+            token=token,
+        )
 
 
 def verify_remote_manifest(
