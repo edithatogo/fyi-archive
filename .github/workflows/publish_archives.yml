@@ -26,6 +26,31 @@ on:
         description: Type publish-zenodo-doi for production Zenodo DOI publish
         required: false
         type: string
+      seed_before_publish:
+        description: Build a capped FYI seed bundle before publishing
+        required: true
+        default: false
+        type: boolean
+      seed_dry_run:
+        description: Use synthetic seed records instead of live fyi-cli capture
+        required: true
+        default: false
+        type: boolean
+      seed_id_from:
+        description: First FYI request ID for seed discovery
+        required: true
+        default: "20000"
+        type: string
+      seed_id_to:
+        description: Last FYI request ID for seed discovery
+        required: true
+        default: "20000"
+        type: string
+      seed_max_requests:
+        description: Maximum requests to capture before publishing
+        required: true
+        default: "1"
+        type: string
 
 permissions:
   attestations: write
@@ -39,6 +64,11 @@ jobs:
     env:
       PUBLICATION_TARGET: ${{ inputs.publication_target || 'huggingface' }}
       PUBLISH_ZENODO: ${{ inputs.publish || false }}
+      SEED_BEFORE_PUBLISH: ${{ inputs.seed_before_publish || github.event_name == 'schedule' }}
+      SEED_DRY_RUN: ${{ inputs.seed_dry_run || false }}
+      SEED_ID_FROM: ${{ inputs.seed_id_from || '20000' }}
+      SEED_ID_TO: ${{ inputs.seed_id_to || '20000' }}
+      SEED_MAX_REQUESTS: ${{ inputs.seed_max_requests || '1' }}
       ZENODO_CONFIRM: ${{ inputs.confirm || '' }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -53,6 +83,29 @@ jobs:
         run: |
           set -euo pipefail
           uv sync --extra dev --frozen
+
+      - name: Build capped seed bundle
+        if: env.SEED_BEFORE_PUBLISH == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p data/_state
+          uv run fyi discover \
+            --backfill-ids \
+            --id-from "$SEED_ID_FROM" \
+            --id-to "$SEED_ID_TO" \
+            --output data/_state/discovered_requests.jsonl
+          args=(
+            --requests-file data/_state/discovered_requests.jsonl
+            --max-requests "$SEED_MAX_REQUESTS"
+            --max-runtime-minutes 30
+            --max-disk-gb 5
+          )
+          if [ "$SEED_DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          uv run fyi-archive seed run "${args[@]}"
+          uv run fyi-archive manifest build --fyi-cli-version 1.0.0
+          uv run python -m json.tool manifests/latest_manifest.json > /dev/null
 
       - name: Build release artifacts
         run: |
