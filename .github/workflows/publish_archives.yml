@@ -188,11 +188,16 @@ jobs:
                   shutil.copytree(source, destination, dirs_exist_ok=True)
               else:
                   shutil.copy2(source, destination)
-          publish_folder_to_hf(folder_path=publish_root, repo_id=repo_id, token=token)
+          commit_info = publish_folder_to_hf(
+              folder_path=publish_root,
+              repo_id=repo_id,
+              token=token,
+          )
           if not verify_remote_manifest(
               repo_id=repo_id,
               local_manifest=Path("manifests/latest_manifest.json"),
               token=token,
+              revision=getattr(commit_info, "oid", None),
           ):
               raise SystemExit("remote manifest SHA-256 mismatch")
           append_verification_report(

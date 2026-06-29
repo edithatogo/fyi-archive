@@ -26,19 +26,14 @@ def publish_folder_to_hf(
     commit_message: str = "Publish fyi archive dataset",
 ) -> object:
     """Upload a folder to a Hugging Face dataset repository."""
-    del commit_message
     api = HfApi(token=token)
     api.create_repo(repo_id=repo_id, repo_type="dataset", exist_ok=True)
-    if path_in_repo:
-        msg = (
-            "upload_large_folder publishes from the local folder root; path_in_repo is unsupported"
-        )
-        raise ValueError(msg)
-    return api.upload_large_folder(
+    return api.upload_folder(
         folder_path=folder_path,
         repo_id=repo_id,
         repo_type="dataset",
-        print_report=False,
+        path_in_repo=path_in_repo or None,
+        commit_message=commit_message,
     )
 
 
@@ -57,6 +52,7 @@ def verify_remote_manifest(
             token=token,
             revision=revision,
             allow_patterns="manifests/latest_manifest.json",
+            force_download=True,
         ),
     )
     remote_manifest = snapshot_path / "manifests" / "latest_manifest.json"

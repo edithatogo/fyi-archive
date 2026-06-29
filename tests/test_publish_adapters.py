@@ -54,7 +54,7 @@ def test_verify_remote_manifest_matches_snapshot(tmp_path: Path, monkeypatch) ->
     assert sha256_file(local_manifest) == sha256_file(remote_manifest)
 
 
-def test_publish_folder_to_hf_uses_large_folder_upload(tmp_path: Path, monkeypatch) -> None:
+def test_publish_folder_to_hf_uses_folder_upload(tmp_path: Path, monkeypatch) -> None:
     calls = {}
 
     class FakeHfApi:
@@ -64,8 +64,8 @@ def test_publish_folder_to_hf_uses_large_folder_upload(tmp_path: Path, monkeypat
         def create_repo(self, **kwargs) -> None:
             calls["create_repo"] = kwargs
 
-        def upload_large_folder(self, **kwargs) -> str:
-            calls["upload_large_folder"] = kwargs
+        def upload_folder(self, **kwargs) -> str:
+            calls["upload_folder"] = kwargs
             return "ok"
 
     monkeypatch.setattr("fyi_archive.publish.hf_publish.HfApi", FakeHfApi)
@@ -74,8 +74,8 @@ def test_publish_folder_to_hf_uses_large_folder_upload(tmp_path: Path, monkeypat
 
     assert result == "ok"
     assert calls["create_repo"]["repo_type"] == "dataset"
-    assert calls["upload_large_folder"]["folder_path"] == tmp_path
-    assert calls["upload_large_folder"]["print_report"] is False
+    assert calls["upload_folder"]["folder_path"] == tmp_path
+    assert calls["upload_folder"]["commit_message"] == "Publish fyi archive dataset"
 
 
 @respx.mock
