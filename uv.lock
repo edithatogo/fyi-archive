@@ -849,7 +849,7 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.1.0" },
     { name = "feedparser", specifier = ">=6.0.11" },
     { name = "frictionless", marker = "extra == 'dev'", specifier = ">=5.18.0" },
-    { name = "fyi-cli", directory = "../fyi-cli" },
+    { name = "fyi-cli", git = "https://github.com/edithatogo/fyi-cli?branch=master" },
     { name = "httpx", extras = ["http2"], specifier = ">=0.28.0" },
     { name = "httpx-limiter", specifier = ">=0.6.0" },
     { name = "huggingface-hub", extras = ["hf-xet"], specifier = ">=0.27.0" },
@@ -880,7 +880,7 @@ provides-extras = ["dev"]
 [[package]]
 name = "fyi-cli"
 version = "1.0.0"
-source = { directory = "../fyi-cli" }
+source = { git = "https://github.com/edithatogo/fyi-cli?branch=master#5d6522f4b3453f79b6cc9a81046f4605ea5363a2" }
 dependencies = [
     { name = "cryptography" },
     { name = "fastmcp" },
@@ -891,30 +891,8 @@ dependencies = [
     { name = "pydantic" },
     { name = "rich" },
     { name = "typer" },
+    { name = "warcio" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "basedpyright", marker = "extra == 'dev'", specifier = ">=1.13.0" },
-    { name = "cryptography", specifier = ">=41.0.0" },
-    { name = "fastmcp", specifier = ">=0.1.0" },
-    { name = "feedparser", specifier = ">=6.0.11" },
-    { name = "httpx", specifier = ">=0.27.0" },
-    { name = "jinja2", specifier = ">=3.1.4" },
-    { name = "keyring", specifier = ">=24.0.0" },
-    { name = "pip-audit", marker = "extra == 'dev'", specifier = ">=2.0.0" },
-    { name = "pydantic", specifier = ">=2.7.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
-    { name = "pytest-benchmark", marker = "extra == 'dev'", specifier = ">=4.0.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0.0" },
-    { name = "rich", specifier = ">=13.7.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6.0" },
-    { name = "safety", marker = "extra == 'dev'", specifier = ">=2.0.0" },
-    { name = "scalene", marker = "extra == 'dev'", specifier = ">=1.5.0" },
-    { name = "typer", specifier = ">=0.12.0" },
-    { name = "uv", marker = "extra == 'dev'", specifier = ">=0.4.0" },
-]
-provides-extras = ["dev"]
 
 [[package]]
 name = "griffelib"
