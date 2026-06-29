@@ -171,9 +171,9 @@ jobs:
               shutil.rmtree(publish_root)
           for source in [
               Path("manifests"),
-            Path("metadata"),
-            Path("schemas"),
-            Path("data/raw/requests"),
+              Path("metadata"),
+              Path("schemas"),
+              Path("data/raw/requests"),
               Path("data/warc"),
               Path("data/attachments"),
               Path("dist/site_snapshots"),
@@ -190,16 +190,15 @@ jobs:
               else:
                   shutil.copy2(source, destination)
           staged_manifest = publish_root / "manifests/latest_manifest.json"
-          if sha256_file(staged_manifest) != sha256_file(Path("manifests/latest_manifest.json")):
+          manifest_sha256 = sha256_file(Path("manifests/latest_manifest.json"))
+          if sha256_file(staged_manifest) != manifest_sha256:
               raise SystemExit("staged manifest SHA-256 mismatch")
-          print("local manifest sha256", sha256_file(Path("manifests/latest_manifest.json")))
-          print("staged manifest sha256", sha256_file(staged_manifest))
-          print("local manifest head", Path("manifests/latest_manifest.json").read_text()[:220])
           commit_info = publish_folder_to_hf(
               folder_path=publish_root,
               repo_id=repo_id,
               token=token,
           )
+          print("hf manifest sha256", manifest_sha256)
           print("hf upload commit", getattr(commit_info, "oid", None))
           if not verify_remote_manifest(
               repo_id=repo_id,
@@ -220,8 +219,8 @@ jobs:
                           present=True,
                           size_matches=True,
                           checksum_matches=True,
-                          local_sha256=sha256_file(Path("manifests/latest_manifest.json")),
-                          remote_checksum="sha256:" + sha256_file(Path("manifests/latest_manifest.json")),
+                          local_sha256=manifest_sha256,
+                          remote_checksum="sha256:" + manifest_sha256,
                       ),
                   ],
                   details={"repo_id": repo_id, "manifest_sha256_verified": True},
