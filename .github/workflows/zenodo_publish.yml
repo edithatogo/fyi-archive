@@ -1,0 +1,45 @@
+name: Zenodo Citation Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      doi:
+        description: Published Zenodo DOI, e.g. 10.5281/zenodo.1234567
+        required: true
+        type: string
+      confirm:
+        description: Type update-citation-doi to update CITATION.cff
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-citation:
+    if: inputs.confirm == 'update-citation-doi'
+    runs-on: ubuntu-latest
+    environment: zenodo-production
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Update CITATION.cff DOI
+        run: |
+          set -euo pipefail
+          uv run python scripts/update_citation_doi.py "${{ inputs.doi }}"
+
+      - name: Create DOI update pull request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "docs: update Zenodo DOI citation"
+          title: "docs: update Zenodo DOI citation"
+          body: "Updates CITATION.cff after the annual Zenodo snapshot publish."
+          branch: "release/update-zenodo-doi"
+          add-paths: CITATION.cff

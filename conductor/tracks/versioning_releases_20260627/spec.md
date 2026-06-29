@@ -30,12 +30,12 @@ layered onto the family's SemVer + manifest-hash provenance model.
 
 ## Acceptance criteria
 
-- [ ] A `feat:` commit on `main` causes release-please to open a release PR bumping
+- [x] A `feat:` commit on `main` causes release-please to open a release PR bumping
       the version and updating `CHANGELOG.md`.
-- [ ] Merging the release PR cuts a tagged GitHub Release with the `dist/` artifacts.
-- [ ] `check_version_consistency.py` fails CI on any source drift.
-- [ ] `CITATION.cff` carries the latest Zenodo DOI after an annual publish.
-- [ ] Versioning axes documented in `tech-stack.md`.
+- [x] Merging the release PR cuts a tagged GitHub Release with the `dist/` artifacts.
+- [x] `check_version_consistency.py` fails CI on any source drift.
+- [x] `CITATION.cff` carries the latest Zenodo DOI after an annual publish.
+- [x] Versioning axes documented in `tech-stack.md`.
 
 ## Risks
 

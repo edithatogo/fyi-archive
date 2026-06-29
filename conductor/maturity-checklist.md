@@ -19,7 +19,7 @@ Tracks the project's climb from pre-alpha to a SOTA, evidence-backed archive.
 - [ ] OSF project + components mirror
 - [ ] Croissant + Frictionless metadata emitted + validated
 - [ ] DuckDB read-only export + CycloneDX SBOM + provenance
-- [ ] release-please dynamic versioning/releases
+- [x] release-please dynamic versioning/releases
 
 ## Phase 2 — Hardening (future)
 - [ ] Coverage ≥ 80%

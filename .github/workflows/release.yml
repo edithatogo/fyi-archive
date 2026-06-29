@@ -30,9 +30,8 @@ jobs:
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          release-type: python
-          package-name: fyi_archive
-          component: ""
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
 
       - name: Generate release evidence
         if: steps.release.outputs.releases_created == 'true'
@@ -51,6 +50,16 @@ jobs:
         with:
           name: release-evidence
           path: |
+            dist/sbom.cdx.json
+            dist/provenance.json
+
+      - name: Attach release evidence
+        if: steps.release.outputs.releases_created == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.tag_name }}
+          fail_on_unmatched_files: false
+          files: |
             dist/sbom.cdx.json
             dist/provenance.json
 

@@ -53,6 +53,22 @@ This repo is the **orchestration + distribution** layer. Capture tooling lives i
 - `actions/attest-build-provenance@v4` on release artifacts.
 - `release-please` for automated SemVer + changelog + GitHub Releases.
 
+## Versioning Axes
+
+The project tracks several independent versions:
+
+- **Package SemVer:** `pyproject.toml`, `VERSION`, and
+  `src/fyi_archive/version.py`; updated by release-please and enforced by
+  `scripts/check_version_consistency.py`.
+- **Dataset publication version:** the version of a published archive bundle or
+  mirror snapshot; it may change when data changes even if package code does not.
+- **Schema version:** manifest and changes schema evolution; this is independent of
+  package SemVer until schema tooling is implemented.
+- **Hugging Face revision:** content-addressed dataset repository revision for the
+  live mirror.
+- **Zenodo DOI:** immutable annual snapshot identifier, updated in `CITATION.cff`
+  after the protected Zenodo publish workflow succeeds.
+
 ## Project structure
 
 See `docs/README.md` (architecture) and the repository `README.md` (directory map).

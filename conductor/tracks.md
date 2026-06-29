@@ -40,7 +40,7 @@ Track ID: `security_supply_chain_20260627` — satisfies **R-18, R-24**; provide
 Goal: CycloneDX SBOM per release, build-provenance attestations, CodeQL + Scorecard, secret-validation workflows, optional Sigstore.
 Link: [./tracks/security_supply_chain_20260627/](./tracks/security_supply_chain_20260627/)
 
-### [~] Track: Versioning & releases
+### [x] Track: Versioning & releases
 Track ID: `versioning_releases_20260627` — satisfies **R-16**
 Goal: `release-please` dynamic SemVer + CHANGELOG + GitHub Releases from Conventional Commits; version-consistency gate; annual Zenodo DOI snapshot link.
 Link: [./tracks/versioning_releases_20260627/](./tracks/versioning_releases_20260627/)

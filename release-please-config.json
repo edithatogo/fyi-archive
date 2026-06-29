@@ -1,0 +1,13 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "python",
+      "package-name": "fyi_archive",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        "VERSION",
+        "src/fyi_archive/version.py"
+      ]
+    }
+  }
+}
