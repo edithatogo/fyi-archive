@@ -116,7 +116,9 @@ def test_restore_hf_dataset_copies_manifest_and_requests(tmp_path: Path, monkeyp
     restored_request = snapshot / "data" / "raw" / "requests" / "authority" / "1" / "request.json"
     restored_manifest.parent.mkdir(parents=True)
     restored_request.parent.mkdir(parents=True)
-    restored_manifest.write_text('{"meta": {"record_count": 1}, "requests": []}\n', encoding="utf-8")
+    restored_manifest.write_text(
+        '{"meta": {"record_count": 1}, "requests": []}\n', encoding="utf-8"
+    )
     restored_request.write_text('{"request_id": 1}\n', encoding="utf-8")
 
     def fake_snapshot_download(**kwargs) -> str:
