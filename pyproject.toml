@@ -187,7 +187,7 @@ omit = ["*/__pycache__/*", "*/.venv/*", "*/.pixi/*"]
 branch = true
 
 [tool.coverage.report]
-fail_under = 60
+fail_under = 80
 show_missing = true
 exclude_lines = [
     "pragma: no cover",

@@ -32,12 +32,12 @@ behaviour), and a coverage ramp.
 
 ## Acceptance criteria
 
-- [ ] `fyi-archive doctor` emits a parity report to stdout and writes
+- [x] `fyi-archive doctor` emits a parity report to stdout and writes
       `conductor/archive_health.json`.
-- [ ] `archive_health_monitor.yml` fails on mirror-parity drift.
-- [ ] `test_fyi_cli_version.py` fails if installed `fyi-cli` != pinned version.
-- [ ] `validate_metadata.yml` fails on count mismatch between mirrors.
-- [ ] `make test-cov` hits the current `fail_under` target.
+- [x] `archive_health_monitor.yml` fails on mirror-parity drift.
+- [x] `test_fyi_cli_version.py` fails if installed `fyi-cli` != pinned version.
+- [x] `validate_metadata.yml` fails on count mismatch between mirrors.
+- [x] `make test-cov` hits the current `fail_under` target.
 
 ## Risks
 

@@ -70,7 +70,7 @@ Track ID: `multi_mirror_publish_20260627` — satisfies **R-08, R-09, R-10, R-22
 Goal: HF (live) + Zenodo (annual DOI, draft-first, gated) + OSF (project + components); Croissant/Frictionless metadata; DuckDB export; SBOM + provenance.
 Link: [./tracks/multi_mirror_publish_20260627/](./tracks/multi_mirror_publish_20260627/)
 
-### [~] Track: Observability & quality
+### [x] Track: Observability & quality
 Track ID: `observability_quality_20260627` — satisfies **R-19, R-23**; supports **R-27**
 Goal: `fyi-archive doctor` (freshness, coverage gaps, mirror parity); metadata parity CI; fyi-cli version-pin test; coverage ramp.
 Depends on: fyi-cli `archive-health-doctor`.

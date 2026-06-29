@@ -17,73 +17,31 @@ jobs:
   validate-metadata:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
         with:
           submodules: recursive
           persist-credentials: false
 
-      - name: Get manifest record count
-        id: manifest
-        run: |
-          if [ -f "manifests/latest_manifest.json" ]; then
-            count=$(jq '.record_count // 0' manifests/latest_manifest.json)
-            echo "count=$count" >> $GITHUB_OUTPUT
-          else
-            echo "count=0" >> $GITHUB_OUTPUT
-          fi
+      - name: Install uv
+        uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
 
-      - name: Get Hugging Face record count
-        id: hf-count
-        run: |
-          if [ -f "manifests/latest_manifest.json" ]; then
-            count=$(jq '.record_count // 0' manifests/latest_manifest.json)
-            echo "count=$count" >> $GITHUB_OUTPUT
-          else
-            echo "count=0" >> $GITHUB_OUTPUT
-          fi
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
 
-      - name: Get Zenodo record count
-        id: zenodo-count
-        run: |
-          # In a full implementation, this would query the Zenodo API
-          # For now, we'll use a placeholder
-          echo "count=0" >> $GITHUB_OUTPUT
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
 
-      - name: Get OSF record count
-        id: osf-count
-        run: |
-          # In a full implementation, this would query the OSF API
-          # For now, we'll use a placeholder
-          echo "count=0" >> $GITHUB_OUTPUT
+      - name: Validate mirror parity
+        env:
+          HF_RECORD_COUNT: ${{ vars.HF_RECORD_COUNT || '0' }}
+          OSF_RECORD_COUNT: ${{ vars.OSF_RECORD_COUNT || '0' }}
+          ZENODO_RECORD_COUNT: ${{ vars.ZENODO_RECORD_COUNT || '0' }}
+        run: uv run fyi-archive doctor check --tolerance 5
 
-      - name: Compare counts
-        id: compare
-        run: |
-          MANIFEST_COUNT=${{ steps.manifest.outputs.count }}
-          HF_COUNT=${{ steps.hf-count.outputs.count }}
-          ZENODO_COUNT=${{ steps.zenodo-count.outputs.count }}
-          OSF_COUNT=${{ steps.osf-count.outputs.count }}
-
-          echo "Manifest: $MANIFEST_COUNT"
-          echo "HF: $HF_COUNT"
-          echo "Zenodo: $ZENODO_COUNT"
-          echo "OSF: $OSF_COUNT"
-
-          MAX_DIFF=5
-
-          DIFF_HF=$((MANIFEST_COUNT - HF_COUNT))
-          DIFF_ZENODO=$((MANIFEST_COUNT - ZENODO_COUNT))
-          DIFF_OSF=$((MANIFEST_COUNT - OSF_COUNT))
-
-          if [ ${DIFF_HF#-} -gt $MAX_DIFF ] || [ ${DIFF_ZENODO#-} -gt $MAX_DIFF ] || [ ${DIFF_OSF#-} -gt $MAX_DIFF ]; then
-            echo "Mismatch exceeds tolerance of $MAX_DIFF records" >&2
-            exit 1
-          fi
-
-          echo "All counts within tolerance"
-
-      - name: Fail on mismatch
-        if: failure()
-        run: |
-          echo "Metadata validation failed - counts differ beyond tolerance"
-          exit 1
+      - name: Upload parity report
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: metadata-parity
+          path: conductor/archive_health.json

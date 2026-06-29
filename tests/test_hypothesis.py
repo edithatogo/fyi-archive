@@ -8,6 +8,8 @@ from typing import Any
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
+from fyi_archive.health import parity_report
+
 
 def canonical_hash_stable(data: dict[str, Any]) -> str:
     """Canonical hash for manifest records - invariant under key ordering."""
@@ -35,3 +37,28 @@ def test_canonical_hash_changes_if_content_changes(data: dict[str, Any]) -> None
         modified[first_key] = str(modified.get(first_key, "")) + "_modified"
         hash_modified = canonical_hash_stable(modified)
         assert hash_original != hash_modified
+
+
+@given(
+    manifest_records=st.integers(min_value=0, max_value=10_000),
+    tolerance=st.integers(min_value=0, max_value=50),
+    skew=st.integers(min_value=-50, max_value=50),
+)
+@settings(max_examples=100)
+def test_parity_report_health_tracks_tolerance(
+    manifest_records: int,
+    tolerance: int,
+    skew: int,
+) -> None:
+    """Mirror parity health must match the configured absolute skew tolerance."""
+    mirror_count = max(0, manifest_records - skew)
+    actual_skew = manifest_records - mirror_count
+
+    report = parity_report(
+        manifest_records=manifest_records,
+        mirror_records={"huggingface": mirror_count},
+        tolerance=tolerance,
+    )
+
+    assert report["healthy"] is (abs(actual_skew) <= tolerance)
+    assert report["mirrors"]["huggingface"]["within_tolerance"] is report["healthy"]
