@@ -44,6 +44,9 @@ dispatch. Defaults are intentionally conservative: scheduled runs dispatch a sma
 number of worker batches, and each worker keeps its own chunk, request, runtime, and
 disk caps.
 
+For controller smoke tests, set `dry_run=true` and use a temporary `state_label` such
+as `fyi-backfill-state-smoke` so the test does not advance the live corpus cursor.
+
 Use `Historical Backfill Batch` manually for targeted repair, replay, or smoke testing.
 The workflow uploads the ledger, raw/derived records, manifest outputs, and provenance
 as artifacts. Use `Merge Backfill Artifacts` to combine one worker run's chunk

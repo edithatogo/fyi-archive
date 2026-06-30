@@ -56,6 +56,11 @@ on:
         required: true
         default: false
         type: boolean
+      state_label:
+        description: GitHub issue label used to persist controller state
+        required: true
+        default: "fyi-backfill-state"
+        type: string
 
 concurrency:
   group: automated-historical-backfill
@@ -79,8 +84,8 @@ jobs:
       MAX_DISK_GB: ${{ inputs.max_disk_gb || '5' }}
       MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '50' }}
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '30' }}
-      STATE_LABEL: fyi-backfill-state
-      STATE_TITLE: FYI historical backfill state
+      STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
+      STATE_TITLE: FYI historical backfill state (${{ inputs.state_label || 'fyi-backfill-state' }})
       WORKER_CHUNK_SIZE: ${{ inputs.worker_chunk_size || '50' }}
       WORKER_MAX_CHUNKS: ${{ inputs.worker_max_chunks || '10' }}
     steps:
