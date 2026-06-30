@@ -44,7 +44,6 @@ def test_mark_merged_batches_advances_only_through_contiguous_merged_ranges() ->
         worker_run_id="run-2",
         worker_run_url="https://example.test/run/2",
         id_to=1000,
-        record_counts_by_label={"501-1000": 2},
     )
     assert first["next_id"] == 1
     assert first["complete"] is False
@@ -55,9 +54,7 @@ def test_mark_merged_batches_advances_only_through_contiguous_merged_ranges() ->
         worker_run_id="run-1",
         worker_run_url="https://example.test/run/1",
         id_to=1000,
-        record_counts_by_label={"1-500": 3, "501-1000": 2},
     )
     assert second["next_id"] == 1001
     assert second["complete"] is True
-    assert second["batches"][0]["record_count"] == 3
     assert backfill_state.has_pending_batches(second) is False

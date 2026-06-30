@@ -2,8 +2,8 @@ name: Automated Historical Backfill
 
 on:
   schedule:
-    # Keep the controller ticking through the day; overnight NZ time uses a higher cap.
-    - cron: "*/15 * * * *"
+    # Dispatch a bounded tranche daily; worker jobs keep their own runtime caps.
+    - cron: "17 13 * * *"
   workflow_dispatch:
     inputs:
       id_from:
@@ -22,7 +22,7 @@ on:
         default: "500"
         type: string
       max_batches:
-        description: Maximum worker runs to dispatch from this controller run when manually triggered
+        description: Maximum worker runs to dispatch from this controller run
         required: true
         default: "2"
         type: string
@@ -80,13 +80,10 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       ID_FROM: ${{ inputs.id_from || '1' }}
       ID_TO: ${{ inputs.id_to || '250000' }}
-      MAX_BATCHES_INPUT: ${{ inputs.max_batches || '' }}
-      MAX_BATCHES_DAYTIME: "2"
-      MAX_BATCHES_OVERNIGHT: "20"
+      MAX_BATCHES: ${{ inputs.max_batches || '2' }}
       MAX_DISK_GB: ${{ inputs.max_disk_gb || '5' }}
       MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '50' }}
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '30' }}
-      REPO: ${{ github.repository }}
       STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
       STATE_TITLE: FYI historical backfill state (${{ inputs.state_label || 'fyi-backfill-state' }})
       WORKER_CHUNK_SIZE: ${{ inputs.worker_chunk_size || '50' }}
@@ -101,6 +98,8 @@ jobs:
           python-version: "3.12"
 
       - name: Load persisted controller state
+        env:
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           mkdir -p .tmp
@@ -109,26 +108,14 @@ jobs:
             --description "State for automated FYI historical backfill" \
             --color "5319e7" \
             --force
-          gh issue list \
-            --repo "$REPO" \
-            --label "$STATE_LABEL" \
-            --state open \
-            --limit 100 \
-            --json number,title \
-            > .tmp/backfill-state-issues.json
           issue_number="$(
-            python - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-
-          state_title = os.environ["STATE_TITLE"]
-          issues = json.loads(Path(".tmp/backfill-state-issues.json").read_text(encoding="utf-8"))
-          for issue in issues:
-              if issue.get("title") == state_title:
-                  print(issue["number"])
-                  break
-          PY
+            gh issue list \
+              --repo "$REPO" \
+              --label "$STATE_LABEL" \
+              --state open \
+              --limit 1 \
+              --json number \
+              --jq '.[0].number // ""'
           )"
           if [ -n "$issue_number" ]; then
             gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
@@ -152,77 +139,14 @@ jobs:
           echo "$issue_number" > .tmp/backfill-state-issue-number.txt
           cat .tmp/backfill-state.json
 
-      - name: Determine controller batch cap
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          import os
-          from datetime import datetime
-          from zoneinfo import ZoneInfo
-
-          requested = os.environ.get("MAX_BATCHES_INPUT", "").strip()
-          if requested:
-              max_batches = int(requested)
-              window = "manual"
-          else:
-              hour = datetime.now(ZoneInfo("Pacific/Auckland")).hour
-              overnight = hour >= 20 or hour < 6
-              max_batches = int(os.environ["MAX_BATCHES_OVERNIGHT"] if overnight else os.environ["MAX_BATCHES_DAYTIME"])
-              window = "overnight" if overnight else "daytime"
-
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
-              env_file.write(f"MAX_BATCHES_EFFECTIVE={max_batches}\n")
-              env_file.write(f"MAX_BATCH_WINDOW={window}\n")
-
-          print(f"Using max_batches={max_batches} ({window})")
-          PY
-
-      - name: Check active worker runs
-        run: |
-          set -euo pipefail
-          queued="$(
-            gh run list \
-              --repo "$REPO" \
-              --workflow "Historical Backfill Batch" \
-              --status queued \
-              --limit 100 \
-              --json databaseId \
-              --jq 'length'
-          )"
-          in_progress="$(
-            gh run list \
-              --repo "$REPO" \
-              --workflow "Historical Backfill Batch" \
-              --status in_progress \
-              --limit 100 \
-              --json databaseId \
-              --jq 'length'
-          )"
-          active=$((queued + in_progress))
-          echo "ACTIVE_WORKER_RUNS=$active" >> "$GITHUB_ENV"
-          echo "Active Historical Backfill Batch runs: $active"
-
       - name: Plan worker dispatches
         run: |
           set -euo pipefail
-          if [ "${ACTIVE_WORKER_RUNS:-0}" -gt 0 ]; then
-            cat > .tmp/backfill-plan.json <<EOF
-          {
-            "batches": [],
-            "blocked_by_active_workers": true,
-            "complete": false,
-            "next_id": $(jq '.next_id // 1' .tmp/backfill-state.json),
-            "planned_count": 0
-          }
-          EOF
-            cat .tmp/backfill-plan.json
-            exit 0
-          fi
           python scripts/plan_auto_backfill.py \
             --id-from "$ID_FROM" \
             --id-to "$ID_TO" \
             --batch-span "$BATCH_SPAN" \
-            --max-batches "$MAX_BATCHES_EFFECTIVE" \
+            --max-batches "$MAX_BATCHES" \
             --state .tmp/backfill-state.json \
             --output .tmp/backfill-plan.json
           cat .tmp/backfill-plan.json
@@ -233,9 +157,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$(jq '.planned_count' .tmp/backfill-plan.json)" = "0" ]; then
-            if [ "$(jq -r '.blocked_by_active_workers // false' .tmp/backfill-plan.json)" = "true" ]; then
-              echo "Historical Backfill Batch runs are already active; not dispatching new work"
-            elif [ "$(jq -r '.blocked_by_pending // false' .tmp/backfill-plan.json)" = "true" ]; then
+            if [ "$(jq -r '.blocked_by_pending // false' .tmp/backfill-plan.json)" = "true" ]; then
               echo "Worker batches are still pending merge verification; not dispatching new work"
             else
               echo "No worker batches to dispatch"

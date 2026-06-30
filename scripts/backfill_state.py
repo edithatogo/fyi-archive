@@ -52,7 +52,7 @@ def _normalize_batch(batch: dict[str, Any]) -> dict[str, Any]:
     result = deepcopy(batch)
     result["id_from"] = str(int(result["id_from"]))
     result["id_to"] = str(int(result["id_to"]))
-    result["label"] = str(result.get("label") or f"{result['id_from']}-{result['id_to']}")
+    result["label"] = str(result.get("label") or f'{result["id_from"]}-{result["id_to"]}')
     result.setdefault("status", "pending")
     return result
 
@@ -90,7 +90,6 @@ def mark_merged_batches(
     worker_run_id: str,
     worker_run_url: str,
     id_to: int,
-    record_counts_by_label: dict[str, int] | None = None,
 ) -> dict[str, Any]:
     """Mark batch labels as merged and advance the verified cursor."""
     updated = deepcopy(state)
@@ -102,10 +101,6 @@ def mark_merged_batches(
             batch["merged_at"] = iso_now()
             batch["worker_run_id"] = worker_run_id
             batch["worker_run_url"] = worker_run_url
-            if record_counts_by_label is not None:
-                label = str(batch.get("label") or "")
-                if label in record_counts_by_label:
-                    batch["record_count"] = int(record_counts_by_label[label])
     batches.sort(key=_batch_key)
     cursor = state_next_id(updated, 1)
     for batch in batches:

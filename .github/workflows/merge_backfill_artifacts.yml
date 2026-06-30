@@ -11,11 +11,6 @@ on:
         required: true
         default: "fyi-backfill-state"
         type: string
-      dry_run:
-        description: Merge artifacts without updating controller state
-        required: true
-        default: false
-        type: boolean
       run_id:
         description: Historical Backfill Batch run ID to merge
         required: true
@@ -26,19 +21,13 @@ permissions:
   contents: read
   issues: write
 
-concurrency:
-  group: historical-backfill-merge-${{ inputs.state_label || 'fyi-backfill-state' }}
-  cancel-in-progress: false
-
 jobs:
   merge:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      DRY_RUN: ${{ inputs.dry_run || false }}
       STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
-      STATE_TITLE: FYI historical backfill state (${{ inputs.state_label || 'fyi-backfill-state' }})
       SOURCE_RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -74,10 +63,9 @@ jobs:
               --repo "$REPO" \
               --label "$STATE_LABEL" \
               --state open \
-              --limit 100 \
-              --json number,title \
-              --jq '.[] | select(.title == env.STATE_TITLE) | .number' \
-              | head -n 1
+              --limit 1 \
+              --json number \
+              --jq '.[0].number // ""'
           )"
           if [ -z "$issue_number" ]; then
             echo "Could not find open backfill state issue for label $STATE_LABEL"
@@ -87,24 +75,8 @@ jobs:
           gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
             > .tmp/backfill-state.json
           gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID/artifacts" \
-            --jq '[.artifacts[].name | select(startswith("historical-backfill-"))]' \
-            > .tmp/backfill-artifact-names.json
-          python - <<'PY'
-          import json
-          import re
-          from pathlib import Path
-
-          names = json.loads(Path(".tmp/backfill-artifact-names.json").read_text(encoding="utf-8"))
-          ranges: list[tuple[int, int]] = []
-          for name in names:
-              match = re.fullmatch(r"historical-backfill-(\d+)-(\d+)", name)
-              if match:
-                  ranges.append((int(match.group(1)), int(match.group(2))))
-          if not ranges:
-              raise SystemExit("No historical-backfill range artifacts found")
-          merged_label = f"{min(start for start, _ in ranges)}-{max(end for _, end in ranges)}"
-          Path(".tmp/backfill-merged-labels.json").write_text(json.dumps([merged_label], indent=2) + "\n", encoding="utf-8")
-          PY
+            --jq '[.artifacts[].name | select(startswith("historical-backfill-")) | sub("^historical-backfill-"; "")]' \
+            > .tmp/backfill-merged-labels.json
 
       - name: Merge manifests
         run: |
@@ -131,25 +103,7 @@ jobs:
           manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
           print(json.dumps(manifest["meta"], indent=2, sort_keys=True))
           if manifest["meta"]["record_count"] < 1:
-              print("merged backfill manifest is empty; recording verified empty range")
-          PY
-
-      - name: Record batch counts
-        run: |
-          set -euo pipefail
-          uv run python - <<'PY'
-          import json
-          from pathlib import Path
-
-          counts: dict[str, int] = {}
-          merged_labels = json.loads(Path(".tmp/backfill-merged-labels.json").read_text(encoding="utf-8"))
-          merged_label = str(merged_labels[0])
-          total_count = 0
-          for manifest_path in Path(".tmp/backfill-artifacts").glob("historical-backfill-*/manifests/latest_manifest.json"):
-              manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-              total_count += int(manifest.get("meta", {}).get("record_count") or 0)
-          counts[merged_label] = total_count
-          Path(".tmp/backfill-record-counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+              raise SystemExit("merged backfill manifest is empty")
           PY
 
       - name: Generate merge provenance
@@ -164,7 +118,6 @@ jobs:
             --fetch-label "historical-backfill-merge-${RUN_ID}"
 
       - name: Persist merged backfill state
-        if: env.DRY_RUN != 'true'
         env:
           ISSUE_NUMBER_PATH: .tmp/backfill-state-issue-number.txt
           REPO: ${{ github.repository }}
@@ -193,32 +146,12 @@ jobs:
               worker_run_id=os.environ["RUN_ID"],
               worker_run_url=os.environ["RUN_URL"],
               id_to=int(state["id_to"]),
-              record_counts_by_label=json.loads(Path(".tmp/backfill-record-counts.json").read_text(encoding="utf-8")),
           )
           state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
           gh issue edit "$issue_number" \
             --repo "$REPO" \
             --body-file .tmp/backfill-state.json
-
-      - name: Write dry-run merge marker
-        if: env.DRY_RUN == 'true'
-        run: |
-          set -euo pipefail
-          uv run python - <<'PY'
-          import json
-          from pathlib import Path
-
-          manifest = json.loads(Path("manifests/latest_manifest.json").read_text(encoding="utf-8"))
-          payload = {
-              "dry_run": True,
-              "source_run_id": "${{ env.SOURCE_RUN_ID }}",
-              "record_count": int(manifest.get("meta", {}).get("record_count") or 0),
-              "merged_labels": json.loads(Path(".tmp/backfill-merged-labels.json").read_text(encoding="utf-8")),
-          }
-          Path("dist").mkdir(parents=True, exist_ok=True)
-          Path("dist/merge_backfill_dry_run.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-          PY
 
       - name: Upload merged backfill
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -229,4 +162,3 @@ jobs:
             manifests/latest_manifest.parquet
             manifests/authorities.json
             dist/provenance.json
-            dist/merge_backfill_dry_run.json
