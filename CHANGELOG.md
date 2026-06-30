@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.3.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.2.1...fyi_archive-v0.3.0) (2026-06-30)
+
+
+### Features
+
+* automate historical backfill dispatch ([5ff90dd](https://github.com/edithatogo/fyi-archive/commit/5ff90dd82cd032aef26b6c11ebbeb607bfe50c49))
+
+
+### Bug Fixes
+
+* isolate automated backfill smoke state ([dc4ce1d](https://github.com/edithatogo/fyi-archive/commit/dc4ce1da16d0a81badeb7509e80c8ba02bacbe34))
+* persist new backfill state issue ([8d825d9](https://github.com/edithatogo/fyi-archive/commit/8d825d98d6fcd7c5c8615b3aa196ed25e34cd9ab))
+
 ## [0.2.1](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.2.0...fyi_archive-v0.2.1) (2026-06-29)
 
 
