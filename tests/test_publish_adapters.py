@@ -270,7 +270,10 @@ def test_zenodo_deposition_artifacts_are_verifiable(tmp_path: Path) -> None:
                         "filename": "latest_manifest.json",
                         "filesize": file_path.stat().st_size,
                         "checksum": f"sha256:{local_artifacts[0].sha256}",
-                        "links": {"download": "https://zenodo.example/file"},
+                        "links": {
+                            "self": "https://zenodo.example/api/deposit/depositions/1/files/1",
+                            "download": "https://zenodo.example/file",
+                        },
                     },
                 ],
             },
@@ -287,6 +290,7 @@ def test_zenodo_deposition_artifacts_are_verifiable(tmp_path: Path) -> None:
 
     assert mirror_verified(results)
     assert results[0].checksum_matches is True
+    assert results[0].remote_url == "https://zenodo.example/file"
 
 
 def test_metadata_and_duckdb_export(tmp_path: Path) -> None:

@@ -11,6 +11,7 @@ from __future__ import annotations
 import typer
 
 from fyi_archive.commands.doctor import app as doctor_app
+from fyi_archive.commands.backfill import app as backfill_app
 from fyi_archive.commands.manifest import app as manifest_app
 from fyi_archive.commands.publish import app as publish_app
 from fyi_archive.commands.seed import app as seed_app
@@ -31,6 +32,7 @@ def version() -> None:
 
 
 app.add_typer(doctor_app, name="doctor")
+app.add_typer(backfill_app, name="backfill")
 app.add_typer(manifest_app, name="manifest")
 app.add_typer(publish_app, name="publish")
 app.add_typer(seed_app, name="seed")

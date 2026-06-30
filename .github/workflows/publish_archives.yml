@@ -56,6 +56,7 @@ permissions:
   attestations: write
   contents: write
   id-token: write
+  issues: read
   pull-requests: write
 
 jobs:
@@ -441,6 +442,21 @@ jobs:
             --osf-node-id "$node_id" \
             --osf-token "$OSF_TOKEN" \
             --report-path dist/mirror_verification.json
+
+      - name: Build backfill verification report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          set -euo pipefail
+          uv run fyi-archive backfill report \
+            --repo "$GITHUB_REPOSITORY" \
+            --manifest-path manifests/latest_manifest.json \
+            --mirror-report-path dist/mirror_verification.json \
+            --output-path dist/backfill_verification.json \
+            --output-dir versions
 
       - name: Upload publish evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
