@@ -1,6 +1,9 @@
 name: Merge Backfill Artifacts
 
 on:
+  workflow_run:
+    workflows: ["Historical Backfill Batch"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       run_id:
@@ -14,7 +17,10 @@ permissions:
 
 jobs:
   merge:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    env:
+      SOURCE_RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -30,7 +36,7 @@ jobs:
       - name: Download backfill artifacts
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ inputs.run_id }}
+          RUN_ID: ${{ env.SOURCE_RUN_ID }}
         run: |
           set -euo pipefail
           mkdir -p .tmp/backfill-artifacts
@@ -68,7 +74,7 @@ jobs:
 
       - name: Generate merge provenance
         env:
-          RUN_ID: ${{ inputs.run_id }}
+          RUN_ID: ${{ env.SOURCE_RUN_ID }}
         run: |
           set -euo pipefail
           uv run python scripts/gen_provenance.py \
@@ -80,7 +86,7 @@ jobs:
       - name: Upload merged backfill
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: merged-backfill-${{ inputs.run_id }}
+          name: merged-backfill-${{ env.SOURCE_RUN_ID }}
           path: |
             manifests/latest_manifest.json
             manifests/latest_manifest.parquet

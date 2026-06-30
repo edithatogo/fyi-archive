@@ -92,7 +92,7 @@ Archive publication versions are dynamic monthly identifiers of the form
 | `archive_health_monitor.yml` | scheduled preliminary archive health report |
 | `validate_metadata.yml` | metadata parity-count check |
 | `automated_historical_backfill.yml` | scheduled controller that dispatches bounded historical backfill workers and persists progress in a GitHub issue |
-| `historical_seed.yml` | manual / fan-out historical backfill (drives `fyi-cli`) |
+| `historical_seed.yml` / `merge_backfill_artifacts.yml` | manual/automated historical backfill workers and merged manifest artifacts |
 | `hf_sync.yml` | daily incremental sync to HF, with SHA-256 verify |
 | `publish_archives.yml` | monthly multi-mirror publish (HF/Zenodo/OSF), verification, versioned evidence, build provenance |
 | `zenodo_publish.yml` | gated Zenodo DOI citation update (`environment: zenodo-production`) |

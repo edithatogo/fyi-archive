@@ -49,8 +49,9 @@ as `fyi-backfill-state-smoke` so the test does not advance the live corpus curso
 
 Use `Historical Backfill Batch` manually for targeted repair, replay, or smoke testing.
 The workflow uploads the ledger, raw/derived records, manifest outputs, and provenance
-as artifacts. Use `Merge Backfill Artifacts` to combine one worker run's chunk
-manifests into a single merged manifest artifact.
+as artifacts. `Merge Backfill Artifacts` runs automatically after successful worker
+runs and can also be dispatched manually to combine one worker run's chunk manifests
+into a single merged manifest artifact.
 
 ## Full Crawl Shape
 
