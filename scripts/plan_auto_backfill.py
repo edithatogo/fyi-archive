@@ -5,19 +5,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-def _state_next_id(state: dict[str, Any] | None, fallback: int) -> int:
-    if not state:
-        return fallback
-    raw_value = state.get("next_id", fallback)
-    try:
-        return int(raw_value)
-    except (TypeError, ValueError) as exc:
-        msg = f"state next_id must be an integer, got {raw_value!r}"
-        raise ValueError(msg) from exc
+from backfill_state import has_pending_batches, state_next_id
 
 
 def plan_dispatches(
@@ -42,7 +36,15 @@ def plan_dispatches(
         msg = "max_batches must be positive"
         raise ValueError(msg)
 
-    current = max(_state_next_id(state, id_from), id_from)
+    current = max(state_next_id(state, id_from), id_from)
+    if has_pending_batches(state):
+        return {
+            "batches": [],
+            "blocked_by_pending": True,
+            "complete": False,
+            "next_id": current,
+            "planned_count": 0,
+        }
     batches: list[dict[str, str]] = []
     for _ in range(max_batches):
         if current > id_to:
@@ -59,6 +61,7 @@ def plan_dispatches(
 
     return {
         "batches": batches,
+        "blocked_by_pending": False,
         "complete": current > id_to,
         "next_id": min(current, id_to + 1),
         "planned_count": len(batches),

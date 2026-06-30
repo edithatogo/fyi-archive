@@ -121,7 +121,7 @@ jobs:
             gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
               > .tmp/backfill-state.json
           else
-            printf '{"next_id": %s, "dispatched": []}\n' "$ID_FROM" > .tmp/backfill-state.json
+            printf '{"next_id": %s, "batches": [], "dispatched": []}\n' "$ID_FROM" > .tmp/backfill-state.json
             issue_url="$(
               gh issue create \
                 --repo "$REPO" \
@@ -157,7 +157,11 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$(jq '.planned_count' .tmp/backfill-plan.json)" = "0" ]; then
-            echo "No worker batches to dispatch"
+            if [ "$(jq -r '.blocked_by_pending // false' .tmp/backfill-plan.json)" = "true" ]; then
+              echo "Worker batches are still pending merge verification; not dispatching new work"
+            else
+              echo "No worker batches to dispatch"
+            fi
             exit 0
           fi
           jq -c '.batches[]' .tmp/backfill-plan.json | while read -r batch; do
@@ -186,19 +190,35 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
+          if [ "$(jq '.planned_count' .tmp/backfill-plan.json)" = "0" ]; then
+            echo "No state update required"
+            exit 0
+          fi
           issue_number="$(cat "$ISSUE_NUMBER_PATH")"
           python - <<'PY'
           import json
           import os
           from datetime import UTC, datetime
           from pathlib import Path
+          import sys
+
+          sys.path.insert(0, str(Path("scripts")))
+
+          from backfill_state import append_pending_batches
 
           state_path = Path(".tmp/backfill-state.json")
           plan_path = Path(".tmp/backfill-plan.json")
           state = json.loads(state_path.read_text(encoding="utf-8"))
           plan = json.loads(plan_path.read_text(encoding="utf-8"))
-          dispatched = list(state.get("dispatched") or [])
-          dispatched.append(
+          updated = append_pending_batches(
+              state=state,
+              batches=plan["batches"],
+              controller_run_id=os.environ["RUN_ID"],
+              controller_run_url=os.environ["RUN_URL"],
+          )
+          updated["complete"] = False
+          updated["dispatched"] = list(state.get("dispatched") or [])
+          updated["dispatched"].append(
               {
                   "at": datetime.now(UTC).isoformat(),
                   "batches": plan["batches"],
@@ -206,14 +226,8 @@ jobs:
                   "controller_run_url": os.environ["RUN_URL"],
               }
           )
-          updated = {
-              "complete": plan["complete"],
-              "dispatched": dispatched[-50:],
-              "id_from": int(os.environ["ID_FROM"]),
-              "id_to": int(os.environ["ID_TO"]),
-              "next_id": plan["next_id"],
-              "updated_at": datetime.now(UTC).isoformat(),
-          }
+          updated["id_from"] = int(os.environ["ID_FROM"])
+          updated["id_to"] = int(os.environ["ID_TO"])
           state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
           gh issue edit "$issue_number" \

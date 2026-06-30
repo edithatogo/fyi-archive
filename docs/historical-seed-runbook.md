@@ -39,8 +39,8 @@ All caps preserve the ledger entries already written.
 
 Use `Automated Historical Backfill` for unattended corpus backfilling. It persists
 progress in the `FYI historical backfill state` GitHub issue, dispatches bounded
-`Historical Backfill Batch` worker runs, and advances `next_id` after successful worker
-dispatch. Defaults are intentionally conservative: scheduled runs dispatch a small
+`Historical Backfill Batch` worker runs, and advances `next_id` only after the worker
+batch has been merged and verified. Defaults are intentionally conservative: scheduled runs dispatch a small
 number of worker batches, and each worker keeps its own chunk, request, runtime, and
 disk caps.
 
