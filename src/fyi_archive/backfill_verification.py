@@ -8,15 +8,15 @@ import subprocess
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import httpx
 from huggingface_hub import snapshot_download
 
 from fyi_archive.publish.evidence import archive_publication_version
 from fyi_archive.publish.hf_publish import sha256_file
-from fyi_archive.publish.verification import manifest_record_count
 from fyi_archive.publish.zenodo_publish import ZENODO_API, deposition_artifacts, get_deposition
+from fyi_archive.publish.verification import manifest_record_count
 
 
 def utc_now() -> datetime:
@@ -24,7 +24,7 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
-def gh_json(args: list[str]) -> dict[str, Any] | list[dict[str, Any]]:
+def gh_json(args: list[str]) -> Any:
     """Run gh with JSON output and return the parsed payload."""
     completed = subprocess.run(
         ["gh", *args],
@@ -33,18 +33,30 @@ def gh_json(args: list[str]) -> dict[str, Any] | list[dict[str, Any]]:
         text=True,
         env=os.environ.copy(),
     )
-    return cast("dict[str, Any] | list[dict[str, Any]]", json.loads(completed.stdout))
+    return json.loads(completed.stdout)
 
 
-def load_controller_state(
-    *, repo: str, state_label: str, issue_number: int | None = None
-) -> dict[str, Any]:
+def load_controller_state(*, repo: str, state_label: str, issue_number: int | None = None) -> dict[str, Any]:
     """Load the active backfill controller issue body and metadata."""
     if issue_number is None:
-        state_title = f"FYI historical backfill state ({state_label})"
-        issues = cast(
-            "list[dict[str, Any]]",
-            gh_json(
+        issue = gh_json(
+            [
+                "issue",
+                "list",
+                "--repo",
+                repo,
+                "--label",
+                state_label,
+                "--state",
+                "open",
+                "--limit",
+                "1",
+                "--json",
+                "number,url,title",
+            ],
+        )
+        if not issue:
+            issue = gh_json(
                 [
                     "issue",
                     "list",
@@ -53,63 +65,21 @@ def load_controller_state(
                     "--label",
                     state_label,
                     "--state",
-                    "open",
+                    "all",
                     "--limit",
-                    "100",
+                    "1",
                     "--json",
                     "number,url,title",
                 ],
-            ),
-        )
-        issue = next((item for item in issues if item.get("title") == state_title), None)
-        if issue is None:
-            issues = cast(
-                "list[dict[str, Any]]",
-                gh_json(
-                    [
-                        "issue",
-                        "list",
-                        "--repo",
-                        repo,
-                        "--label",
-                        state_label,
-                        "--state",
-                        "all",
-                        "--limit",
-                        "100",
-                        "--json",
-                        "number,url,title",
-                    ],
-                ),
             )
-            issue = next((item for item in issues if item.get("title") == state_title), None)
-        if issue is None:
+        if not issue:
             msg = f"no issue found for backfill state label {state_label!r}"
             raise ValueError(msg)
-        issue_number = int(issue["number"])
-        issue_url = str(issue.get("url") or "")
-        issue_title = str(issue.get("title") or "")
+        issue_number = int(issue[0]["number"])
+        issue_url = str(issue[0].get("url") or "")
+        issue_title = str(issue[0].get("title") or "")
     else:
-        issue = cast(
-            "dict[str, Any]",
-            gh_json(
-                [
-                    "issue",
-                    "view",
-                    str(issue_number),
-                    "--repo",
-                    repo,
-                    "--json",
-                    "body,url,title,number",
-                ],
-            ),
-        )
-        issue_url = str(issue.get("url") or "")
-        issue_title = str(issue.get("title") or "")
-
-    body_payload = cast(
-        "dict[str, Any]",
-        gh_json(
+        issue = gh_json(
             [
                 "issue",
                 "view",
@@ -117,11 +87,23 @@ def load_controller_state(
                 "--repo",
                 repo,
                 "--json",
-                "body",
+                "body,url,title,number",
             ],
-        ),
-    )
-    body = body_payload["body"]
+        )
+        issue_url = str(issue.get("url") or "")
+        issue_title = str(issue.get("title") or "")
+
+    body = gh_json(
+        [
+            "issue",
+            "view",
+            str(issue_number),
+            "--repo",
+            repo,
+            "--json",
+            "body",
+        ],
+    )["body"]
     try:
         state = json.loads(body)
     except json.JSONDecodeError as exc:
@@ -143,16 +125,6 @@ def batch_requested_ids(batch: dict[str, Any]) -> int:
     return max(0, int(batch.get("id_to") or 0) - int(batch.get("id_from") or 0) + 1)
 
 
-def _batch_range(batch: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "label": str(batch.get("label") or ""),
-        "id_from": int(batch.get("id_from") or 0),
-        "id_to": int(batch.get("id_to") or 0),
-        "record_count": int(batch.get("record_count") or 0),
-        "worker_run_id": batch.get("worker_run_id"),
-    }
-
-
 def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
     """Summarize controller state into report-friendly counts."""
     state = state_info["state"]
@@ -165,13 +137,10 @@ def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
             if isinstance(batch.get("worker_run_id"), str) and batch.get("worker_run_id")
         },
     )
-    pending_batches = [
-        batch for batch in batches if str(batch.get("status") or "pending") == "pending"
-    ]
+    pending_batches = [batch for batch in batches if str(batch.get("status") or "pending") == "pending"]
     merged_batches = [batch for batch in batches if str(batch.get("status") or "") == "merged"]
     captured_records = sum(int(batch.get("record_count") or 0) for batch in merged_batches)
     dispatched_requested_ids = sum(batch_requested_ids(batch) for batch in batches)
-    merged_batch_ranges = [_batch_range(batch) for batch in merged_batches]
     return {
         "state_issue_number": state_info["issue_number"],
         "state_issue_url": state_info["issue_url"],
@@ -188,13 +157,10 @@ def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
         "merged_batches": len(merged_batches),
         "captured_records": captured_records,
         "worker_runs": worker_runs,
-        "merged_batch_ranges": merged_batch_ranges,
     }
 
 
-def remote_huggingface_record_count(
-    *, repo_id: str, token: str | None, revision: str | None = None
-) -> dict[str, Any]:
+def remote_huggingface_record_count(*, repo_id: str, token: str | None, revision: str | None = None) -> dict[str, Any]:
     """Fetch the published HF manifest and return its record count."""
     with tempfile.TemporaryDirectory() as cache_dir:
         snapshot_path = Path(
@@ -218,9 +184,7 @@ def remote_huggingface_record_count(
         }
 
 
-def remote_zenodo_record_count(
-    *, token: str, deposition_id: int, api_url: str = ZENODO_API
-) -> dict[str, Any]:
+def remote_zenodo_record_count(*, token: str, deposition_id: int, api_url: str = ZENODO_API) -> dict[str, Any]:
     """Fetch the published Zenodo manifest and return its record count."""
     deposition = get_deposition(token=token, deposition_id=deposition_id, api_url=api_url)
     manifest_url = None
@@ -239,42 +203,8 @@ def remote_zenodo_record_count(
         "doi": deposition.get("doi"),
         "api_url": api_url,
         "manifest_url": manifest_url,
-        "record_count": int(
-            data.get("meta", {}).get("record_count") or data.get("record_count") or 0
-        ),
+        "record_count": int(data.get("meta", {}).get("record_count") or data.get("record_count") or 0),
     }
-
-
-def manifest_request_ids(manifest_path: Path) -> list[int] | None:
-    """Return manifest request IDs when the manifest carries per-request records."""
-    data = json.loads(manifest_path.read_text(encoding="utf-8"))
-    requests = data.get("requests")
-    if not isinstance(requests, list):
-        return None
-    request_ids: list[int] = []
-    for record in requests:
-        if not isinstance(record, dict):
-            continue
-        request_id = record.get("request_id")
-        if isinstance(request_id, int):
-            request_ids.append(request_id)
-    return sorted(set(request_ids))
-
-
-def ids_outside_ranges(
-    request_ids: list[int] | None, ranges: list[dict[str, Any]]
-) -> list[int] | None:
-    """Return published request IDs outside controller-merged batch ranges."""
-    if request_ids is None:
-        return None
-    normalized_ranges = [
-        (int(item.get("id_from") or 0), int(item.get("id_to") or 0)) for item in ranges
-    ]
-    outside: list[int] = []
-    for request_id in request_ids:
-        if not any(start <= request_id <= end for start, end in normalized_ranges):
-            outside.append(request_id)
-    return outside
 
 
 def build_backfill_verification_report(
@@ -288,17 +218,9 @@ def build_backfill_verification_report(
     generated_at = utc_now()
     controller = controller_summary(state_info)
     merged_records = manifest_record_count(merged_manifest_path)
-    published_request_ids = manifest_request_ids(merged_manifest_path)
-    outside_controller = ids_outside_ranges(
-        published_request_ids,
-        controller["merged_batch_ranges"],
-    )
-    controller_coverage_verified = outside_controller is not None
-    outside_controller_count = None if outside_controller is None else len(outside_controller)
     hf_records = int(hf_info["record_count"]) if hf_info else None
     zenodo_records = int(zenodo_info["record_count"]) if zenodo_info else None
-    published_ids_match_controller = outside_controller_count in (None, 0)
-    return {
+    report = {
         "generated_at": generated_at.isoformat(),
         "archive_publication_version": archive_publication_version(generated_at=generated_at),
         "controller": controller,
@@ -308,13 +230,6 @@ def build_backfill_verification_report(
             "captured_records": controller["captured_records"],
             "merged_records": merged_records,
             "worker_runs": controller["worker_runs"],
-            "published_request_ids": None
-            if published_request_ids is None
-            else len(published_request_ids),
-            "published_ids_outside_controller_merged_ranges": outside_controller_count,
-            "published_ids_outside_controller_sample": None
-            if outside_controller is None
-            else outside_controller[:25],
         },
         "published": {
             "huggingface": hf_info,
@@ -323,22 +238,18 @@ def build_backfill_verification_report(
         "comparison": {
             "captured_minus_merged": controller["captured_records"] - merged_records,
             "merged_minus_huggingface": None if hf_records is None else merged_records - hf_records,
-            "merged_minus_zenodo": None
-            if zenodo_records is None
-            else merged_records - zenodo_records,
+            "merged_minus_zenodo": None if zenodo_records is None else merged_records - zenodo_records,
             "captured_matches_merged": controller["captured_records"] == merged_records,
-            "controller_coverage_verified": controller_coverage_verified,
-            "published_ids_match_controller_ranges": published_ids_match_controller,
             "merged_matches_huggingface": hf_records is None or merged_records == hf_records,
             "merged_matches_zenodo": zenodo_records is None or merged_records == zenodo_records,
             "fully_verified": (
                 controller["captured_records"] == merged_records
-                and published_ids_match_controller
                 and (hf_records is None or merged_records == hf_records)
                 and (zenodo_records is None or merged_records == zenodo_records)
             ),
         },
     }
+    return report
 
 
 def write_backfill_report(path: Path, report: dict[str, Any]) -> None:

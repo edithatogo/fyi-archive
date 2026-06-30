@@ -106,6 +106,21 @@ jobs:
               raise SystemExit("merged backfill manifest is empty")
           PY
 
+      - name: Record batch counts
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          counts: dict[str, int] = {}
+          for manifest_path in Path(".tmp/backfill-artifacts").glob("historical-backfill-*/manifests/latest_manifest.json"):
+              label = manifest_path.parent.parent.name.removeprefix("historical-backfill-")
+              manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+              counts[label] = int(manifest.get("meta", {}).get("record_count") or 0)
+          Path(".tmp/backfill-record-counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+
       - name: Generate merge provenance
         env:
           RUN_ID: ${{ env.SOURCE_RUN_ID }}
@@ -146,6 +161,7 @@ jobs:
               worker_run_id=os.environ["RUN_ID"],
               worker_run_url=os.environ["RUN_URL"],
               id_to=int(state["id_to"]),
+              record_counts_by_label=json.loads(Path(".tmp/backfill-record-counts.json").read_text(encoding="utf-8")),
           )
           state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY

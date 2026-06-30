@@ -51,14 +51,8 @@ on:
         required: true
         default: "1"
         type: string
-      dry_run:
-        description: Build and verify publication artifacts without uploading to mirrors
-        required: true
-        default: false
-        type: boolean
 
 permissions:
-  actions: read
   attestations: write
   contents: write
   id-token: write
@@ -72,13 +66,12 @@ jobs:
     env:
       PUBLICATION_TARGET: ${{ inputs.publication_target || 'huggingface' }}
       PUBLISH_ZENODO: ${{ inputs.publish || false }}
-      SEED_BEFORE_PUBLISH: ${{ inputs.seed_before_publish || false }}
+      SEED_BEFORE_PUBLISH: ${{ inputs.seed_before_publish || github.event_name == 'schedule' }}
       SEED_DRY_RUN: ${{ inputs.seed_dry_run || false }}
       SEED_ID_FROM: ${{ inputs.seed_id_from || '20000' }}
       SEED_ID_TO: ${{ inputs.seed_id_to || '20000' }}
       SEED_MAX_REQUESTS: ${{ inputs.seed_max_requests || '1' }}
       ZENODO_CONFIRM: ${{ inputs.confirm || '' }}
-      DRY_RUN: ${{ inputs.dry_run || false }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -92,136 +85,6 @@ jobs:
         run: |
           set -euo pipefail
           uv sync --extra dev --frozen
-
-      - name: Restore cumulative merged backfill bundle
-        if: env.SEED_BEFORE_PUBLISH != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          mkdir -p .tmp/merged-backfill
-          gh issue view 9 \
-            --repo "$GITHUB_REPOSITORY" \
-            --json body \
-            --jq .body \
-            > .tmp/backfill-state.json
-          uv run python - <<'PY'
-          import json
-          from pathlib import Path
-
-          state = json.loads(Path(".tmp/backfill-state.json").read_text())
-          worker_run_ids = sorted(
-              {
-                  str(batch["worker_run_id"])
-                  for batch in state.get("batches", [])
-                  if isinstance(batch, dict)
-                  and batch.get("status") == "merged"
-                  and batch.get("worker_run_id")
-              }
-          )
-          if not worker_run_ids:
-              raise SystemExit("No controller-verified merged worker run IDs are available.")
-          Path(".tmp/merged-worker-run-ids.txt").write_text(
-              "\n".join(worker_run_ids) + "\n",
-              encoding="utf-8",
-          )
-          print("controller merged worker runs", len(worker_run_ids))
-          PY
-          gh api --paginate \
-            "repos/$GITHUB_REPOSITORY/actions/workflows/merge_backfill_artifacts.yml/runs?status=success&per_page=100" \
-            --jq '.workflow_runs[].id' \
-            > .tmp/merged-backfill-runs.txt
-          if [ ! -s .tmp/merged-backfill-runs.txt ]; then
-            echo "No successful Merge Backfill Artifacts runs are available; run that workflow before publishing." >&2
-            exit 1
-          fi
-          while read -r run_id; do
-            if [ -z "$run_id" ]; then
-              continue
-            fi
-            artifact_names="$(
-              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" \
-                --jq '.artifacts[].name' || true
-            )"
-            should_download=false
-            while read -r artifact_name; do
-              if [[ "$artifact_name" != merged-backfill-* ]]; then
-                continue
-              fi
-              worker_run_id="${artifact_name#merged-backfill-}"
-              if grep -Fxq "$worker_run_id" .tmp/merged-worker-run-ids.txt; then
-                should_download=true
-                break
-              fi
-            done <<< "$artifact_names"
-            if [ "$should_download" != "true" ]; then
-              echo "Skipping merge run $run_id; it has no controller-verified merged worker artifact." >&2
-              continue
-            fi
-            gh run download "$run_id" \
-              --repo "$GITHUB_REPOSITORY" \
-              --pattern 'merged-backfill-*' \
-              --dir ".tmp/merged-backfill/$run_id" || {
-                echo "No merged-backfill artifact found for merge run $run_id; skipping" >&2
-              }
-          done < .tmp/merged-backfill-runs.txt
-          mapfile -t restored_manifests < <(find .tmp/merged-backfill -path '*/manifests/latest_manifest.json' | sort)
-          if [ "${#restored_manifests[@]}" -lt 1 ]; then
-            echo "No merged manifests were restored from successful merge runs." >&2
-            exit 1
-          fi
-          mapfile -t filtered_manifests < <(
-            for manifest in "${restored_manifests[@]}"; do
-              artifact_dir="$(basename "$(dirname "$(dirname "$manifest")")")"
-              worker_run_id="${artifact_dir#merged-backfill-}"
-              if grep -Fxq "$worker_run_id" .tmp/merged-worker-run-ids.txt; then
-                echo "$manifest"
-              else
-                echo "Ignoring restored manifest $manifest because worker run $worker_run_id is not controller-verified." >&2
-              fi
-            done
-          )
-          if [ "${#filtered_manifests[@]}" -lt 1 ]; then
-            echo "No controller-verified merged manifests were restored." >&2
-            exit 1
-          fi
-          args=()
-          for manifest in "${filtered_manifests[@]}"; do
-            args+=(--input-manifest "$manifest")
-          done
-          uv run fyi-archive manifest merge \
-            "${args[@]}" \
-            --manifest-path manifests/latest_manifest.json \
-            --parquet-path manifests/latest_manifest.parquet \
-            --authorities-path manifests/authorities.json \
-            --fyi-cli-version 1.0.0
-          latest_run_id="$(find .tmp/merged-backfill -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -n | tail -n 1)"
-          latest_manifest="$(
-            find ".tmp/merged-backfill/$latest_run_id" -path '*/manifests/latest_manifest.json' | sort | head -n 1
-          )"
-          artifact_root=""
-          if [ -n "$latest_manifest" ]; then
-            artifact_root="$(dirname "$(dirname "$latest_manifest")")"
-          fi
-          for path in manifests metadata dist data versions; do
-            if [ -n "$artifact_root" ] && [ "$path" != "manifests" ] && [ -e "$artifact_root/$path" ]; then
-              mkdir -p "$path"
-              cp -a "$artifact_root/$path/." "$path/"
-            fi
-          done
-          uv run python -m json.tool manifests/latest_manifest.json > /dev/null
-          export RESTORED_MERGED_MANIFESTS="${#filtered_manifests[@]}"
-          uv run python - <<'PY'
-          import os
-          import json
-          from pathlib import Path
-
-          manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
-          if manifest["meta"]["record_count"] < 1:
-              raise SystemExit("cumulative merged manifest is empty; refusing to publish")
-          print("restored merged artifact manifests", os.environ["RESTORED_MERGED_MANIFESTS"])
-          print("restored cumulative merged records", manifest["meta"]["record_count"])
-          PY
 
       - name: Build capped seed bundle
         if: env.SEED_BEFORE_PUBLISH == 'true'
@@ -297,32 +160,8 @@ jobs:
             --artifact dist/fyi_archive.duckdb \
             --artifact dist/sbom.cdx.json
 
-      - name: Report dry-run publication plan
-        if: env.DRY_RUN == 'true'
-        run: |
-          set -euo pipefail
-          uv run python - <<'PY'
-          import json
-          from pathlib import Path
-
-          manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
-          files = [
-              "manifests/latest_manifest.json",
-              "manifests/latest_manifest.parquet",
-              "manifests/authorities.json",
-              "dist/fyi_archive.duckdb",
-              "dist/sbom.cdx.json",
-              "dist/provenance.json",
-          ]
-          print("dry_run target", "${{ env.PUBLICATION_TARGET }}")
-          print("dry_run record_count", manifest["meta"]["record_count"])
-          for file in files:
-              path = Path(file)
-              print("dry_run artifact", file, path.exists(), path.stat().st_size if path.exists() else 0)
-          PY
-
       - name: Publish Hugging Face dataset
-        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
+        if: env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
         env:
           HF_REPO_ID: ${{ vars.HF_REPO_ID }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -365,9 +204,6 @@ jobs:
                   shutil.copytree(source, destination, dirs_exist_ok=True)
               else:
                   shutil.copy2(source, destination)
-          dataset_card = Path("DATASET_CARD.md")
-          if dataset_card.exists():
-              shutil.copy2(dataset_card, publish_root / "README.md")
           staged_manifest = publish_root / "manifests/latest_manifest.json"
           manifest_sha256 = sha256_file(Path("manifests/latest_manifest.json"))
           if sha256_file(staged_manifest) != manifest_sha256:
@@ -408,7 +244,7 @@ jobs:
           PY
 
       - name: Verify Hugging Face mirror
-        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
+        if: env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
         env:
           HF_REPO_ID: ${{ vars.HF_REPO_ID }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -419,7 +255,7 @@ jobs:
             --report-path dist/mirror_verification.json
 
       - name: Create Zenodo draft
-        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
+        if: env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
         env:
           CONFIRM: ${{ env.ZENODO_CONFIRM }}
           PUBLISH: ${{ env.PUBLISH_ZENODO }}
@@ -494,7 +330,7 @@ jobs:
           PY
 
       - name: Verify Zenodo mirror
-        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
+        if: env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
         run: |
@@ -518,7 +354,7 @@ jobs:
             --report-path dist/mirror_verification.json
 
       - name: Publish OSF mirror
-        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf')
+        if: env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf'
         env:
           OSF_PARENT_ID: ${{ vars.OSF_PARENT_ID }}
           OSF_TOKEN: ${{ secrets.OSF_TOKEN }}
@@ -584,7 +420,7 @@ jobs:
           PY
 
       - name: Verify OSF mirror
-        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf')
+        if: env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf'
         env:
           OSF_TOKEN: ${{ secrets.OSF_TOKEN }}
         run: |
@@ -609,24 +445,18 @@ jobs:
 
       - name: Build backfill verification report
         env:
-          DRY_RUN: ${{ env.DRY_RUN }}
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
         run: |
           set -euo pipefail
-          args=(
-            --repo "$GITHUB_REPOSITORY"
-            --manifest-path manifests/latest_manifest.json
-            --mirror-report-path dist/mirror_verification.json
-            --output-path dist/backfill_verification.json
+          uv run fyi-archive backfill report \
+            --repo "$GITHUB_REPOSITORY" \
+            --manifest-path manifests/latest_manifest.json \
+            --mirror-report-path dist/mirror_verification.json \
+            --output-path dist/backfill_verification.json \
             --output-dir versions
-          )
-          if [ "$DRY_RUN" = "true" ]; then
-            args+=(--dry-run)
-          fi
-          uv run fyi-archive backfill report "${args[@]}"
 
       - name: Upload publish evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
