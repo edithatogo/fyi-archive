@@ -161,6 +161,7 @@ jobs:
               worker_run_id=os.environ["RUN_ID"],
               worker_run_url=os.environ["RUN_URL"],
               id_to=int(state["id_to"]),
+              record_counts_by_label=json.loads(Path(".tmp/backfill-record-counts.json").read_text(encoding="utf-8")),
           )
           state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
