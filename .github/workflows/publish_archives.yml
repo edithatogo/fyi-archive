@@ -51,6 +51,11 @@ on:
         required: true
         default: "1"
         type: string
+      dry_run:
+        description: Build publication artifacts without remote mirror writes
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   attestations: write
@@ -65,6 +70,7 @@ jobs:
     environment: ${{ inputs.publish && 'zenodo-production' || '' }}
     env:
       PUBLICATION_TARGET: ${{ inputs.publication_target || 'huggingface' }}
+      DRY_RUN: ${{ inputs.dry_run || false }}
       PUBLISH_ZENODO: ${{ inputs.publish || false }}
       SEED_BEFORE_PUBLISH: ${{ inputs.seed_before_publish || github.event_name == 'schedule' }}
       SEED_DRY_RUN: ${{ inputs.seed_dry_run || false }}
@@ -160,8 +166,50 @@ jobs:
             --artifact dist/fyi_archive.duckdb \
             --artifact dist/sbom.cdx.json
 
+      - name: Build dry-run publication report
+        if: env.DRY_RUN == 'true'
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          from datetime import UTC, datetime
+
+          manifest = json.loads(Path("manifests/latest_manifest.json").read_text(encoding="utf-8"))
+          publication_month = datetime.now(UTC).strftime("%Y-%m")
+          payload = {
+              "dry_run": True,
+              "publication_target": "${{ env.PUBLICATION_TARGET }}",
+              "seed_before_publish": "${{ env.SEED_BEFORE_PUBLISH }}",
+              "seed_dry_run": "${{ env.SEED_DRY_RUN }}",
+              "record_count": int(manifest.get("meta", {}).get("record_count") or 0),
+              "artifacts": [
+                  path.as_posix()
+                  for path in [
+                      Path("manifests/latest_manifest.json"),
+                      Path("manifests/latest_manifest.parquet"),
+                      Path("manifests/authorities.json"),
+                      Path("metadata/croissant.jsonld"),
+                      Path("metadata/frictionless.json"),
+                      Path("metadata/schema.org.jsonld"),
+                      Path("dist/fyi_archive.duckdb"),
+                      Path("dist/sbom.cdx.json"),
+                      Path("dist/provenance.json"),
+                  ]
+                  if path.exists()
+              ],
+          }
+          Path("dist").mkdir(parents=True, exist_ok=True)
+          Path("dist/publish_dry_run.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          Path("versions/latest_publish_dry_run.json").parent.mkdir(parents=True, exist_ok=True)
+          Path("versions/latest_publish_dry_run.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          month_path = Path("versions") / publication_month / "publish_dry_run.json"
+          month_path.parent.mkdir(parents=True, exist_ok=True)
+          month_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+
       - name: Publish Hugging Face dataset
-        if: env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
+        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
           HF_REPO_ID: ${{ vars.HF_REPO_ID }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -244,7 +292,7 @@ jobs:
           PY
 
       - name: Verify Hugging Face mirror
-        if: env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
+        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
           HF_REPO_ID: ${{ vars.HF_REPO_ID }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -255,7 +303,7 @@ jobs:
             --report-path dist/mirror_verification.json
 
       - name: Create Zenodo draft
-        if: env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
+        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
           CONFIRM: ${{ env.ZENODO_CONFIRM }}
           PUBLISH: ${{ env.PUBLISH_ZENODO }}
@@ -330,7 +378,7 @@ jobs:
           PY
 
       - name: Verify Zenodo mirror
-        if: env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
+        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
         run: |
@@ -354,7 +402,7 @@ jobs:
             --report-path dist/mirror_verification.json
 
       - name: Publish OSF mirror
-        if: env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf'
+        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
           OSF_PARENT_ID: ${{ vars.OSF_PARENT_ID }}
           OSF_TOKEN: ${{ secrets.OSF_TOKEN }}
@@ -420,7 +468,7 @@ jobs:
           PY
 
       - name: Verify OSF mirror
-        if: env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf'
+        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
           OSF_TOKEN: ${{ secrets.OSF_TOKEN }}
         run: |
