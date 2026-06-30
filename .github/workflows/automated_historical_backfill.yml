@@ -144,7 +144,7 @@ jobs:
             gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
               > .tmp/backfill-state.json
           else
-            printf '{"next_id": %s, "dispatch_next_id": %s, "summary": {}, "batches": [], "dispatched": []}\n' "$ID_FROM" "$ID_FROM" > .tmp/backfill-state.json
+            printf '{"next_id": %s, "batches": [], "dispatched": []}\n' "$ID_FROM" > .tmp/backfill-state.json
             issue_url="$(
               gh issue create \
                 --repo "$REPO" \
@@ -277,8 +277,8 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$(jq '.planned_count' .tmp/backfill-plan.json)" = "0" ]; then
-            if [ "$(jq -r '.blocked_by_active_workers // false' .tmp/backfill-plan.json)" = "true" ]; then
-              echo "Historical Backfill Batch runs are already active; not dispatching new work"
+            if [ "$(jq -r '.blocked_by_pending // false' .tmp/backfill-plan.json)" = "true" ]; then
+              echo "Worker batches are still pending merge verification; not dispatching new work"
             else
               echo "No worker batches to dispatch"
             fi
@@ -351,12 +351,7 @@ jobs:
           )
           updated["id_from"] = int(os.environ["ID_FROM"])
           updated["id_to"] = int(os.environ["ID_TO"])
-          from backfill_state import prepare_backfill_state
-
-          payload_state = prepare_backfill_state(updated)
-          payload = json.dumps(payload_state, indent=2, sort_keys=True) + "\n"
-          state_path.write_text(payload, encoding="utf-8")
-          Path(".tmp/backfill-state.json").write_text(payload, encoding="utf-8")
+          state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
           gh issue edit "$issue_number" \
             --repo "$REPO" \

@@ -11,7 +11,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from backfill_state import state_dispatch_next_id
+from backfill_state import has_pending_batches, state_next_id
 
 
 def plan_dispatches(
@@ -36,7 +36,15 @@ def plan_dispatches(
         msg = "max_batches must be positive"
         raise ValueError(msg)
 
-    current = max(state_dispatch_next_id(state, id_from), id_from)
+    current = max(state_next_id(state, id_from), id_from)
+    if has_pending_batches(state):
+        return {
+            "batches": [],
+            "blocked_by_pending": True,
+            "complete": False,
+            "next_id": current,
+            "planned_count": 0,
+        }
     batches: list[dict[str, str]] = []
     for _ in range(max_batches):
         if current > id_to:

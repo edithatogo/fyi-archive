@@ -23,52 +23,9 @@ def test_append_pending_batches_preserves_verified_cursor() -> None:
     )
 
     assert updated["next_id"] == 501
-    assert updated["dispatch_next_id"] == 751
     assert updated["complete"] is False
     assert updated["batches"][0]["status"] == "pending"
     assert backfill_state.has_pending_batches(updated) is True
-
-
-def test_prepare_backfill_state_compacts_legacy_history() -> None:
-    state = {
-        "next_id": 501,
-        "batches": [
-            {
-                "id_from": "1",
-                "id_to": "500",
-                "label": "1-500",
-                "status": "merged",
-                "record_count": 3,
-            },
-            {"id_from": "501", "id_to": "750", "label": "501-750", "status": "pending"},
-        ],
-        "dispatched": [{"controller_run_id": "123"}, {"controller_run_id": "456"}],
-    }
-
-    compact = backfill_state.prepare_backfill_state(state)
-
-    assert compact["batches"] == [
-        {"id_from": "501", "id_to": "750", "label": "501-750", "status": "pending"}
-    ]
-    assert compact["dispatch_next_id"] == 751
-    assert compact["summary"]["dispatched_batches"] == 2
-    assert compact["summary"]["merged_batches"] == 1
-    assert compact["summary"]["captured_records"] == 3
-    assert compact["summary"]["pending_batches"] == 1
-    assert compact["dispatched"] == [{"controller_run_id": "123"}, {"controller_run_id": "456"}]
-
-
-def test_state_dispatch_next_id_tracks_highest_dispatched_batch() -> None:
-    state = {
-        "next_id": 501,
-        "dispatch_next_id": 1001,
-        "batches": [
-            {"id_from": "501", "id_to": "750", "label": "501-750", "status": "merged"},
-            {"id_from": "751", "id_to": "1000", "label": "751-1000", "status": "pending"},
-        ],
-    }
-
-    assert backfill_state.state_dispatch_next_id(state, 1) == 1001
 
 
 def test_mark_merged_batches_advances_only_through_contiguous_merged_ranges() -> None:
@@ -87,14 +44,9 @@ def test_mark_merged_batches_advances_only_through_contiguous_merged_ranges() ->
         worker_run_id="run-2",
         worker_run_url="https://example.test/run/2",
         id_to=1000,
-        record_counts_by_label={"501-1000": 2},
     )
     assert first["next_id"] == 1
     assert first["complete"] is False
-    assert first["dispatch_next_id"] == 1001
-    assert first["batches"] == [
-        {"id_from": "1", "id_to": "500", "label": "1-500", "status": "pending"}
-    ]
 
     second = backfill_state.mark_merged_batches(
         state=first,
@@ -102,10 +54,7 @@ def test_mark_merged_batches_advances_only_through_contiguous_merged_ranges() ->
         worker_run_id="run-1",
         worker_run_url="https://example.test/run/1",
         id_to=1000,
-        record_counts_by_label={"1-500": 3, "501-1000": 2},
     )
     assert second["next_id"] == 1001
     assert second["complete"] is True
-    assert second["batches"] == []
-    assert second["summary"]["captured_records"] == 5
     assert backfill_state.has_pending_batches(second) is False

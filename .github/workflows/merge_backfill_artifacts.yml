@@ -11,11 +11,6 @@ on:
         required: true
         default: "fyi-backfill-state"
         type: string
-      dry_run:
-        description: Merge artifacts without updating controller state
-        required: true
-        default: false
-        type: boolean
       run_id:
         description: Historical Backfill Batch run ID to merge
         required: true
@@ -32,7 +27,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      DRY_RUN: ${{ inputs.dry_run || false }}
       STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
       SOURCE_RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
     steps:
@@ -80,20 +74,6 @@ jobs:
           echo "$issue_number" > .tmp/backfill-state-issue-number.txt
           gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
             > .tmp/backfill-state.json
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          import sys
-
-          sys.path.insert(0, str(Path("scripts")))
-
-          from backfill_state import prepare_backfill_state
-
-          state_path = Path(".tmp/backfill-state.json")
-          state = json.loads(state_path.read_text(encoding="utf-8"))
-          compact = prepare_backfill_state(state)
-          state_path.write_text(json.dumps(compact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-          PY
           gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID/artifacts" \
             --jq '[.artifacts[].name | select(startswith("historical-backfill-")) | sub("^historical-backfill-"; "")]' \
             > .tmp/backfill-merged-labels.json
@@ -153,7 +133,6 @@ jobs:
             --fetch-label "historical-backfill-merge-${RUN_ID}"
 
       - name: Persist merged backfill state
-        if: env.DRY_RUN != 'true'
         env:
           ISSUE_NUMBER_PATH: .tmp/backfill-state-issue-number.txt
           REPO: ${{ github.repository }}
@@ -182,35 +161,12 @@ jobs:
               worker_run_id=os.environ["RUN_ID"],
               worker_run_url=os.environ["RUN_URL"],
               id_to=int(state["id_to"]),
-              record_counts_by_label=json.loads(Path(".tmp/backfill-record-counts.json").read_text(encoding="utf-8")),
           )
-          from backfill_state import prepare_backfill_state
-
-          compact = prepare_backfill_state(updated)
-          state_path.write_text(json.dumps(compact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
           gh issue edit "$issue_number" \
             --repo "$REPO" \
             --body-file .tmp/backfill-state.json
-
-      - name: Write dry-run merge marker
-        if: env.DRY_RUN == 'true'
-        run: |
-          set -euo pipefail
-          uv run python - <<'PY'
-          import json
-          from pathlib import Path
-
-          manifest = json.loads(Path("manifests/latest_manifest.json").read_text(encoding="utf-8"))
-          payload = {
-              "dry_run": True,
-              "source_run_id": "${{ env.SOURCE_RUN_ID }}",
-              "record_count": int(manifest.get("meta", {}).get("record_count") or 0),
-              "merged_labels": json.loads(Path(".tmp/backfill-merged-labels.json").read_text(encoding="utf-8")),
-          }
-          Path("dist").mkdir(parents=True, exist_ok=True)
-          Path("dist/merge_backfill_dry_run.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-          PY
 
       - name: Upload merged backfill
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
