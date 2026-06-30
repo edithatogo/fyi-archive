@@ -1,0 +1,226 @@
+name: Automated Historical Backfill
+
+on:
+  schedule:
+    # Dispatch a bounded tranche daily; worker jobs keep their own runtime caps.
+    - cron: "17 13 * * *"
+  workflow_dispatch:
+    inputs:
+      id_from:
+        description: First FYI request ID to consider
+        required: true
+        default: "1"
+        type: string
+      id_to:
+        description: Last FYI request ID to consider
+        required: true
+        default: "250000"
+        type: string
+      batch_span:
+        description: Inclusive request-ID span per dispatched worker run
+        required: true
+        default: "500"
+        type: string
+      max_batches:
+        description: Maximum worker runs to dispatch from this controller run
+        required: true
+        default: "2"
+        type: string
+      worker_chunk_size:
+        description: Inclusive request-ID span per worker matrix chunk
+        required: true
+        default: "50"
+        type: string
+      worker_max_chunks:
+        description: Maximum chunks per worker run
+        required: true
+        default: "10"
+        type: string
+      max_requests_per_chunk:
+        description: Maximum captured requests per worker chunk
+        required: true
+        default: "50"
+        type: string
+      max_runtime_minutes:
+        description: Maximum runtime per worker chunk
+        required: true
+        default: "30"
+        type: string
+      max_disk_gb:
+        description: Minimum free disk budget in GiB
+        required: true
+        default: "5"
+        type: string
+      dry_run:
+        description: Dispatch dry-run worker batches instead of live FYI capture
+        required: true
+        default: false
+        type: boolean
+
+concurrency:
+  group: automated-historical-backfill
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: read
+  issues: write
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    env:
+      BATCH_SPAN: ${{ inputs.batch_span || '500' }}
+      DRY_RUN: ${{ inputs.dry_run || false }}
+      GH_TOKEN: ${{ github.token }}
+      ID_FROM: ${{ inputs.id_from || '1' }}
+      ID_TO: ${{ inputs.id_to || '250000' }}
+      MAX_BATCHES: ${{ inputs.max_batches || '2' }}
+      MAX_DISK_GB: ${{ inputs.max_disk_gb || '5' }}
+      MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '50' }}
+      MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '30' }}
+      STATE_LABEL: fyi-backfill-state
+      STATE_TITLE: FYI historical backfill state
+      WORKER_CHUNK_SIZE: ${{ inputs.worker_chunk_size || '50' }}
+      WORKER_MAX_CHUNKS: ${{ inputs.worker_max_chunks || '10' }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Load persisted controller state
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp
+          gh label create "$STATE_LABEL" \
+            --repo "$REPO" \
+            --description "State for automated FYI historical backfill" \
+            --color "5319e7" \
+            --force
+          issue_number="$(
+            gh issue list \
+              --repo "$REPO" \
+              --label "$STATE_LABEL" \
+              --state open \
+              --limit 1 \
+              --json number \
+              --jq '.[0].number // ""'
+          )"
+          if [ -n "$issue_number" ]; then
+            gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
+              > .tmp/backfill-state.json
+          else
+            printf '{"next_id": %s, "dispatched": []}\n' "$ID_FROM" > .tmp/backfill-state.json
+            gh issue create \
+              --repo "$REPO" \
+              --title "$STATE_TITLE" \
+              --label "$STATE_LABEL" \
+              --body-file .tmp/backfill-state.json \
+              > .tmp/backfill-state-issue-url.txt
+            issue_number="$(
+              gh issue list \
+                --repo "$REPO" \
+                --label "$STATE_LABEL" \
+                --state open \
+                --limit 1 \
+                --json number \
+                --jq '.[0].number'
+            )"
+          fi
+          echo "$issue_number" > .tmp/backfill-state-issue-number.txt
+          cat .tmp/backfill-state.json
+
+      - name: Plan worker dispatches
+        run: |
+          set -euo pipefail
+          python scripts/plan_auto_backfill.py \
+            --id-from "$ID_FROM" \
+            --id-to "$ID_TO" \
+            --batch-span "$BATCH_SPAN" \
+            --max-batches "$MAX_BATCHES" \
+            --state .tmp/backfill-state.json \
+            --output .tmp/backfill-plan.json
+          cat .tmp/backfill-plan.json
+
+      - name: Dispatch worker workflows
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ "$(jq '.planned_count' .tmp/backfill-plan.json)" = "0" ]; then
+            echo "No worker batches to dispatch"
+            exit 0
+          fi
+          jq -c '.batches[]' .tmp/backfill-plan.json | while read -r batch; do
+            id_from="$(jq -r '.id_from' <<<"$batch")"
+            id_to="$(jq -r '.id_to' <<<"$batch")"
+            label="$(jq -r '.label' <<<"$batch")"
+            echo "Dispatching historical_backfill_batch.yml for $label"
+            gh workflow run historical_backfill_batch.yml \
+              --ref "$REF_NAME" \
+              -f id_from="$id_from" \
+              -f id_to="$id_to" \
+              -f chunk_size="$WORKER_CHUNK_SIZE" \
+              -f max_chunks="$WORKER_MAX_CHUNKS" \
+              -f max_requests_per_chunk="$MAX_REQUESTS_PER_CHUNK" \
+              -f max_runtime_minutes="$MAX_RUNTIME_MINUTES" \
+              -f max_disk_gb="$MAX_DISK_GB" \
+              -f dry_run="$DRY_RUN"
+            sleep 10
+          done
+
+      - name: Persist controller state
+        env:
+          ISSUE_NUMBER_PATH: .tmp/backfill-state-issue-number.txt
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          issue_number="$(cat "$ISSUE_NUMBER_PATH")"
+          python - <<'PY'
+          import json
+          import os
+          from datetime import UTC, datetime
+          from pathlib import Path
+
+          state_path = Path(".tmp/backfill-state.json")
+          plan_path = Path(".tmp/backfill-plan.json")
+          state = json.loads(state_path.read_text(encoding="utf-8"))
+          plan = json.loads(plan_path.read_text(encoding="utf-8"))
+          dispatched = list(state.get("dispatched") or [])
+          dispatched.append(
+              {
+                  "at": datetime.now(UTC).isoformat(),
+                  "batches": plan["batches"],
+                  "controller_run_id": os.environ["RUN_ID"],
+                  "controller_run_url": os.environ["RUN_URL"],
+              }
+          )
+          updated = {
+              "complete": plan["complete"],
+              "dispatched": dispatched[-50:],
+              "id_from": int(os.environ["ID_FROM"]),
+              "id_to": int(os.environ["ID_TO"]),
+              "next_id": plan["next_id"],
+              "updated_at": datetime.now(UTC).isoformat(),
+          }
+          state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+          gh issue edit "$issue_number" \
+            --repo "$REPO" \
+            --body-file .tmp/backfill-state.json
+
+      - name: Upload controller plan
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: automated-backfill-plan
+          path: |
+            .tmp/backfill-plan.json
+            .tmp/backfill-state.json

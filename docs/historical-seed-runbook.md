@@ -6,10 +6,10 @@ orchestration, ledger state, manifest assembly, and release evidence.
 
 ## Current Mode
 
-`fyi-cli` bulk enumeration and faithful WARC/WACZ capture commands are still pending,
-so `fyi-archive seed run --dry-run` is the safe validation mode. Dry-run mode writes
-deterministic derived records and exercises ledger, cap, manifest, and provenance
-paths without network access.
+Live backfill is driven by `fyi-cli` ID-space discovery/capture and remains bounded by
+request count, runtime, and disk caps. Dry-run mode is still available for workflow
+validation; it writes deterministic derived records and exercises ledger, manifest,
+and provenance paths without network access.
 
 ## Local Smoke
 
@@ -37,13 +37,21 @@ All caps preserve the ledger entries already written.
 
 ## GitHub Actions
 
-Run `Historical Seed` manually. Keep `dry_run=true` until the required `fyi-cli`
-capabilities exist. The workflow uploads the ledger, derived records, manifest outputs,
-and provenance as artifacts.
+Use `Automated Historical Backfill` for unattended corpus backfilling. It persists
+progress in the `FYI historical backfill state` GitHub issue, dispatches bounded
+`Historical Backfill Batch` worker runs, and advances `next_id` after successful worker
+dispatch. Defaults are intentionally conservative: scheduled runs dispatch a small
+number of worker batches, and each worker keeps its own chunk, request, runtime, and
+disk caps.
+
+Use `Historical Backfill Batch` manually for targeted repair, replay, or smoke testing.
+The workflow uploads the ledger, raw/derived records, manifest outputs, and provenance
+as artifacts. Use `Merge Backfill Artifacts` to combine one worker run's chunk
+manifests into a single merged manifest artifact.
 
 ## Full Crawl Shape
 
-Once `fyi-cli` provides bulk enumeration and capture, use date windows small enough to
-fit under the six-hour GitHub Actions limit. Prefer month-sized windows first, then
-adjust based on observed request density and attachment volume. A full crawl should be
-treated as a set of resumable windows rather than one monolithic job.
+Do not run the whole FYI corpus as one monolithic GitHub Actions job. Use the automated
+controller to progress through the request-ID range in resumable windows. Increase
+`batch_span`, `max_batches`, or worker caps only after observing stable runtime,
+failure rate, and artifact size for smaller runs.
