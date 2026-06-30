@@ -106,6 +106,60 @@ def test_backfill_report_cli_writes_versioned_reports(tmp_path: Path, monkeypatc
     assert report["github_actions"]["captured_records"] == 3
     assert report["published"]["huggingface"]["record_count"] == 3
     assert report["comparison"]["fully_verified"] is True
+    assert report["dry_run"] is False
+
+
+def test_backfill_report_cli_allows_dry_run_without_full_verification(tmp_path: Path, monkeypatch) -> None:
+    manifest = tmp_path / "manifests/latest_manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text('{"meta": {"record_count": 2}, "requests": []}\n', encoding="utf-8")
+
+    state_info = {
+        "issue_number": 9,
+        "issue_url": "https://github.com/example/repo/issues/9",
+        "issue_title": "FYI historical backfill state (fyi-backfill-state)",
+        "state": {
+            "complete": False,
+            "id_from": 1,
+            "id_to": 100,
+            "next_id": 4,
+            "batches": [],
+            "dispatched": [],
+        },
+    }
+
+    monkeypatch.setattr(
+        "fyi_archive.commands.backfill.load_controller_state",
+        lambda **kwargs: state_info,
+    )
+    monkeypatch.setattr(
+        "fyi_archive.backfill_verification.utc_now",
+        lambda: datetime(2026, 6, 30, tzinfo=UTC),
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "backfill",
+            "report",
+            "--repo",
+            "example/repo",
+            "--state-label",
+            "fyi-backfill-state",
+            "--manifest-path",
+            str(manifest),
+            "--output-path",
+            str(tmp_path / "dist/backfill_verification.json"),
+            "--output-dir",
+            str(tmp_path / "versions"),
+        ],
+        env={"DRY_RUN": "true"},
+    )
+
+    assert result.exit_code == 0, result.output
+    report = json.loads((tmp_path / "dist/backfill_verification.json").read_text(encoding="utf-8"))
+    assert report["dry_run"] is True
+    assert report["comparison"]["fully_verified"] is False
 
 
 @respx.mock
