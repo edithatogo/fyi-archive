@@ -122,21 +122,19 @@ jobs:
               > .tmp/backfill-state.json
           else
             printf '{"next_id": %s, "dispatched": []}\n' "$ID_FROM" > .tmp/backfill-state.json
-            gh issue create \
-              --repo "$REPO" \
-              --title "$STATE_TITLE" \
-              --label "$STATE_LABEL" \
-              --body-file .tmp/backfill-state.json \
-              > .tmp/backfill-state-issue-url.txt
-            issue_number="$(
-              gh issue list \
+            issue_url="$(
+              gh issue create \
                 --repo "$REPO" \
+                --title "$STATE_TITLE" \
                 --label "$STATE_LABEL" \
-                --state open \
-                --limit 1 \
-                --json number \
-                --jq '.[0].number'
+                --body-file .tmp/backfill-state.json
             )"
+            issue_number="${issue_url##*/}"
+            printf '%s\n' "$issue_url" > .tmp/backfill-state-issue-url.txt
+            if [ -z "$issue_number" ] || [ "$issue_number" = "$issue_url" ]; then
+              echo "Could not parse created state issue URL: $issue_url"
+              exit 1
+            fi
           fi
           echo "$issue_number" > .tmp/backfill-state-issue-number.txt
           cat .tmp/backfill-state.json
