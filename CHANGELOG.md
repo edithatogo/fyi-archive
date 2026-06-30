@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.4.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.3.0...fyi_archive-v0.4.0) (2026-06-30)
+
+
+### Features
+
+* auto-merge backfill worker artifacts ([5d3269f](https://github.com/edithatogo/fyi-archive/commit/5d3269fd85040c1358f5c4f72d8ec7beea874949))
+
 ## [0.3.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.2.1...fyi_archive-v0.3.0) (2026-06-30)
 
 
