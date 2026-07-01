@@ -26,6 +26,10 @@ permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: historical-backfill-merge-${{ inputs.state_label || 'fyi-backfill-state' }}
+  cancel-in-progress: false
+
 jobs:
   merge:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}

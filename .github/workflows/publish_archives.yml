@@ -214,14 +214,16 @@ jobs:
             fi
           done
           uv run python -m json.tool manifests/latest_manifest.json > /dev/null
+          export RESTORED_MERGED_MANIFESTS="${#filtered_manifests[@]}"
           uv run python - <<'PY'
+          import os
           import json
           from pathlib import Path
 
           manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
           if manifest["meta"]["record_count"] < 1:
               raise SystemExit("cumulative merged manifest is empty; refusing to publish")
-          print("restored merged artifact manifests", "${#filtered_manifests[@]}")
+          print("restored merged artifact manifests", os.environ["RESTORED_MERGED_MANIFESTS"])
           print("restored cumulative merged records", manifest["meta"]["record_count"])
           PY
 
