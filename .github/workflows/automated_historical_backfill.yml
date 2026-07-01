@@ -86,6 +86,7 @@ jobs:
       MAX_DISK_GB: ${{ inputs.max_disk_gb || '5' }}
       MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '50' }}
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '30' }}
+      REPO: ${{ github.repository }}
       STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
       STATE_TITLE: FYI historical backfill state (${{ inputs.state_label || 'fyi-backfill-state' }})
       WORKER_CHUNK_SIZE: ${{ inputs.worker_chunk_size || '50' }}
@@ -100,8 +101,6 @@ jobs:
           python-version: "3.12"
 
       - name: Load persisted controller state
-        env:
-          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           mkdir -p .tmp
@@ -178,9 +177,47 @@ jobs:
           print(f"Using max_batches={max_batches} ({window})")
           PY
 
+      - name: Check active worker runs
+        run: |
+          set -euo pipefail
+          queued="$(
+            gh run list \
+              --repo "$REPO" \
+              --workflow "Historical Backfill Batch" \
+              --status queued \
+              --limit 100 \
+              --json databaseId \
+              --jq 'length'
+          )"
+          in_progress="$(
+            gh run list \
+              --repo "$REPO" \
+              --workflow "Historical Backfill Batch" \
+              --status in_progress \
+              --limit 100 \
+              --json databaseId \
+              --jq 'length'
+          )"
+          active=$((queued + in_progress))
+          echo "ACTIVE_WORKER_RUNS=$active" >> "$GITHUB_ENV"
+          echo "Active Historical Backfill Batch runs: $active"
+
       - name: Plan worker dispatches
         run: |
           set -euo pipefail
+          if [ "${ACTIVE_WORKER_RUNS:-0}" -gt 0 ]; then
+            cat > .tmp/backfill-plan.json <<EOF
+          {
+            "batches": [],
+            "blocked_by_active_workers": true,
+            "complete": false,
+            "next_id": $(jq '.next_id // 1' .tmp/backfill-state.json),
+            "planned_count": 0
+          }
+          EOF
+            cat .tmp/backfill-plan.json
+            exit 0
+          fi
           python scripts/plan_auto_backfill.py \
             --id-from "$ID_FROM" \
             --id-to "$ID_TO" \
@@ -196,7 +233,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$(jq '.planned_count' .tmp/backfill-plan.json)" = "0" ]; then
-            if [ "$(jq -r '.blocked_by_pending // false' .tmp/backfill-plan.json)" = "true" ]; then
+            if [ "$(jq -r '.blocked_by_active_workers // false' .tmp/backfill-plan.json)" = "true" ]; then
+              echo "Historical Backfill Batch runs are already active; not dispatching new work"
+            elif [ "$(jq -r '.blocked_by_pending // false' .tmp/backfill-plan.json)" = "true" ]; then
               echo "Worker batches are still pending merge verification; not dispatching new work"
             else
               echo "No worker batches to dispatch"
