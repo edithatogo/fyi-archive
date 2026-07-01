@@ -1,0 +1,49 @@
+name: Hugging Face Metadata
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update-card:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install Hugging Face client
+        run: uv pip install --system "huggingface_hub[hf_xet]>=0.27.0"
+
+      - name: Upload dataset card
+        env:
+          HF_REPO_ID: ${{ vars.HF_REPO_ID || 'edithatogo/fyi-archive-nz' }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          from huggingface_hub import HfApi
+
+          card = Path("DATASET_CARD.md")
+          if not card.exists():
+              raise SystemExit("DATASET_CARD.md is required")
+          HfApi().upload_file(
+              path_or_fileobj=card,
+              path_in_repo="README.md",
+              repo_id=os.environ["HF_REPO_ID"],
+              repo_type="dataset",
+              token=os.environ["HF_TOKEN"],
+              commit_message="docs: update dataset card metadata",
+          )
+          PY

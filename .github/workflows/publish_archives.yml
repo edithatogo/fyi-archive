@@ -203,6 +203,9 @@ jobs:
                   shutil.copytree(source, destination, dirs_exist_ok=True)
               else:
                   shutil.copy2(source, destination)
+          dataset_card = Path("DATASET_CARD.md")
+          if dataset_card.exists():
+              shutil.copy2(dataset_card, publish_root / "README.md")
           staged_manifest = publish_root / "manifests/latest_manifest.json"
           manifest_sha256 = sha256_file(Path("manifests/latest_manifest.json"))
           if sha256_file(staged_manifest) != manifest_sha256:

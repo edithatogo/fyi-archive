@@ -1,6 +1,6 @@
 {
   "title": "fyi-archive: A read-only full-site archive of fyi.org.nz (NZ Official Information Act request register)",
-  "description": "<p>Pre-publication orchestration scaffold for a faithful, read-only archive of <a href=\"https://fyi.org.nz/\">fyi.org.nz</a>, the New Zealand Official Information Act (OIA) request register (Alaveteli). Planned outputs include request metadata, rendered pages, and attachments as WARC/WACZ, distributed to Hugging Face, Zenodo, and OSF. Capture is performed by <a href=\"https://github.com/edithatogo/fyi-cli\">fyi-cli</a>; this repository is the orchestration and distribution layer.</p>",
+  "description": "<p>Incremental, read-only archive of <a href=\"https://fyi.org.nz/\">fyi.org.nz</a>, the New Zealand Official Information Act (OIA) request register (Alaveteli). Published snapshots include request metadata, rendered pages, and WARC/WACZ capture artifacts, distributed through Hugging Face and draft-first Zenodo deposits while historical backfill continues. Capture is performed by <a href=\"https://github.com/edithatogo/fyi-cli\">fyi-cli</a>; this repository is the orchestration and distribution layer.</p>",
   "upload_type": "dataset",
   "publication_type": "other",
   "version": "0.1.0",

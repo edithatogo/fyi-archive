@@ -17,20 +17,19 @@ configs:
   - config_name: default
     data_files:
       - split: requests
-        path: requests/*.parquet
-      - split: authorities
-        path: authorities/*.parquet
+        path: manifests/latest_manifest.parquet
 ---
 
 # fyi-archive-nz
 
-Planned dataset card for a faithful, read-only full-site archive of
+Dataset card for a faithful, read-only full-site archive of
 **[fyi.org.nz](https://fyi.org.nz/)** — the New Zealand Official Information Act
 (OIA) request register, running on [Alaveteli](https://alaveteli.org/).
 
-This dataset has not been published yet. The repository currently contains the
-orchestration scaffold and schemas; the historical backfill and mirror publication
-workflows are still pending.
+The archive is being built incrementally. Early verified snapshots are published to
+Hugging Face and draft-first Zenodo deposits while the historical backfill continues.
+The manifest records the current snapshot size and should be treated as the source of
+truth for coverage at any point in time.
 
 ## Source provenance
 
@@ -59,18 +58,23 @@ workflows are still pending.
 ## Loading
 
 ```python
-from datasets import load_dataset
-ds = load_dataset("edithatogo/fyi-archive-nz", split="requests")
+from huggingface_hub import hf_hub_download
+
+manifest_path = hf_hub_download(
+    repo_id="edithatogo/fyi-archive-nz",
+    repo_type="dataset",
+    filename="manifests/latest_manifest.json",
+)
 ```
 
 ```sql
 -- DuckDB over the Hugging Face mirror
 SELECT authority, state, count(*) AS n
-FROM 'hf://datasets/edithatogo/fyi-archive-nz/requests/*.parquet'
+FROM 'hf://datasets/edithatogo/fyi-archive-nz/manifests/latest_manifest.parquet'
 GROUP BY 1, 2 ORDER BY n DESC;
 ```
 
-## Intended use once published
+## Intended use
 
 Research, legal-tech NLP, journalism, and government-transparency workloads.
 
