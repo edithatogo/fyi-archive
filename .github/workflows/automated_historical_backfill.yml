@@ -110,14 +110,26 @@ jobs:
             --description "State for automated FYI historical backfill" \
             --color "5319e7" \
             --force
+          gh issue list \
+            --repo "$REPO" \
+            --label "$STATE_LABEL" \
+            --state open \
+            --limit 100 \
+            --json number,title \
+            > .tmp/backfill-state-issues.json
           issue_number="$(
-            gh issue list \
-              --repo "$REPO" \
-              --label "$STATE_LABEL" \
-              --state open \
-              --limit 1 \
-              --json number \
-              --jq '.[0].number // ""'
+            python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          state_title = os.environ["STATE_TITLE"]
+          issues = json.loads(Path(".tmp/backfill-state-issues.json").read_text(encoding="utf-8"))
+          for issue in issues:
+              if issue.get("title") == state_title:
+                  print(issue["number"])
+                  break
+          PY
           )"
           if [ -n "$issue_number" ]; then
             gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
