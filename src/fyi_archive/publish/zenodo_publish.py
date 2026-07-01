@@ -93,7 +93,7 @@ def deposition_artifacts(deposition: dict[str, Any]) -> list[RemoteArtifact]:
                 name=Path(filename).name,
                 size=file_size(file_data),
                 checksum=file_checksum(file_data),
-                url=links.get("self") or links.get("download"),
+                url=links.get("download") or links.get("self"),
             ),
         )
     return artifacts
