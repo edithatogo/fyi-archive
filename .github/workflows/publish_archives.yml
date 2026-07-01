@@ -51,6 +51,11 @@ on:
         required: true
         default: "1"
         type: string
+      dry_run:
+        description: Build and verify publication artifacts without uploading to mirrors
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   actions: read
@@ -72,6 +77,7 @@ jobs:
       SEED_ID_TO: ${{ inputs.seed_id_to || '20000' }}
       SEED_MAX_REQUESTS: ${{ inputs.seed_max_requests || '1' }}
       ZENODO_CONFIRM: ${{ inputs.confirm || '' }}
+      DRY_RUN: ${{ inputs.dry_run || false }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -208,8 +214,32 @@ jobs:
             --artifact dist/fyi_archive.duckdb \
             --artifact dist/sbom.cdx.json
 
+      - name: Report dry-run publication plan
+        if: env.DRY_RUN == 'true'
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
+          files = [
+              "manifests/latest_manifest.json",
+              "manifests/latest_manifest.parquet",
+              "manifests/authorities.json",
+              "dist/fyi_archive.duckdb",
+              "dist/sbom.cdx.json",
+              "dist/provenance.json",
+          ]
+          print("dry_run target", "${{ env.PUBLICATION_TARGET }}")
+          print("dry_run record_count", manifest["meta"]["record_count"])
+          for file in files:
+              path = Path(file)
+              print("dry_run artifact", file, path.exists(), path.stat().st_size if path.exists() else 0)
+          PY
+
       - name: Publish Hugging Face dataset
-        if: env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
+        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
           HF_REPO_ID: ${{ vars.HF_REPO_ID }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -295,7 +325,7 @@ jobs:
           PY
 
       - name: Verify Hugging Face mirror
-        if: env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
+        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
           HF_REPO_ID: ${{ vars.HF_REPO_ID }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -306,7 +336,7 @@ jobs:
             --report-path dist/mirror_verification.json
 
       - name: Create Zenodo draft
-        if: env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
+        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
           CONFIRM: ${{ env.ZENODO_CONFIRM }}
           PUBLISH: ${{ env.PUBLISH_ZENODO }}
@@ -381,7 +411,7 @@ jobs:
           PY
 
       - name: Verify Zenodo mirror
-        if: env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf'
+        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'zenodo' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
         run: |
@@ -405,7 +435,7 @@ jobs:
             --report-path dist/mirror_verification.json
 
       - name: Publish OSF mirror
-        if: env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf'
+        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
           OSF_PARENT_ID: ${{ vars.OSF_PARENT_ID }}
           OSF_TOKEN: ${{ secrets.OSF_TOKEN }}
@@ -471,7 +501,7 @@ jobs:
           PY
 
       - name: Verify OSF mirror
-        if: env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf'
+        if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
           OSF_TOKEN: ${{ secrets.OSF_TOKEN }}
         run: |
