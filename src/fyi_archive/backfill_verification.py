@@ -8,7 +8,7 @@ import subprocess
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from huggingface_hub import snapshot_download
@@ -24,7 +24,7 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
-def gh_json(args: list[str]) -> object:
+def gh_json(args: list[str]) -> dict[str, Any] | list[dict[str, Any]]:
     """Run gh with JSON output and return the parsed payload."""
     completed = subprocess.run(
         ["gh", *args],
@@ -33,7 +33,7 @@ def gh_json(args: list[str]) -> object:
         text=True,
         env=os.environ.copy(),
     )
-    return json.loads(completed.stdout)
+    return cast("dict[str, Any] | list[dict[str, Any]]", json.loads(completed.stdout))
 
 
 def load_controller_state(
@@ -42,25 +42,9 @@ def load_controller_state(
     """Load the active backfill controller issue body and metadata."""
     if issue_number is None:
         state_title = f"FYI historical backfill state ({state_label})"
-        issues = gh_json(
-            [
-                "issue",
-                "list",
-                "--repo",
-                repo,
-                "--label",
-                state_label,
-                "--state",
-                "open",
-                "--limit",
-                "100",
-                "--json",
-                "number,url,title",
-            ],
-        )
-        issue = next((item for item in issues if item.get("title") == state_title), None)
-        if issue is None:
-            issues = gh_json(
+        issues = cast(
+            "list[dict[str, Any]]",
+            gh_json(
                 [
                     "issue",
                     "list",
@@ -69,12 +53,34 @@ def load_controller_state(
                     "--label",
                     state_label,
                     "--state",
-                    "all",
+                    "open",
                     "--limit",
                     "100",
                     "--json",
                     "number,url,title",
                 ],
+            ),
+        )
+        issue = next((item for item in issues if item.get("title") == state_title), None)
+        if issue is None:
+            issues = cast(
+                "list[dict[str, Any]]",
+                gh_json(
+                    [
+                        "issue",
+                        "list",
+                        "--repo",
+                        repo,
+                        "--label",
+                        state_label,
+                        "--state",
+                        "all",
+                        "--limit",
+                        "100",
+                        "--json",
+                        "number,url,title",
+                    ],
+                ),
             )
             issue = next((item for item in issues if item.get("title") == state_title), None)
         if issue is None:
@@ -84,7 +90,26 @@ def load_controller_state(
         issue_url = str(issue.get("url") or "")
         issue_title = str(issue.get("title") or "")
     else:
-        issue = gh_json(
+        issue = cast(
+            "dict[str, Any]",
+            gh_json(
+                [
+                    "issue",
+                    "view",
+                    str(issue_number),
+                    "--repo",
+                    repo,
+                    "--json",
+                    "body,url,title,number",
+                ],
+            ),
+        )
+        issue_url = str(issue.get("url") or "")
+        issue_title = str(issue.get("title") or "")
+
+    body_payload = cast(
+        "dict[str, Any]",
+        gh_json(
             [
                 "issue",
                 "view",
@@ -92,23 +117,11 @@ def load_controller_state(
                 "--repo",
                 repo,
                 "--json",
-                "body,url,title,number",
+                "body",
             ],
-        )
-        issue_url = str(issue.get("url") or "")
-        issue_title = str(issue.get("title") or "")
-
-    body = gh_json(
-        [
-            "issue",
-            "view",
-            str(issue_number),
-            "--repo",
-            repo,
-            "--json",
-            "body",
-        ],
-    )["body"]
+        ),
+    )
+    body = body_payload["body"]
     try:
         state = json.loads(body)
     except json.JSONDecodeError as exc:

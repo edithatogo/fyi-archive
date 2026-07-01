@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -10,10 +11,107 @@ import respx
 from httpx import Response
 from typer.testing import CliRunner
 
-from fyi_archive.backfill_verification import remote_zenodo_record_count
+from fyi_archive.backfill_verification import (
+    load_controller_state,
+    remote_huggingface_record_count,
+    remote_zenodo_record_count,
+)
 from fyi_archive.cli import app
 
 runner = CliRunner()
+
+
+def _completed(stdout: object) -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess(
+        args=["gh"],
+        returncode=0,
+        stdout=json.dumps(stdout),
+        stderr="",
+    )
+
+
+def test_load_controller_state_selects_exact_issue(monkeypatch) -> None:
+    state = {"next_id": 7001, "batches": []}
+
+    def fake_run(cmd: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        args = cmd[1:]
+        if args[:2] == ["issue", "list"] and "open" in args:
+            return _completed(
+                [
+                    {
+                        "number": 1,
+                        "title": "Unrelated",
+                        "url": "https://github.com/example/repo/issues/1",
+                    },
+                    {
+                        "number": 9,
+                        "title": "FYI historical backfill state (fyi-backfill-state)",
+                        "url": "https://github.com/example/repo/issues/9",
+                    },
+                ],
+            )
+        if args[:2] == ["issue", "view"]:
+            return _completed({"body": json.dumps(state)})
+        raise AssertionError(args)
+
+    monkeypatch.setattr("fyi_archive.backfill_verification.subprocess.run", fake_run)
+
+    loaded = load_controller_state(repo="example/repo", state_label="fyi-backfill-state")
+
+    assert loaded["issue_number"] == 9
+    assert loaded["state"] == state
+
+
+def test_load_controller_state_falls_back_to_closed_issue(monkeypatch) -> None:
+    state = {"next_id": 1, "batches": []}
+
+    def fake_run(cmd: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        args = cmd[1:]
+        if args[:2] == ["issue", "list"] and "open" in args:
+            return _completed([])
+        if args[:2] == ["issue", "list"] and "all" in args:
+            return _completed(
+                [
+                    {
+                        "number": 9,
+                        "title": "FYI historical backfill state (fyi-backfill-state)",
+                        "url": "https://github.com/example/repo/issues/9",
+                    }
+                ],
+            )
+        if args[:2] == ["issue", "view"]:
+            return _completed({"body": json.dumps(state)})
+        raise AssertionError(args)
+
+    monkeypatch.setattr("fyi_archive.backfill_verification.subprocess.run", fake_run)
+
+    loaded = load_controller_state(repo="example/repo", state_label="fyi-backfill-state")
+
+    assert loaded["issue_number"] == 9
+    assert loaded["state"]["next_id"] == 1
+
+
+def test_load_controller_state_rejects_bad_issue_body(monkeypatch) -> None:
+    def fake_run(cmd: list[str], **_: object) -> subprocess.CompletedProcess[str]:
+        args = cmd[1:]
+        if args[:2] == ["issue", "view"] and "body,url,title,number" in args:
+            return _completed({"number": 9, "title": "state", "url": "https://example.test/9"})
+        if args[:2] == ["issue", "view"] and "body" in args:
+            return _completed({"body": "not-json"})
+        raise AssertionError(args)
+
+    monkeypatch.setattr("fyi_archive.backfill_verification.subprocess.run", fake_run)
+
+    try:
+        load_controller_state(
+            repo="example/repo",
+            state_label="fyi-backfill-state",
+            issue_number=9,
+        )
+    except ValueError as exc:
+        assert "does not contain JSON state" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
 
 
 def test_backfill_report_cli_writes_versioned_reports(tmp_path: Path, monkeypatch) -> None:
@@ -162,6 +260,33 @@ def test_backfill_report_cli_allows_dry_run_without_full_verification(
     report = json.loads((tmp_path / "dist/backfill_verification.json").read_text(encoding="utf-8"))
     assert report["dry_run"] is True
     assert report["comparison"]["fully_verified"] is False
+
+
+def test_remote_huggingface_record_count_downloads_manifest(tmp_path: Path, monkeypatch) -> None:
+    snapshot = tmp_path / "snapshot"
+    manifest = snapshot / "manifests" / "latest_manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text('{"meta": {"record_count": 5}, "requests": []}\n', encoding="utf-8")
+    calls: dict[str, object] = {}
+
+    def fake_snapshot_download(**kwargs: object) -> str:
+        calls.update(kwargs)
+        return str(snapshot)
+
+    monkeypatch.setattr(
+        "fyi_archive.backfill_verification.snapshot_download",
+        fake_snapshot_download,
+    )
+
+    info = remote_huggingface_record_count(
+        repo_id="owner/dataset",
+        token="hf-token",
+        revision="abc123",
+    )
+
+    assert info["record_count"] == 5
+    assert info["repo_id"] == "owner/dataset"
+    assert calls["allow_patterns"] == "manifests/latest_manifest.json"
 
 
 @respx.mock
