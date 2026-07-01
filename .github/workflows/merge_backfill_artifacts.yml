@@ -83,8 +83,24 @@ jobs:
           gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
             > .tmp/backfill-state.json
           gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID/artifacts" \
-            --jq '[.artifacts[].name | select(startswith("historical-backfill-")) | sub("^historical-backfill-"; "")]' \
-            > .tmp/backfill-merged-labels.json
+            --jq '[.artifacts[].name | select(startswith("historical-backfill-"))]' \
+            > .tmp/backfill-artifact-names.json
+          python - <<'PY'
+          import json
+          import re
+          from pathlib import Path
+
+          names = json.loads(Path(".tmp/backfill-artifact-names.json").read_text(encoding="utf-8"))
+          ranges: list[tuple[int, int]] = []
+          for name in names:
+              match = re.fullmatch(r"historical-backfill-(\d+)-(\d+)", name)
+              if match:
+                  ranges.append((int(match.group(1)), int(match.group(2))))
+          if not ranges:
+              raise SystemExit("No historical-backfill range artifacts found")
+          merged_label = f"{min(start for start, _ in ranges)}-{max(end for _, end in ranges)}"
+          Path(".tmp/backfill-merged-labels.json").write_text(json.dumps([merged_label], indent=2) + "\n", encoding="utf-8")
+          PY
 
       - name: Merge manifests
         run: |
@@ -122,10 +138,13 @@ jobs:
           from pathlib import Path
 
           counts: dict[str, int] = {}
+          merged_labels = json.loads(Path(".tmp/backfill-merged-labels.json").read_text(encoding="utf-8"))
+          merged_label = str(merged_labels[0])
+          total_count = 0
           for manifest_path in Path(".tmp/backfill-artifacts").glob("historical-backfill-*/manifests/latest_manifest.json"):
-              label = manifest_path.parent.parent.name.removeprefix("historical-backfill-")
               manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-              counts[label] = int(manifest.get("meta", {}).get("record_count") or 0)
+              total_count += int(manifest.get("meta", {}).get("record_count") or 0)
+          counts[merged_label] = total_count
           Path(".tmp/backfill-record-counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
 
