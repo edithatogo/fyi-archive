@@ -93,14 +93,52 @@ jobs:
           set -euo pipefail
           uv sync --extra dev --frozen
 
-      - name: Restore latest merged backfill bundle
+      - name: Restore cumulative merged backfill bundle
         if: env.SEED_BEFORE_PUBLISH != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p .tmp/merged-backfill
-          run_id="$(
+          gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow "Merge Backfill Artifacts" \
+            --status success \
+            --limit 200 \
+            --json databaseId \
+            --jq '.[].databaseId' \
+            > .tmp/merged-backfill-runs.txt
+          if [ ! -s .tmp/merged-backfill-runs.txt ]; then
+            echo "No successful Merge Backfill Artifacts runs are available; run that workflow before publishing." >&2
+            exit 1
+          fi
+          while read -r run_id; do
+            if [ -z "$run_id" ]; then
+              continue
+            fi
+            gh run download "$run_id" \
+              --repo "$GITHUB_REPOSITORY" \
+              --pattern 'merged-backfill-*' \
+              --dir ".tmp/merged-backfill/$run_id" || {
+                echo "No merged-backfill artifact found for merge run $run_id; skipping" >&2
+              }
+          done < .tmp/merged-backfill-runs.txt
+          mapfile -t restored_manifests < <(find .tmp/merged-backfill -path '*/manifests/latest_manifest.json' | sort)
+          if [ "${#restored_manifests[@]}" -lt 1 ]; then
+            echo "No merged manifests were restored from successful merge runs." >&2
+            exit 1
+          fi
+          args=()
+          for manifest in "${restored_manifests[@]}"; do
+            args+=(--input-manifest "$manifest")
+          done
+          uv run fyi-archive manifest merge \
+            "${args[@]}" \
+            --manifest-path manifests/latest_manifest.json \
+            --parquet-path manifests/latest_manifest.parquet \
+            --authorities-path manifests/authorities.json \
+            --fyi-cli-version 1.0.0
+          latest_run_id="$(
             gh run list \
               --repo "$GITHUB_REPOSITORY" \
               --workflow "Merge Backfill Artifacts" \
@@ -109,23 +147,15 @@ jobs:
               --json databaseId \
               --jq '.[0].databaseId // ""'
           )"
-          if [ -z "$run_id" ]; then
-            echo "No successful Merge Backfill Artifacts run is available; run that workflow before publishing." >&2
-            exit 1
+          latest_manifest="$(
+            find ".tmp/merged-backfill/$latest_run_id" -path '*/manifests/latest_manifest.json' | sort | head -n 1
+          )"
+          artifact_root=""
+          if [ -n "$latest_manifest" ]; then
+            artifact_root="$(dirname "$(dirname "$latest_manifest")")"
           fi
-          gh run download "$run_id" \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern 'merged-backfill-*' \
-            --dir .tmp/merged-backfill
-          mapfile -t manifests < <(find .tmp/merged-backfill -path '*/manifests/latest_manifest.json' | sort)
-          if [ "${#manifests[@]}" -ne 1 ]; then
-            printf 'Expected exactly one merged manifest artifact, found %s\n' "${#manifests[@]}" >&2
-            printf '%s\n' "${manifests[@]}" >&2
-            exit 1
-          fi
-          artifact_root="$(dirname "$(dirname "${manifests[0]}")")"
           for path in manifests metadata dist data versions; do
-            if [ -e "$artifact_root/$path" ]; then
+            if [ -n "$artifact_root" ] && [ "$path" != "manifests" ] && [ -e "$artifact_root/$path" ]; then
               mkdir -p "$path"
               cp -a "$artifact_root/$path/." "$path/"
             fi
@@ -137,8 +167,9 @@ jobs:
 
           manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
           if manifest["meta"]["record_count"] < 1:
-              raise SystemExit("merged manifest is empty; refusing to publish")
-          print("restored merged manifest records", manifest["meta"]["record_count"])
+              raise SystemExit("cumulative merged manifest is empty; refusing to publish")
+          print("restored merged artifact manifests", "${#restored_manifests[@]}")
+          print("restored cumulative merged records", manifest["meta"]["record_count"])
           PY
 
       - name: Build capped seed bundle
