@@ -70,3 +70,21 @@ def test_plan_dispatches_noops_after_completion() -> None:
     assert plan["batches"] == []
     assert plan["next_id"] == 11
     assert plan["complete"] is True
+
+
+def test_plan_dispatches_waits_for_merge_verification() -> None:
+    plan = plan_auto_backfill.plan_dispatches(
+        id_from=1,
+        id_to=100,
+        batch_span=25,
+        max_batches=2,
+        state={
+            "next_id": 1,
+            "batches": [{"id_from": "1", "id_to": "25", "label": "1-25", "status": "pending"}],
+        },
+    )
+
+    assert plan["batches"] == []
+    assert plan["blocked_by_pending"] is True
+    assert plan["next_id"] == 1
+    assert plan["complete"] is False
