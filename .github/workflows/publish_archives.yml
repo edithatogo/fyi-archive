@@ -53,6 +53,7 @@ on:
         type: string
 
 permissions:
+  actions: read
   attestations: write
   contents: write
   id-token: write
@@ -65,7 +66,7 @@ jobs:
     env:
       PUBLICATION_TARGET: ${{ inputs.publication_target || 'huggingface' }}
       PUBLISH_ZENODO: ${{ inputs.publish || false }}
-      SEED_BEFORE_PUBLISH: ${{ inputs.seed_before_publish || github.event_name == 'schedule' }}
+      SEED_BEFORE_PUBLISH: ${{ inputs.seed_before_publish || false }}
       SEED_DRY_RUN: ${{ inputs.seed_dry_run || false }}
       SEED_ID_FROM: ${{ inputs.seed_id_from || '20000' }}
       SEED_ID_TO: ${{ inputs.seed_id_to || '20000' }}
@@ -84,6 +85,54 @@ jobs:
         run: |
           set -euo pipefail
           uv sync --extra dev --frozen
+
+      - name: Restore latest merged backfill bundle
+        if: env.SEED_BEFORE_PUBLISH != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/merged-backfill
+          run_id="$(
+            gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow "Merge Backfill Artifacts" \
+              --status success \
+              --limit 1 \
+              --json databaseId \
+              --jq '.[0].databaseId // ""'
+          )"
+          if [ -z "$run_id" ]; then
+            echo "No successful Merge Backfill Artifacts run is available; run that workflow before publishing." >&2
+            exit 1
+          fi
+          gh run download "$run_id" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'merged-backfill-*' \
+            --dir .tmp/merged-backfill
+          mapfile -t manifests < <(find .tmp/merged-backfill -path '*/manifests/latest_manifest.json' | sort)
+          if [ "${#manifests[@]}" -ne 1 ]; then
+            printf 'Expected exactly one merged manifest artifact, found %s\n' "${#manifests[@]}" >&2
+            printf '%s\n' "${manifests[@]}" >&2
+            exit 1
+          fi
+          artifact_root="$(dirname "$(dirname "${manifests[0]}")")"
+          for path in manifests metadata dist data versions; do
+            if [ -e "$artifact_root/$path" ]; then
+              mkdir -p "$path"
+              cp -a "$artifact_root/$path/." "$path/"
+            fi
+          done
+          uv run python -m json.tool manifests/latest_manifest.json > /dev/null
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
+          if manifest["meta"]["record_count"] < 1:
+              raise SystemExit("merged manifest is empty; refusing to publish")
+          print("restored merged manifest records", manifest["meta"]["record_count"])
+          PY
 
       - name: Build capped seed bundle
         if: env.SEED_BEFORE_PUBLISH == 'true'
