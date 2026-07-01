@@ -2,8 +2,8 @@ name: Automated Historical Backfill
 
 on:
   schedule:
-    # Dispatch a bounded tranche daily; worker jobs keep their own runtime caps.
-    - cron: "17 13 * * *"
+    # Keep the controller ticking through the day; overnight NZ time uses a higher cap.
+    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       id_from:
@@ -22,7 +22,7 @@ on:
         default: "500"
         type: string
       max_batches:
-        description: Maximum worker runs to dispatch from this controller run
+        description: Maximum worker runs to dispatch from this controller run when manually triggered
         required: true
         default: "2"
         type: string
@@ -80,7 +80,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       ID_FROM: ${{ inputs.id_from || '1' }}
       ID_TO: ${{ inputs.id_to || '250000' }}
-      MAX_BATCHES: ${{ inputs.max_batches || '2' }}
+      MAX_BATCHES_INPUT: ${{ inputs.max_batches || '' }}
+      MAX_BATCHES_DAYTIME: "2"
+      MAX_BATCHES_OVERNIGHT: "10"
       MAX_DISK_GB: ${{ inputs.max_disk_gb || '5' }}
       MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '50' }}
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '30' }}
@@ -121,7 +123,7 @@ jobs:
             gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
               > .tmp/backfill-state.json
           else
-            printf '{"next_id": %s, "dispatched": []}\n' "$ID_FROM" > .tmp/backfill-state.json
+            printf '{"next_id": %s, "batches": [], "dispatched": []}\n' "$ID_FROM" > .tmp/backfill-state.json
             issue_url="$(
               gh issue create \
                 --repo "$REPO" \
@@ -139,6 +141,31 @@ jobs:
           echo "$issue_number" > .tmp/backfill-state-issue-number.txt
           cat .tmp/backfill-state.json
 
+      - name: Determine controller batch cap
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
+
+          requested = os.environ.get("MAX_BATCHES_INPUT", "").strip()
+          if requested:
+              max_batches = int(requested)
+              window = "manual"
+          else:
+              hour = datetime.now(ZoneInfo("Pacific/Auckland")).hour
+              overnight = hour >= 20 or hour < 6
+              max_batches = int(os.environ["MAX_BATCHES_OVERNIGHT"] if overnight else os.environ["MAX_BATCHES_DAYTIME"])
+              window = "overnight" if overnight else "daytime"
+
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
+              env_file.write(f"MAX_BATCHES_EFFECTIVE={max_batches}\n")
+              env_file.write(f"MAX_BATCH_WINDOW={window}\n")
+
+          print(f"Using max_batches={max_batches} ({window})")
+          PY
+
       - name: Plan worker dispatches
         run: |
           set -euo pipefail
@@ -146,7 +173,7 @@ jobs:
             --id-from "$ID_FROM" \
             --id-to "$ID_TO" \
             --batch-span "$BATCH_SPAN" \
-            --max-batches "$MAX_BATCHES" \
+            --max-batches "$MAX_BATCHES_EFFECTIVE" \
             --state .tmp/backfill-state.json \
             --output .tmp/backfill-plan.json
           cat .tmp/backfill-plan.json
@@ -157,7 +184,11 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$(jq '.planned_count' .tmp/backfill-plan.json)" = "0" ]; then
-            echo "No worker batches to dispatch"
+            if [ "$(jq -r '.blocked_by_pending // false' .tmp/backfill-plan.json)" = "true" ]; then
+              echo "Worker batches are still pending merge verification; not dispatching new work"
+            else
+              echo "No worker batches to dispatch"
+            fi
             exit 0
           fi
           jq -c '.batches[]' .tmp/backfill-plan.json | while read -r batch; do
@@ -186,19 +217,35 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
+          if [ "$(jq '.planned_count' .tmp/backfill-plan.json)" = "0" ]; then
+            echo "No state update required"
+            exit 0
+          fi
           issue_number="$(cat "$ISSUE_NUMBER_PATH")"
           python - <<'PY'
           import json
           import os
           from datetime import UTC, datetime
           from pathlib import Path
+          import sys
+
+          sys.path.insert(0, str(Path("scripts")))
+
+          from backfill_state import append_pending_batches
 
           state_path = Path(".tmp/backfill-state.json")
           plan_path = Path(".tmp/backfill-plan.json")
           state = json.loads(state_path.read_text(encoding="utf-8"))
           plan = json.loads(plan_path.read_text(encoding="utf-8"))
-          dispatched = list(state.get("dispatched") or [])
-          dispatched.append(
+          updated = append_pending_batches(
+              state=state,
+              batches=plan["batches"],
+              controller_run_id=os.environ["RUN_ID"],
+              controller_run_url=os.environ["RUN_URL"],
+          )
+          updated["complete"] = False
+          updated["dispatched"] = list(state.get("dispatched") or [])
+          updated["dispatched"].append(
               {
                   "at": datetime.now(UTC).isoformat(),
                   "batches": plan["batches"],
@@ -206,14 +253,8 @@ jobs:
                   "controller_run_url": os.environ["RUN_URL"],
               }
           )
-          updated = {
-              "complete": plan["complete"],
-              "dispatched": dispatched[-50:],
-              "id_from": int(os.environ["ID_FROM"]),
-              "id_to": int(os.environ["ID_TO"]),
-              "next_id": plan["next_id"],
-              "updated_at": datetime.now(UTC).isoformat(),
-          }
+          updated["id_from"] = int(os.environ["ID_FROM"])
+          updated["id_to"] = int(os.environ["ID_TO"])
           state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
           gh issue edit "$issue_number" \
