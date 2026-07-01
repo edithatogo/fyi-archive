@@ -12,6 +12,7 @@ from httpx import Response
 from typer.testing import CliRunner
 
 from fyi_archive.backfill_verification import (
+    build_backfill_verification_report,
     load_controller_state,
     remote_huggingface_record_count,
     remote_zenodo_record_count,
@@ -259,6 +260,66 @@ def test_backfill_report_cli_allows_dry_run_without_full_verification(
     assert result.exit_code == 0, result.output
     report = json.loads((tmp_path / "dist/backfill_verification.json").read_text(encoding="utf-8"))
     assert report["dry_run"] is True
+    assert report["comparison"]["fully_verified"] is False
+
+
+def test_backfill_report_flags_published_ids_outside_merged_controller_ranges(
+    tmp_path: Path, monkeypatch
+) -> None:
+    manifest = tmp_path / "manifests/latest_manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text(
+        json.dumps(
+            {
+                "meta": {"record_count": 3},
+                "requests": [
+                    {"request_id": 10},
+                    {"request_id": 2010},
+                    {"request_id": 2020},
+                ],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    state_info = {
+        "issue_number": 9,
+        "issue_url": "https://github.com/example/repo/issues/9",
+        "issue_title": "FYI historical backfill state (fyi-backfill-state)",
+        "state": {
+            "complete": False,
+            "id_from": 1,
+            "id_to": 3000,
+            "next_id": 2001,
+            "batches": [
+                {
+                    "id_from": "2001",
+                    "id_to": "2500",
+                    "label": "2001-2500",
+                    "status": "merged",
+                    "record_count": 2,
+                    "worker_run_id": "run-2001",
+                }
+            ],
+            "dispatched": [{"controller_run_id": "controller-1"}],
+        },
+    }
+    monkeypatch.setattr(
+        "fyi_archive.backfill_verification.utc_now",
+        lambda: datetime(2026, 6, 30, tzinfo=UTC),
+    )
+
+    report = build_backfill_verification_report(
+        state_info=state_info,
+        merged_manifest_path=manifest,
+    )
+
+    assert report["github_actions"]["published_request_ids"] == 3
+    assert report["github_actions"]["published_ids_outside_controller_merged_ranges"] == 1
+    assert report["github_actions"]["published_ids_outside_controller_sample"] == [10]
+    assert report["comparison"]["captured_matches_merged"] is False
+    assert report["comparison"]["controller_coverage_verified"] is True
+    assert report["comparison"]["published_ids_match_controller_ranges"] is False
     assert report["comparison"]["fully_verified"] is False
 
 

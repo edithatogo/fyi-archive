@@ -100,6 +100,33 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .tmp/merged-backfill
+          gh issue view 9 \
+            --repo "$GITHUB_REPOSITORY" \
+            --json body \
+            --jq .body \
+            > .tmp/backfill-state.json
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          state = json.loads(Path(".tmp/backfill-state.json").read_text())
+          worker_run_ids = sorted(
+              {
+                  str(batch["worker_run_id"])
+                  for batch in state.get("batches", [])
+                  if isinstance(batch, dict)
+                  and batch.get("status") == "merged"
+                  and batch.get("worker_run_id")
+              }
+          )
+          if not worker_run_ids:
+              raise SystemExit("No controller-verified merged worker run IDs are available.")
+          Path(".tmp/merged-worker-run-ids.txt").write_text(
+              "\n".join(worker_run_ids) + "\n",
+              encoding="utf-8",
+          )
+          print("controller merged worker runs", len(worker_run_ids))
+          PY
           gh run list \
             --repo "$GITHUB_REPOSITORY" \
             --workflow "Merge Backfill Artifacts" \
@@ -116,6 +143,25 @@ jobs:
             if [ -z "$run_id" ]; then
               continue
             fi
+            artifact_names="$(
+              gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/artifacts" \
+                --jq '.artifacts[].name' || true
+            )"
+            should_download=false
+            while read -r artifact_name; do
+              if [[ "$artifact_name" != merged-backfill-* ]]; then
+                continue
+              fi
+              worker_run_id="${artifact_name#merged-backfill-}"
+              if grep -Fxq "$worker_run_id" .tmp/merged-worker-run-ids.txt; then
+                should_download=true
+                break
+              fi
+            done <<< "$artifact_names"
+            if [ "$should_download" != "true" ]; then
+              echo "Skipping merge run $run_id; it has no controller-verified merged worker artifact." >&2
+              continue
+            fi
             gh run download "$run_id" \
               --repo "$GITHUB_REPOSITORY" \
               --pattern 'merged-backfill-*' \
@@ -128,8 +174,23 @@ jobs:
             echo "No merged manifests were restored from successful merge runs." >&2
             exit 1
           fi
+          mapfile -t filtered_manifests < <(
+            for manifest in "${restored_manifests[@]}"; do
+              artifact_dir="$(basename "$(dirname "$(dirname "$manifest")")")"
+              worker_run_id="${artifact_dir#merged-backfill-}"
+              if grep -Fxq "$worker_run_id" .tmp/merged-worker-run-ids.txt; then
+                echo "$manifest"
+              else
+                echo "Ignoring restored manifest $manifest because worker run $worker_run_id is not controller-verified." >&2
+              fi
+            done
+          )
+          if [ "${#filtered_manifests[@]}" -lt 1 ]; then
+            echo "No controller-verified merged manifests were restored." >&2
+            exit 1
+          fi
           args=()
-          for manifest in "${restored_manifests[@]}"; do
+          for manifest in "${filtered_manifests[@]}"; do
             args+=(--input-manifest "$manifest")
           done
           uv run fyi-archive manifest merge \
@@ -138,15 +199,7 @@ jobs:
             --parquet-path manifests/latest_manifest.parquet \
             --authorities-path manifests/authorities.json \
             --fyi-cli-version 1.0.0
-          latest_run_id="$(
-            gh run list \
-              --repo "$GITHUB_REPOSITORY" \
-              --workflow "Merge Backfill Artifacts" \
-              --status success \
-              --limit 1 \
-              --json databaseId \
-              --jq '.[0].databaseId // ""'
-          )"
+          latest_run_id="$(find .tmp/merged-backfill -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -n | tail -n 1)"
           latest_manifest="$(
             find ".tmp/merged-backfill/$latest_run_id" -path '*/manifests/latest_manifest.json' | sort | head -n 1
           )"
@@ -168,7 +221,7 @@ jobs:
           manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
           if manifest["meta"]["record_count"] < 1:
               raise SystemExit("cumulative merged manifest is empty; refusing to publish")
-          print("restored merged artifact manifests", "${#restored_manifests[@]}")
+          print("restored merged artifact manifests", "${#filtered_manifests[@]}")
           print("restored cumulative merged records", manifest["meta"]["record_count"])
           PY
 

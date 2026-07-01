@@ -143,6 +143,16 @@ def batch_requested_ids(batch: dict[str, Any]) -> int:
     return max(0, int(batch.get("id_to") or 0) - int(batch.get("id_from") or 0) + 1)
 
 
+def _batch_range(batch: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "label": str(batch.get("label") or ""),
+        "id_from": int(batch.get("id_from") or 0),
+        "id_to": int(batch.get("id_to") or 0),
+        "record_count": int(batch.get("record_count") or 0),
+        "worker_run_id": batch.get("worker_run_id"),
+    }
+
+
 def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
     """Summarize controller state into report-friendly counts."""
     state = state_info["state"]
@@ -161,6 +171,7 @@ def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
     merged_batches = [batch for batch in batches if str(batch.get("status") or "") == "merged"]
     captured_records = sum(int(batch.get("record_count") or 0) for batch in merged_batches)
     dispatched_requested_ids = sum(batch_requested_ids(batch) for batch in batches)
+    merged_batch_ranges = [_batch_range(batch) for batch in merged_batches]
     return {
         "state_issue_number": state_info["issue_number"],
         "state_issue_url": state_info["issue_url"],
@@ -177,6 +188,7 @@ def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
         "merged_batches": len(merged_batches),
         "captured_records": captured_records,
         "worker_runs": worker_runs,
+        "merged_batch_ranges": merged_batch_ranges,
     }
 
 
@@ -233,6 +245,38 @@ def remote_zenodo_record_count(
     }
 
 
+def manifest_request_ids(manifest_path: Path) -> list[int] | None:
+    """Return manifest request IDs when the manifest carries per-request records."""
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    requests = data.get("requests")
+    if not isinstance(requests, list):
+        return None
+    request_ids: list[int] = []
+    for record in requests:
+        if not isinstance(record, dict):
+            continue
+        request_id = record.get("request_id")
+        if isinstance(request_id, int):
+            request_ids.append(request_id)
+    return sorted(set(request_ids))
+
+
+def ids_outside_ranges(
+    request_ids: list[int] | None, ranges: list[dict[str, Any]]
+) -> list[int] | None:
+    """Return published request IDs outside controller-merged batch ranges."""
+    if request_ids is None:
+        return None
+    normalized_ranges = [
+        (int(item.get("id_from") or 0), int(item.get("id_to") or 0)) for item in ranges
+    ]
+    outside: list[int] = []
+    for request_id in request_ids:
+        if not any(start <= request_id <= end for start, end in normalized_ranges):
+            outside.append(request_id)
+    return outside
+
+
 def build_backfill_verification_report(
     *,
     state_info: dict[str, Any],
@@ -244,8 +288,16 @@ def build_backfill_verification_report(
     generated_at = utc_now()
     controller = controller_summary(state_info)
     merged_records = manifest_record_count(merged_manifest_path)
+    published_request_ids = manifest_request_ids(merged_manifest_path)
+    outside_controller = ids_outside_ranges(
+        published_request_ids,
+        controller["merged_batch_ranges"],
+    )
+    controller_coverage_verified = outside_controller is not None
+    outside_controller_count = None if outside_controller is None else len(outside_controller)
     hf_records = int(hf_info["record_count"]) if hf_info else None
     zenodo_records = int(zenodo_info["record_count"]) if zenodo_info else None
+    published_ids_match_controller = outside_controller_count in (None, 0)
     return {
         "generated_at": generated_at.isoformat(),
         "archive_publication_version": archive_publication_version(generated_at=generated_at),
@@ -256,6 +308,13 @@ def build_backfill_verification_report(
             "captured_records": controller["captured_records"],
             "merged_records": merged_records,
             "worker_runs": controller["worker_runs"],
+            "published_request_ids": None
+            if published_request_ids is None
+            else len(published_request_ids),
+            "published_ids_outside_controller_merged_ranges": outside_controller_count,
+            "published_ids_outside_controller_sample": None
+            if outside_controller is None
+            else outside_controller[:25],
         },
         "published": {
             "huggingface": hf_info,
@@ -268,10 +327,13 @@ def build_backfill_verification_report(
             if zenodo_records is None
             else merged_records - zenodo_records,
             "captured_matches_merged": controller["captured_records"] == merged_records,
+            "controller_coverage_verified": controller_coverage_verified,
+            "published_ids_match_controller_ranges": published_ids_match_controller,
             "merged_matches_huggingface": hf_records is None or merged_records == hf_records,
             "merged_matches_zenodo": zenodo_records is None or merged_records == zenodo_records,
             "fully_verified": (
                 controller["captured_records"] == merged_records
+                and published_ids_match_controller
                 and (hf_records is None or merged_records == hf_records)
                 and (zenodo_records is None or merged_records == zenodo_records)
             ),
