@@ -127,13 +127,9 @@ jobs:
           )
           print("controller merged worker runs", len(worker_run_ids))
           PY
-          gh run list \
-            --repo "$GITHUB_REPOSITORY" \
-            --workflow "Merge Backfill Artifacts" \
-            --status success \
-            --limit 200 \
-            --json databaseId \
-            --jq '.[].databaseId' \
+          gh api --paginate \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/merge_backfill_artifacts.yml/runs?status=success&per_page=100" \
+            --jq '.workflow_runs[].id' \
             > .tmp/merged-backfill-runs.txt
           if [ ! -s .tmp/merged-backfill-runs.txt ]; then
             echo "No successful Merge Backfill Artifacts runs are available; run that workflow before publishing." >&2
