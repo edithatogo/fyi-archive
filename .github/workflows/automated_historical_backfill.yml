@@ -82,7 +82,7 @@ jobs:
       ID_TO: ${{ inputs.id_to || '250000' }}
       MAX_BATCHES_INPUT: ${{ inputs.max_batches || '' }}
       MAX_BATCHES_DAYTIME: "2"
-      MAX_BATCHES_OVERNIGHT: "10"
+      MAX_BATCHES_OVERNIGHT: "20"
       MAX_DISK_GB: ${{ inputs.max_disk_gb || '5' }}
       MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '50' }}
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '30' }}
