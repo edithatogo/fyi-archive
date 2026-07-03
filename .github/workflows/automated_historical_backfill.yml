@@ -93,6 +93,7 @@ jobs:
       REPO: ${{ github.repository }}
       STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
       STATE_TITLE: FYI historical backfill state (${{ inputs.state_label || 'fyi-backfill-state' }})
+      DISPATCH_DELAY_SECONDS: "0"
       WORKER_CHUNK_SIZE: ${{ inputs.worker_chunk_size || '50' }}
       WORKER_MAX_CHUNKS: ${{ inputs.worker_max_chunks || '10' }}
     steps:
@@ -269,7 +270,9 @@ jobs:
               -f max_runtime_minutes="$MAX_RUNTIME_MINUTES" \
               -f max_disk_gb="$MAX_DISK_GB" \
               -f dry_run="$DRY_RUN"
-            sleep 10
+            if [ "${DISPATCH_DELAY_SECONDS:-0}" -gt 0 ]; then
+              sleep "$DISPATCH_DELAY_SECONDS"
+            fi
           done
 
       - name: Persist controller state
