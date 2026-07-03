@@ -1,0 +1,5 @@
+# Sensitive surfaces that should be reviewed deliberately.
+/.github/workflows/ @edithatogo
+/scripts/ @edithatogo
+/src/ @edithatogo
+/conductor/ @edithatogo
