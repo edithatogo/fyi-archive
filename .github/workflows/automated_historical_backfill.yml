@@ -3,7 +3,7 @@ name: Automated Historical Backfill
 on:
   schedule:
     # Keep the controller ticking frequently so the worker pool refills quickly.
-    - cron: "*/1 * * * *"
+    - cron: "*/5 * * * *"
   workflow_run:
     workflows: ["Historical Backfill Batch"]
     types: [completed]
