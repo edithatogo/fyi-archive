@@ -44,8 +44,12 @@ def _mirror_targets(report_path: Path) -> tuple[dict[str, Any] | None, dict[str,
 @app.command()
 def report(
     repo: Annotated[str | None, typer.Option(envvar="GITHUB_REPOSITORY")] = None,
-    state_label: Annotated[str, typer.Option(envvar="FYI_BACKFILL_STATE_LABEL")] = "fyi-backfill-state",
-    state_issue_number: Annotated[int | None, typer.Option(envvar="FYI_BACKFILL_STATE_ISSUE")] = None,
+    state_label: Annotated[
+        str, typer.Option(envvar="FYI_BACKFILL_STATE_LABEL")
+    ] = "fyi-backfill-state",
+    state_issue_number: Annotated[
+        int | None, typer.Option(envvar="FYI_BACKFILL_STATE_ISSUE")
+    ] = None,
     dry_run: Annotated[bool, typer.Option(envvar="DRY_RUN")] = False,
     manifest_path: Annotated[Path, typer.Option()] = Path("manifests/latest_manifest.json"),
     mirror_report_path: Annotated[Path, typer.Option()] = Path("dist/mirror_verification.json"),
@@ -62,7 +66,9 @@ def report(
     if repo is None:
         raise typer.BadParameter("GITHUB_REPOSITORY or --repo is required")
 
-    state_info = load_controller_state(repo=repo, state_label=state_label, issue_number=state_issue_number)
+    state_info = load_controller_state(
+        repo=repo, state_label=state_label, issue_number=state_issue_number
+    )
     hf_details, zenodo_details = _mirror_targets(mirror_report_path)
     if hf_repo_id is None and isinstance(hf_details, dict):
         hf_repo_id = str(hf_details.get("repo_id") or "") or None

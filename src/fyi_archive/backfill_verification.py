@@ -36,7 +36,9 @@ def gh_json(args: list[str]) -> dict[str, object] | list[dict[str, object]]:
     return cast("dict[str, object] | list[dict[str, object]]", json.loads(completed.stdout))
 
 
-def load_controller_state(*, repo: str, state_label: str, issue_number: int | None = None) -> dict[str, Any]:
+def load_controller_state(
+    *, repo: str, state_label: str, issue_number: int | None = None
+) -> dict[str, Any]:
     """Load the active backfill controller issue body and metadata."""
     if issue_number is None:
         issue = gh_json(
@@ -137,7 +139,9 @@ def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
             if isinstance(batch.get("worker_run_id"), str) and batch.get("worker_run_id")
         },
     )
-    pending_batches = [batch for batch in batches if str(batch.get("status") or "pending") == "pending"]
+    pending_batches = [
+        batch for batch in batches if str(batch.get("status") or "pending") == "pending"
+    ]
     merged_batches = [batch for batch in batches if str(batch.get("status") or "") == "merged"]
     captured_records = sum(int(batch.get("record_count") or 0) for batch in merged_batches)
     dispatched_requested_ids = sum(batch_requested_ids(batch) for batch in batches)
@@ -160,7 +164,9 @@ def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def remote_huggingface_record_count(*, repo_id: str, token: str | None, revision: str | None = None) -> dict[str, Any]:
+def remote_huggingface_record_count(
+    *, repo_id: str, token: str | None, revision: str | None = None
+) -> dict[str, Any]:
     """Fetch the published HF manifest and return its record count."""
     with tempfile.TemporaryDirectory() as cache_dir:
         snapshot_path = Path(
@@ -184,7 +190,9 @@ def remote_huggingface_record_count(*, repo_id: str, token: str | None, revision
         }
 
 
-def remote_zenodo_record_count(*, token: str, deposition_id: int, api_url: str = ZENODO_API) -> dict[str, Any]:
+def remote_zenodo_record_count(
+    *, token: str, deposition_id: int, api_url: str = ZENODO_API
+) -> dict[str, Any]:
     """Fetch the published Zenodo manifest and return its record count."""
     deposition = get_deposition(token=token, deposition_id=deposition_id, api_url=api_url)
     manifest_url = None
@@ -203,7 +211,9 @@ def remote_zenodo_record_count(*, token: str, deposition_id: int, api_url: str =
         "doi": deposition.get("doi"),
         "api_url": api_url,
         "manifest_url": manifest_url,
-        "record_count": int(data.get("meta", {}).get("record_count") or data.get("record_count") or 0),
+        "record_count": int(
+            data.get("meta", {}).get("record_count") or data.get("record_count") or 0
+        ),
     }
 
 
@@ -238,7 +248,9 @@ def build_backfill_verification_report(
         "comparison": {
             "captured_minus_merged": controller["captured_records"] - merged_records,
             "merged_minus_huggingface": None if hf_records is None else merged_records - hf_records,
-            "merged_minus_zenodo": None if zenodo_records is None else merged_records - zenodo_records,
+            "merged_minus_zenodo": None
+            if zenodo_records is None
+            else merged_records - zenodo_records,
             "captured_matches_merged": controller["captured_records"] == merged_records,
             "merged_matches_huggingface": hf_records is None or merged_records == hf_records,
             "merged_matches_zenodo": zenodo_records is None or merged_records == zenodo_records,
