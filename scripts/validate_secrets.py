@@ -10,45 +10,47 @@ import sys
 
 def main() -> None:
     """Check required publishing secrets and report status."""
-    required_values = [
-        ("HF_TOKEN", "Hugging Face"),
-        ("HF_REPO_ID", "Hugging Face repository"),
-        ("ZENODO_TOKEN", "Zenodo production"),
-        ("OSF_TOKEN", "OSF"),
-        ("OSF_PARENT_ID", "OSF parent project"),
+    required_services = [
+        {"name": "HF_TOKEN", "label": "Hugging Face"},
+        {"name": "HF_REPO_ID", "label": "Hugging Face repository"},
+        {"name": "ZENODO_TOKEN", "label": "Zenodo production"},
+        {"name": "OSF_TOKEN", "label": "OSF"},
+        {"name": "OSF_PARENT_ID", "label": "OSF parent project"},
     ]
 
-    optional_secrets = [
-        ("ZENODO_SANDBOX_TOKEN", "Zenodo sandbox (for rehearsal)"),
+    optional_services = [
+        {"name": "ZENODO_SANDBOX_TOKEN", "label": "Zenodo sandbox (for rehearsal)"},
     ]
 
-    missing_required = []
-    missing_optional = []
+    missing_required_services = []
+    missing_optional_services = []
 
-    for name, service in required_values:
+    for item in required_services:
+        name = item["name"]
+        service = item["label"]
         if not os.environ.get(name):
-            missing_required.append(f"{name} ({service})")
+            missing_required_services.append(service)
 
-    for name, service in optional_secrets:
+    for item in optional_services:
+        name = item["name"]
+        service = item["label"]
         if not os.environ.get(name):
-            missing_optional.append(f"{name} ({service})")
+            missing_optional_services.append(service)
 
     result = {
-        "valid": len(missing_required) == 0,
-        "missing_required": missing_required,
-        "missing_optional": missing_optional,
+        "valid": len(missing_required_services) == 0,
+        "missing_required_services": missing_required_services,
+        "missing_optional_services": missing_optional_services,
     }
 
     if result["valid"]:
         print("All required publishing secrets are configured.")
-        for name, service in optional_secrets:
-            is_present = name in os.environ
-            status = "present" if is_present else "not configured (optional)"
-            print(f"  {service}: {status}")
+        if optional_services:
+            print("Optional publishing secrets are configured or omitted.")
     else:
-        print("Missing required secrets for publishing:")
-        for secret in missing_required:
-            print(f"  - {secret}")
+        print("Missing required publishing services:")
+        for service in missing_required_services:
+            print(f"  - {service}")
 
     print(json.dumps(result, indent=2))
     sys.exit(0 if result["valid"] else 1)
