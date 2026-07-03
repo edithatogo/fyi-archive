@@ -5,21 +5,23 @@ on:
     branches: [main]
 
 permissions:
-  attestations: write
-  contents: write
-  id-token: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+      issues: write
+      pull-requests: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@v7
-      - uses: actions/setup-python@v6
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
 
@@ -28,7 +30,7 @@ jobs:
           set -euo pipefail
           uv sync --extra dev --frozen
 
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -48,7 +50,7 @@ jobs:
 
       - name: Upload release evidence
         if: steps.release.outputs.releases_created == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-evidence
           path: |
@@ -57,7 +59,7 @@ jobs:
 
       - name: Attach release evidence
         if: steps.release.outputs.releases_created == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@37bb98842b0d8c4ffebdb75301a13db0267cef89 # v2
         with:
           tag_name: ${{ steps.release.outputs.tag_name }}
           fail_on_unmatched_files: false
@@ -67,7 +69,7 @@ jobs:
 
       - name: Attest release evidence
         if: steps.release.outputs.releases_created == 'true'
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@78e6cbd37d0ac1a40113c04f2037dacf1ea3f12e # v4
         with:
           subject-path: |
             dist/sbom.cdx.json
