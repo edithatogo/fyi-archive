@@ -44,6 +44,18 @@ def has_pending_batches(state: dict[str, Any] | None) -> bool:
     return any(str(batch.get("status") or "pending") != "merged" for batch in state_batches(state))
 
 
+def state_dispatch_next_id(state: dict[str, Any] | None, fallback: int) -> int:
+    """Return the next request ID after the highest dispatched batch."""
+    if not state:
+        return fallback
+    batches = state_batches(state)
+    verified_next = state_next_id(state, fallback)
+    if not batches:
+        return verified_next
+    highest_end = max(int(batch["id_to"]) for batch in batches)
+    return max(verified_next, highest_end + 1, fallback)
+
+
 def _batch_key(batch: dict[str, Any]) -> tuple[int, int, str]:
     return (int(batch["id_from"]), int(batch["id_to"]), str(batch.get("label") or ""))
 

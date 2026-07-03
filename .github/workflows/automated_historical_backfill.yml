@@ -81,7 +81,7 @@ jobs:
       ID_FROM: ${{ inputs.id_from || '1' }}
       ID_TO: ${{ inputs.id_to || '250000' }}
       MAX_BATCHES_INPUT: ${{ inputs.max_batches || '' }}
-      MAX_BATCHES_DAYTIME: "2"
+      MAX_BATCHES_DAYTIME: "3"
       MAX_BATCHES_OVERNIGHT: "20"
       MAX_DISK_GB: ${{ inputs.max_disk_gb || '5' }}
       MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '50' }}
@@ -202,10 +202,20 @@ jobs:
           echo "ACTIVE_WORKER_RUNS=$active" >> "$GITHUB_ENV"
           echo "Active Historical Backfill Batch runs: $active"
 
+      - name: Determine dispatch slots
+        run: |
+          set -euo pipefail
+          available=$((MAX_BATCHES_EFFECTIVE - ACTIVE_WORKER_RUNS))
+          if [ "$available" -lt 0 ]; then
+            available=0
+          fi
+          echo "AVAILABLE_BATCHES=$available" >> "$GITHUB_ENV"
+          echo "Available dispatch slots: $available"
+
       - name: Plan worker dispatches
         run: |
           set -euo pipefail
-          if [ "${ACTIVE_WORKER_RUNS:-0}" -gt 0 ]; then
+          if [ "${AVAILABLE_BATCHES:-0}" -le 0 ]; then
             cat > .tmp/backfill-plan.json <<EOF
           {
             "batches": [],
@@ -222,7 +232,7 @@ jobs:
             --id-from "$ID_FROM" \
             --id-to "$ID_TO" \
             --batch-span "$BATCH_SPAN" \
-            --max-batches "$MAX_BATCHES_EFFECTIVE" \
+            --max-batches "$AVAILABLE_BATCHES" \
             --state .tmp/backfill-state.json \
             --output .tmp/backfill-plan.json
           cat .tmp/backfill-plan.json
@@ -235,8 +245,6 @@ jobs:
           if [ "$(jq '.planned_count' .tmp/backfill-plan.json)" = "0" ]; then
             if [ "$(jq -r '.blocked_by_active_workers // false' .tmp/backfill-plan.json)" = "true" ]; then
               echo "Historical Backfill Batch runs are already active; not dispatching new work"
-            elif [ "$(jq -r '.blocked_by_pending // false' .tmp/backfill-plan.json)" = "true" ]; then
-              echo "Worker batches are still pending merge verification; not dispatching new work"
             else
               echo "No worker batches to dispatch"
             fi
