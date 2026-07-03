@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.5.1](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.5.0...fyi_archive-v0.5.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* clear backfill verification lint ([b0404ee](https://github.com/edithatogo/fyi-archive/commit/b0404ee23f8378bd5d224763ddc6e7cbc5956b71))
+* dispatch backfill batches without delay ([8eaa844](https://github.com/edithatogo/fyi-archive/commit/8eaa844b66a4f669919b76d17d7f6d5863751b95))
+* dispatch backfill batches without delay ([2cc9d6b](https://github.com/edithatogo/fyi-archive/commit/2cc9d6b34865cc0ecb79715fa27bb505b23453ba))
+* keep backfill worker pool topped up ([1b79aed](https://github.com/edithatogo/fyi-archive/commit/1b79aed632713a2c3a944ddbaebe7a1b13f46c4b))
+* keep backfill worker pool topped up ([069c969](https://github.com/edithatogo/fyi-archive/commit/069c9696a7d0743856db1fc46782ab530aced18f))
+* persist updated backfill state ([5c153d0](https://github.com/edithatogo/fyi-archive/commit/5c153d02bb60081e992b9b9315e556d1d925fe79))
+* restore valid backfill schedule ([900da25](https://github.com/edithatogo/fyi-archive/commit/900da25f73c1fa9fbcf235b5bf5a304d70ecb2f5))
+* satisfy backfill verification type checks ([43464c3](https://github.com/edithatogo/fyi-archive/commit/43464c39a3b706a606d1f5950d46b91683369b30))
+
 ## [0.5.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.4.0...fyi_archive-v0.5.0) (2026-07-03)
 
 
