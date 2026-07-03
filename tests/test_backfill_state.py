@@ -28,6 +28,18 @@ def test_append_pending_batches_preserves_verified_cursor() -> None:
     assert backfill_state.has_pending_batches(updated) is True
 
 
+def test_state_dispatch_next_id_tracks_highest_dispatched_batch() -> None:
+    state = {
+        "next_id": 501,
+        "batches": [
+            {"id_from": "501", "id_to": "750", "label": "501-750", "status": "merged"},
+            {"id_from": "751", "id_to": "1000", "label": "751-1000", "status": "pending"},
+        ],
+    }
+
+    assert backfill_state.state_dispatch_next_id(state, 1) == 1001
+
+
 def test_mark_merged_batches_advances_only_through_contiguous_merged_ranges() -> None:
     state = {
         "id_to": 1000,
