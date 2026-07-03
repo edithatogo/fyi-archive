@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -10,10 +11,127 @@ import respx
 from httpx import Response
 from typer.testing import CliRunner
 
+from fyi_archive import backfill_verification
 from fyi_archive.backfill_verification import remote_zenodo_record_count
 from fyi_archive.cli import app
 
 runner = CliRunner()
+
+
+def test_gh_json_parses_stdout(monkeypatch) -> None:
+    completed = subprocess.CompletedProcess(args=["gh"], returncode=0, stdout='{"ok": true}\n')
+    monkeypatch.setattr(
+        backfill_verification.subprocess,
+        "run",
+        lambda *args, **kwargs: completed,
+    )
+
+    assert backfill_verification.gh_json(["status"]) == {"ok": True}
+
+
+def test_load_controller_state_falls_back_to_all_issues(monkeypatch) -> None:
+    calls = iter(
+        [
+            [],
+            [
+                {
+                    "number": 9,
+                    "url": "https://github.com/example/repo/issues/9",
+                    "title": "FYI historical backfill state (fyi-backfill-state)",
+                }
+            ],
+            {
+                "body": json.dumps({"next_id": 4, "batches": [], "dispatched": []}),
+                "number": 9,
+                "title": "FYI historical backfill state (fyi-backfill-state)",
+                "url": "https://github.com/example/repo/issues/9",
+            },
+        ]
+    )
+    monkeypatch.setattr(backfill_verification, "gh_json", lambda args: next(calls))
+
+    state_info = backfill_verification.load_controller_state(
+        repo="example/repo",
+        state_label="fyi-backfill-state",
+    )
+
+    assert state_info["issue_number"] == 9
+    assert state_info["issue_url"] == "https://github.com/example/repo/issues/9"
+    assert state_info["state"]["next_id"] == 4
+
+
+def test_load_controller_state_rejects_invalid_body(monkeypatch) -> None:
+    monkeypatch.setattr(
+        backfill_verification,
+        "gh_json",
+        lambda args: {
+            "body": "not-json",
+            "number": 9,
+            "title": "FYI historical backfill state (fyi-backfill-state)",
+            "url": "https://github.com/example/repo/issues/9",
+        },
+    )
+
+    try:
+        backfill_verification.load_controller_state(
+            repo="example/repo",
+            state_label="fyi-backfill-state",
+            issue_number=9,
+        )
+    except ValueError as exc:
+        assert "does not contain JSON state" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
+
+
+def test_remote_huggingface_record_count_uses_downloaded_manifest(
+    tmp_path: Path, monkeypatch
+) -> None:
+    snapshot_path = tmp_path / "snapshot"
+    manifest_path = snapshot_path / "manifests/latest_manifest.json"
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text('{"meta": {"record_count": 5}}\n', encoding="utf-8")
+
+    monkeypatch.setattr(
+        backfill_verification,
+        "snapshot_download",
+        lambda **kwargs: snapshot_path.as_posix(),
+    )
+    monkeypatch.setattr(backfill_verification, "sha256_file", lambda path: "abc123")
+    monkeypatch.setattr(
+        backfill_verification,
+        "manifest_record_count",
+        lambda path: 5,
+    )
+
+    info = backfill_verification.remote_huggingface_record_count(
+        repo_id="owner/dataset",
+        token="hf-token",
+    )
+
+    assert info["manifest_path"].endswith("manifests/latest_manifest.json")
+    assert info["manifest_sha256"] == "abc123"
+    assert info["record_count"] == 5
+
+
+def test_remote_zenodo_record_count_requires_manifest_url(monkeypatch) -> None:
+    monkeypatch.setattr(
+        backfill_verification,
+        "get_deposition",
+        lambda **kwargs: {"doi": "10.5281/zenodo.42"},
+    )
+    monkeypatch.setattr(backfill_verification, "deposition_artifacts", lambda deposition: [])
+
+    try:
+        backfill_verification.remote_zenodo_record_count(
+            token="zenodo-token",
+            deposition_id=42,
+            api_url="https://zenodo.example/api",
+        )
+    except ValueError as exc:
+        assert "does not expose latest_manifest.json" in str(exc)
+    else:
+        raise AssertionError("expected ValueError")
 
 
 def test_backfill_report_cli_writes_versioned_reports(tmp_path: Path, monkeypatch) -> None:
@@ -114,7 +232,7 @@ def test_backfill_report_cli_allows_dry_run_without_full_verification(
 ) -> None:
     manifest = tmp_path / "manifests/latest_manifest.json"
     manifest.parent.mkdir(parents=True)
-    manifest.write_text('{"meta": {"record_count": 2}, "requests": []}\n', encoding="utf-8")
+    manifest.write_text('{"meta": {"record_count": 3}, "requests": []}\n', encoding="utf-8")
 
     state_info = {
         "issue_number": 9,
@@ -162,6 +280,79 @@ def test_backfill_report_cli_allows_dry_run_without_full_verification(
     report = json.loads((tmp_path / "dist/backfill_verification.json").read_text(encoding="utf-8"))
     assert report["dry_run"] is True
     assert report["comparison"]["fully_verified"] is False
+
+
+def test_backfill_verification_helpers_cover_state_loading_and_writers(
+    tmp_path: Path, monkeypatch
+) -> None:
+    manifest = tmp_path / "manifests/latest_manifest.json"
+    manifest.parent.mkdir(parents=True)
+    manifest.write_text('{"meta": {"record_count": 3}, "requests": []}\n', encoding="utf-8")
+
+    controller_state = {
+        "complete": False,
+        "id_from": 1,
+        "id_to": 100,
+        "next_id": 4,
+        "batches": [
+            {
+                "id_from": "1",
+                "id_to": "3",
+                "label": "1-3",
+                "status": "merged",
+                "record_count": 3,
+                "worker_run_id": "123",
+            }
+        ],
+        "dispatched": [{"controller_run_id": "456"}],
+    }
+
+    def fake_gh_json(args: list[str]):
+        if args[:2] == ["issue", "list"]:
+            return [
+                {
+                    "number": 9,
+                    "url": "https://github.com/example/repo/issues/9",
+                    "title": "FYI historical backfill state (fyi-backfill-state)",
+                }
+            ]
+        if args[:2] == ["issue", "view"]:
+            return {
+                "body": json.dumps(controller_state),
+                "number": 9,
+                "title": "FYI historical backfill state (fyi-backfill-state)",
+                "url": "https://github.com/example/repo/issues/9",
+            }
+        raise AssertionError(f"unexpected gh_json call: {args}")
+
+    monkeypatch.setattr(backfill_verification, "gh_json", fake_gh_json)
+    monkeypatch.setattr(
+        "fyi_archive.backfill_verification.utc_now",
+        lambda: datetime(2026, 6, 30, tzinfo=UTC),
+    )
+
+    state_info = backfill_verification.load_controller_state(
+        repo="example/repo",
+        state_label="fyi-backfill-state",
+    )
+    report = backfill_verification.build_backfill_verification_report(
+        state_info=state_info,
+        merged_manifest_path=manifest,
+        hf_info={"record_count": 3},
+        zenodo_info={"record_count": 3},
+    )
+
+    report_path = tmp_path / "dist/backfill_verification.json"
+    versions_dir = tmp_path / "versions"
+    backfill_verification.write_backfill_report(report_path, report)
+    backfill_verification.write_versioned_backfill_report(report=report, output_dir=versions_dir)
+
+    assert state_info["issue_number"] == 9
+    assert report["controller"]["pending_batches"] == 0
+    assert report["comparison"]["fully_verified"] is True
+    assert report_path.exists()
+    assert (versions_dir / "latest_backfill_verification.json").exists()
+    assert (versions_dir / "2026-06" / "backfill_verification.json").exists()
 
 
 @respx.mock
