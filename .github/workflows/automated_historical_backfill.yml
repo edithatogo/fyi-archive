@@ -2,8 +2,8 @@ name: Automated Historical Backfill
 
 on:
   schedule:
-    # Keep the controller ticking through the day; overnight NZ time uses a higher cap.
-    - cron: "*/5 * * * *"
+    # Keep the controller ticking frequently so the worker pool refills quickly.
+    - cron: "*/1 * * * *"
   workflow_run:
     workflows: ["Historical Backfill Batch"]
     types: [completed]
@@ -25,9 +25,9 @@ on:
         default: "500"
         type: string
       max_batches:
-        description: Maximum worker runs to dispatch from this controller run when manually triggered
+        description: Target number of concurrently running worker batches when manually triggered
         required: true
-        default: "3"
+        default: "20"
         type: string
       worker_chunk_size:
         description: Inclusive request-ID span per worker matrix chunk
@@ -84,9 +84,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       ID_FROM: ${{ inputs.id_from || '1' }}
       ID_TO: ${{ inputs.id_to || '250000' }}
-      MAX_BATCHES_INPUT: ${{ inputs.max_batches || '' }}
-      MAX_BATCHES_DAYTIME: "3"
-      MAX_BATCHES_OVERNIGHT: "20"
+      TARGET_ACTIVE_WORKERS_INPUT: ${{ inputs.max_batches || '' }}
+      TARGET_ACTIVE_WORKERS_DEFAULT: "20"
+      TARGET_QUEUE_BUFFER: "20"
       MAX_DISK_GB: ${{ inputs.max_disk_gb || '5' }}
       MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '50' }}
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '30' }}
@@ -162,24 +162,23 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           import os
-          from datetime import datetime
-          from zoneinfo import ZoneInfo
 
-          requested = os.environ.get("MAX_BATCHES_INPUT", "").strip()
+          requested = os.environ.get("TARGET_ACTIVE_WORKERS_INPUT", "").strip()
           if requested:
-              max_batches = int(requested)
+              active_target = int(requested)
               window = "manual"
           else:
-              hour = datetime.now(ZoneInfo("Pacific/Auckland")).hour
-              overnight = hour >= 20 or hour < 6
-              max_batches = int(os.environ["MAX_BATCHES_OVERNIGHT"] if overnight else os.environ["MAX_BATCHES_DAYTIME"])
-              window = "overnight" if overnight else "daytime"
+              active_target = int(os.environ["TARGET_ACTIVE_WORKERS_DEFAULT"])
+              window = "scheduled"
+          queue_buffer = int(os.environ["TARGET_QUEUE_BUFFER"])
+          total_target = active_target + queue_buffer
 
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
-              env_file.write(f"MAX_BATCHES_EFFECTIVE={max_batches}\n")
+              env_file.write(f"TARGET_ACTIVE_WORKERS_EFFECTIVE={active_target}\n")
+              env_file.write(f"TARGET_TOTAL_WORKERS_EFFECTIVE={total_target}\n")
               env_file.write(f"MAX_BATCH_WINDOW={window}\n")
 
-          print(f"Using max_batches={max_batches} ({window})")
+          print(f"Using target_active_workers={active_target} and total_target={total_target} ({window})")
           PY
 
       - name: Check active worker runs
@@ -210,7 +209,7 @@ jobs:
       - name: Determine dispatch slots
         run: |
           set -euo pipefail
-          available=$((MAX_BATCHES_EFFECTIVE - ACTIVE_WORKER_RUNS))
+          available=$((TARGET_TOTAL_WORKERS_EFFECTIVE - ACTIVE_WORKER_RUNS))
           if [ "$available" -lt 0 ]; then
             available=0
           fi
