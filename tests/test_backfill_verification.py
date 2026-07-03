@@ -10,8 +10,8 @@ import respx
 from httpx import Response
 from typer.testing import CliRunner
 
-from fyi_archive.cli import app
 from fyi_archive.backfill_verification import remote_zenodo_record_count
+from fyi_archive.cli import app
 
 runner = CliRunner()
 

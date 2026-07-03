@@ -8,15 +8,15 @@ import subprocess
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import httpx
 from huggingface_hub import snapshot_download
 
 from fyi_archive.publish.evidence import archive_publication_version
 from fyi_archive.publish.hf_publish import sha256_file
-from fyi_archive.publish.zenodo_publish import ZENODO_API, deposition_artifacts, get_deposition
 from fyi_archive.publish.verification import manifest_record_count
+from fyi_archive.publish.zenodo_publish import ZENODO_API, deposition_artifacts, get_deposition
 
 
 def utc_now() -> datetime:
@@ -24,7 +24,7 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
-def gh_json(args: list[str]) -> Any:
+def gh_json(args: list[str]) -> dict[str, object] | list[dict[str, object]]:
     """Run gh with JSON output and return the parsed payload."""
     completed = subprocess.run(
         ["gh", *args],
@@ -33,7 +33,7 @@ def gh_json(args: list[str]) -> Any:
         text=True,
         env=os.environ.copy(),
     )
-    return json.loads(completed.stdout)
+    return cast("dict[str, object] | list[dict[str, object]]", json.loads(completed.stdout))
 
 
 def load_controller_state(*, repo: str, state_label: str, issue_number: int | None = None) -> dict[str, Any]:
@@ -220,7 +220,7 @@ def build_backfill_verification_report(
     merged_records = manifest_record_count(merged_manifest_path)
     hf_records = int(hf_info["record_count"]) if hf_info else None
     zenodo_records = int(zenodo_info["record_count"]) if zenodo_info else None
-    report = {
+    return {
         "generated_at": generated_at.isoformat(),
         "archive_publication_version": archive_publication_version(generated_at=generated_at),
         "controller": controller,
@@ -249,7 +249,6 @@ def build_backfill_verification_report(
             ),
         },
     }
-    return report
 
 
 def write_backfill_report(path: Path, report: dict[str, Any]) -> None:
