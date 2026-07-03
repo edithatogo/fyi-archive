@@ -5,6 +5,35 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.5.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.4.0...fyi_archive-v0.5.0) (2026-07-03)
+
+
+### Features
+
+* report backfill publication verification ([47a83fc](https://github.com/edithatogo/fyi-archive/commit/47a83fc86b5090b2b29aac8a30f236d675a13c5f))
+
+
+### Bug Fixes
+
+* allow empty verified backfill merges ([62ac7e5](https://github.com/edithatogo/fyi-archive/commit/62ac7e53e89c00b84c02d761bcf471362311ffb5))
+* bound historical backfill chunk runtime ([061a649](https://github.com/edithatogo/fyi-archive/commit/061a64938f8fb07062d4173bb4db05fabec048a5))
+* filter cumulative backfill publication artifacts ([8f24ea4](https://github.com/edithatogo/fyi-archive/commit/8f24ea4dec605dd6b31ae11ed6b839d7f06cda1b))
+* include backfill state helper ([56b5765](https://github.com/edithatogo/fyi-archive/commit/56b576555e17d2a84ffec52a7d4644a396a0ca1f))
+* load historical backfill controller state issue ([02e8c88](https://github.com/edithatogo/fyi-archive/commit/02e8c88bdc6b2aa09cd15cfb1d93427fc901cefb))
+* mark merged controller batch labels ([28b16f5](https://github.com/edithatogo/fyi-archive/commit/28b16f54ab814159650016c2ef9c3961139db786))
+* paginate merge artifact discovery ([1030cde](https://github.com/edithatogo/fyi-archive/commit/1030cde3fd88ca16299570626efac9183de91a8d))
+* persist verified backfill merge state ([c677dfd](https://github.com/edithatogo/fyi-archive/commit/c677dfd2d76eb2cd9b3027bfec7c41c2e66befd7))
+* publish cumulative merged archive ([940745a](https://github.com/edithatogo/fyi-archive/commit/940745ab27e174ae5322aa7c76dec91a27b20003))
+* publish from merged archive artifacts ([43f42bf](https://github.com/edithatogo/fyi-archive/commit/43f42bfce7b210330e9c50a643c70e403c92b28c))
+* run historical backfill continuously ([fde869c](https://github.com/edithatogo/fyi-archive/commit/fde869c7c3aa26fe0d714dac9469431398fd627b))
+* serialize backfill state merges ([dd6fbf9](https://github.com/edithatogo/fyi-archive/commit/dd6fbf97da29de79153add8085c222c5453c8960))
+* skip backfill dispatch while workers are active ([f868045](https://github.com/edithatogo/fyi-archive/commit/f86804537ad676e70f6ea59c1d5a24c28ee1eeab))
+
+
+### Documentation
+
+* update archive mirror metadata ([ab15cf4](https://github.com/edithatogo/fyi-archive/commit/ab15cf438ea993580075bf16f650f27ad007220f))
+
 ## [0.4.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.3.0...fyi_archive-v0.4.0) (2026-06-30)
 
 
