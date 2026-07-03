@@ -64,7 +64,7 @@ def _normalize_batch(batch: dict[str, Any]) -> dict[str, Any]:
     result = deepcopy(batch)
     result["id_from"] = str(int(result["id_from"]))
     result["id_to"] = str(int(result["id_to"]))
-    result["label"] = str(result.get("label") or f'{result["id_from"]}-{result["id_to"]}')
+    result["label"] = str(result.get("label") or f"{result['id_from']}-{result['id_to']}")
     result.setdefault("status", "pending")
     return result
 

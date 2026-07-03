@@ -109,7 +109,9 @@ def test_backfill_report_cli_writes_versioned_reports(tmp_path: Path, monkeypatc
     assert report["dry_run"] is False
 
 
-def test_backfill_report_cli_allows_dry_run_without_full_verification(tmp_path: Path, monkeypatch) -> None:
+def test_backfill_report_cli_allows_dry_run_without_full_verification(
+    tmp_path: Path, monkeypatch
+) -> None:
     manifest = tmp_path / "manifests/latest_manifest.json"
     manifest.parent.mkdir(parents=True)
     manifest.write_text('{"meta": {"record_count": 2}, "requests": []}\n', encoding="utf-8")
