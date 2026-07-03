@@ -17,17 +17,17 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-REQUIRED_NAMES = [
-    "HF_TOKEN",
-    "HF_REPO_ID",
-    "ZENODO_TOKEN",
-    "OSF_TOKEN",
-    "OSF_PARENT_ID",
+REQUIRED_SERVICES = [
+    {"name": "HF_TOKEN", "label": "Hugging Face token"},
+    {"name": "HF_REPO_ID", "label": "Hugging Face repository id"},
+    {"name": "ZENODO_TOKEN", "label": "Zenodo production token"},
+    {"name": "OSF_TOKEN", "label": "OSF token"},
+    {"name": "OSF_PARENT_ID", "label": "OSF parent project id"},
 ]
 
-OPTIONAL_NAMES = [
-    "ZENODO_SANDBOX_TOKEN",
-    "GITHUB_TOKEN",
+OPTIONAL_SERVICES = [
+    {"name": "ZENODO_SANDBOX_TOKEN", "label": "Zenodo sandbox token"},
+    {"name": "GITHUB_TOKEN", "label": "GitHub token"},
 ]
 
 SKIP_DIRS = {
@@ -86,9 +86,10 @@ def candidate_files(root: Path) -> list[Path]:
     return files
 
 
-def scan_files(root: Path, names: list[str]) -> list[dict[str, str]]:
+def scan_files(root: Path, service_labels: dict[str, str]) -> list[dict[str, str]]:
     """Find credential names in local files without storing values."""
     findings: list[dict[str, str]] = []
+    names = list(service_labels)
     for path in candidate_files(root):
         try:
             text = path.read_text(encoding="utf-8", errors="ignore")
@@ -101,7 +102,7 @@ def scan_files(root: Path, names: list[str]) -> list[dict[str, str]]:
         for name in matched_names:
             findings.append(
                 {
-                    "name": name,
+                    "service": service_labels[name],
                     "path": path.as_posix(),
                     "value_status": classify_value(parsed.get(name)) if parsed else "mentioned",
                 },
@@ -129,39 +130,41 @@ def gh_json(args: list[str]) -> list[dict[str, Any]]:
 
 def build_inventory(repo: str, scan_roots: list[Path]) -> dict[str, Any]:
     """Build the full redacted credential inventory."""
-    names = [*REQUIRED_NAMES, *OPTIONAL_NAMES]
+    service_labels = {
+        item["name"]: item["label"] for item in [*REQUIRED_SERVICES, *OPTIONAL_SERVICES]
+    }
     env_status = {
-        name: {
-            "required": name in REQUIRED_NAMES,
-            "value_status": classify_value(os.environ.get(name)),
+        item["label"]: {
+            "required": item in REQUIRED_SERVICES,
+            "value_status": classify_value(os.environ.get(item["name"])),
         }
-        for name in names
+        for item in [*REQUIRED_SERVICES, *OPTIONAL_SERVICES]
     }
     github_secrets = gh_json(["secret", "list", "--repo", repo, "--json", "name,updatedAt"])
     github_vars = gh_json(["variable", "list", "--repo", repo, "--json", "name,updatedAt"])
     file_findings = []
     for root in scan_roots:
         if root.exists():
-            file_findings.extend(scan_files(root, names))
+            file_findings.extend(scan_files(root, service_labels))
     configured = {
-        item["name"]
-        for item in github_secrets
-        if item.get("name") in {"HF_TOKEN", "ZENODO_TOKEN", "OSF_TOKEN"}
-    } | {
-        item["name"] for item in github_vars if item.get("name") in {"HF_REPO_ID", "OSF_PARENT_ID"}
+        item["label"]
+        for item in REQUIRED_SERVICES
+        if any(entry.get("name") == item["name"] for entry in github_secrets + github_vars)
     }
-    missing_for_live_publish = sorted(name for name in REQUIRED_NAMES if name not in configured)
+    missing_for_live_publish = sorted(
+        item["label"] for item in REQUIRED_SERVICES if item["label"] not in configured
+    )
     return {
         "inventory_schema_version": 1,
         "generated_at": datetime.now(UTC).isoformat(),
         "repository": repo,
         "policy": "No secret values or value hashes are stored in this report.",
-        "required_names": REQUIRED_NAMES,
-        "optional_names": OPTIONAL_NAMES,
+        "required_services": [item["label"] for item in REQUIRED_SERVICES],
+        "optional_services": [item["label"] for item in OPTIONAL_SERVICES],
         "environment": env_status,
         "github_actions": {
-            "secrets": github_secrets,
-            "variables": github_vars,
+            "secret_count": len(github_secrets),
+            "variable_count": len(github_vars),
             "missing_for_live_publish": missing_for_live_publish,
         },
         "local_file_mentions": file_findings,
