@@ -3,7 +3,10 @@ name: Automated Historical Backfill
 on:
   schedule:
     # Keep the controller ticking through the day; overnight NZ time uses a higher cap.
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
+  workflow_run:
+    workflows: ["Historical Backfill Batch"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       id_from:
@@ -24,7 +27,7 @@ on:
       max_batches:
         description: Maximum worker runs to dispatch from this controller run when manually triggered
         required: true
-        default: "2"
+        default: "3"
         type: string
       worker_chunk_size:
         description: Inclusive request-ID span per worker matrix chunk
@@ -73,6 +76,7 @@ permissions:
 
 jobs:
   dispatch:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
       BATCH_SPAN: ${{ inputs.batch_span || '500' }}
@@ -314,7 +318,9 @@ jobs:
           )
           updated["id_from"] = int(os.environ["ID_FROM"])
           updated["id_to"] = int(os.environ["ID_TO"])
-          state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          payload = json.dumps(updated, indent=2, sort_keys=True) + "\n"
+          state_path.write_text(payload, encoding="utf-8")
+          Path(".tmp/backfill-state.json").write_text(payload, encoding="utf-8")
           PY
           gh issue edit "$issue_number" \
             --repo "$REPO" \
