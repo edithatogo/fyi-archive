@@ -72,19 +72,25 @@ def test_plan_dispatches_noops_after_completion() -> None:
     assert plan["complete"] is True
 
 
-def test_plan_dispatches_waits_for_merge_verification() -> None:
+def test_plan_dispatches_advances_past_pending_batches() -> None:
     plan = plan_auto_backfill.plan_dispatches(
         id_from=1,
-        id_to=100,
+        id_to=200,
         batch_span=25,
         max_batches=2,
         state={
             "next_id": 1,
-            "batches": [{"id_from": "1", "id_to": "25", "label": "1-25", "status": "pending"}],
+            "batches": [
+                {"id_from": "1", "id_to": "25", "label": "1-25", "status": "pending"},
+                {"id_from": "26", "id_to": "50", "label": "26-50", "status": "merged"},
+            ],
         },
     )
 
-    assert plan["batches"] == []
-    assert plan["blocked_by_pending"] is True
-    assert plan["next_id"] == 1
+    assert plan["batches"] == [
+        {"id_from": "51", "id_to": "75", "label": "51-75"},
+        {"id_from": "76", "id_to": "100", "label": "76-100"},
+    ]
+    assert plan["blocked_by_pending"] is False
+    assert plan["next_id"] == 101
     assert plan["complete"] is False
