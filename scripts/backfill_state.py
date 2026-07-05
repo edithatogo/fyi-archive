@@ -122,18 +122,18 @@ def prepare_backfill_state(
     pending_batches = [
         batch for batch in batches if str(batch.get("status") or "pending") != "merged"
     ]
-    summary = state_summary(updated)
-    if not summary:
-        summary = _compute_summary_from_batches(
-            updated, dispatch_history_limit=dispatch_history_limit
-        )
-    else:
+    summary = updated.get("summary")
+    if isinstance(summary, dict) and summary:
         summary = dict(summary)
         summary.setdefault("dispatched_runs", 0)
         summary.setdefault("dispatched_batches", 0)
         summary.setdefault("dispatched_requested_ids", 0)
         summary.setdefault("merged_batches", 0)
         summary.setdefault("captured_records", 0)
+    else:
+        summary = _compute_summary_from_batches(
+            updated, dispatch_history_limit=dispatch_history_limit
+        )
     summary["pending_batches"] = len(pending_batches)
     summary["last_updated_at"] = iso_now()
 
@@ -141,7 +141,7 @@ def prepare_backfill_state(
     if dispatch_next_id is None and isinstance(summary, dict):
         dispatch_next_id = summary.get("dispatch_next_id")
     if dispatch_next_id is None:
-        highest_dispatched_end = max((int(batch["id_to"]) for batch in batches), default=0)
+        highest_dispatched_end = max((int(batch.get("id_to") or 0) for batch in batches), default=0)
         dispatch_next_id = max(state_next_id(updated, 1), highest_dispatched_end + 1)
     else:
         dispatch_next_id = int(dispatch_next_id)
@@ -209,9 +209,7 @@ def append_pending_batches(
     """Append newly dispatched batches to controller state."""
     updated = prepare_backfill_state(state)
     existing = state_batches(updated)
-    summary = dict(state_summary(updated))
-    if not summary:
-        summary = _compute_summary_from_batches(updated, dispatch_history_limit=10)
+    summary = dict(updated["summary"])
     for batch in batches:
         normalized = _normalize_batch(batch)
         normalized["status"] = "pending"
@@ -251,9 +249,7 @@ def mark_merged_batches(
     updated = prepare_backfill_state(state)
     merged_set = {str(label) for label in merged_labels}
     batches = state_batches(updated)
-    summary = dict(state_summary(updated))
-    if not summary:
-        summary = _compute_summary_from_batches(updated, dispatch_history_limit=10)
+    summary = dict(updated["summary"])
     merged_count = 0
     merged_record_count = 0
     for batch in batches:
@@ -286,7 +282,9 @@ def mark_merged_batches(
     ]
     if not pending_batches:
         cursor = max(cursor, int(updated.get("dispatch_next_id") or 1))
-    highest_pending_end = max((int(batch["id_to"]) for batch in pending_batches), default=0)
+    highest_pending_end = max(
+        (int(batch.get("id_to") or 0) for batch in pending_batches), default=0
+    )
     dispatch_next_id = max(
         int(updated.get("dispatch_next_id") or 1), highest_pending_end + 1, cursor
     )

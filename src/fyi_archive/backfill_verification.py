@@ -165,13 +165,13 @@ def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
             },
         )
     captured_records = (
-        int(summary.get("captured_records") or 0)
-        if summary
+        int(summary["captured_records"])
+        if "captured_records" in summary
         else sum(int(batch.get("record_count") or 0) for batch in merged_batches)
     )
     dispatched_requested_ids = (
-        int(summary.get("dispatched_requested_ids") or 0)
-        if summary
+        int(summary["dispatched_requested_ids"])
+        if "dispatched_requested_ids" in summary
         else sum(batch_requested_ids(batch) for batch in batches)
     )
     return {
@@ -183,11 +183,19 @@ def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
         "id_to": int(state.get("id_to") or 0),
         "complete": bool(state.get("complete")),
         "next_id": int(state.get("next_id") or 0),
-        "dispatched_runs": int(summary.get("dispatched_runs") or len(dispatched_runs)),
-        "dispatched_batches": int(summary.get("dispatched_batches") or len(batches)),
+        "dispatched_runs": int(summary["dispatched_runs"])
+        if "dispatched_runs" in summary
+        else len(dispatched_runs),
+        "dispatched_batches": int(summary["dispatched_batches"])
+        if "dispatched_batches" in summary
+        else len(batches),
         "dispatched_requested_ids": dispatched_requested_ids,
-        "pending_batches": int(summary.get("pending_batches") or len(pending_batches)),
-        "merged_batches": int(summary.get("merged_batches") or len(merged_batches)),
+        "pending_batches": int(summary["pending_batches"])
+        if "pending_batches" in summary
+        else len(pending_batches),
+        "merged_batches": int(summary["merged_batches"])
+        if "merged_batches" in summary
+        else len(merged_batches),
         "captured_records": captured_records,
         "worker_runs": worker_runs,
     }
