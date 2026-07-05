@@ -59,7 +59,7 @@ jobs:
 
       - name: Attach release evidence
         if: steps.release.outputs.releases_created == 'true'
-        uses: softprops/action-gh-release@37bb98842b0d8c4ffebdb75301a13db0267cef89 # v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ steps.release.outputs.tag_name }}
           fail_on_unmatched_files: false
