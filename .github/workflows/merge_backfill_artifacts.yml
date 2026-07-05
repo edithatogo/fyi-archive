@@ -80,6 +80,20 @@ jobs:
           echo "$issue_number" > .tmp/backfill-state-issue-number.txt
           gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
             > .tmp/backfill-state.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          sys.path.insert(0, str(Path("scripts")))
+
+          from backfill_state import prepare_backfill_state
+
+          state_path = Path(".tmp/backfill-state.json")
+          state = json.loads(state_path.read_text(encoding="utf-8"))
+          compact = prepare_backfill_state(state)
+          state_path.write_text(json.dumps(compact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
           gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID/artifacts" \
             --jq '[.artifacts[].name | select(startswith("historical-backfill-")) | sub("^historical-backfill-"; "")]' \
             > .tmp/backfill-merged-labels.json
@@ -170,7 +184,10 @@ jobs:
               id_to=int(state["id_to"]),
               record_counts_by_label=json.loads(Path(".tmp/backfill-record-counts.json").read_text(encoding="utf-8")),
           )
-          state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          from backfill_state import prepare_backfill_state
+
+          compact = prepare_backfill_state(updated)
+          state_path.write_text(json.dumps(compact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
           gh issue edit "$issue_number" \
             --repo "$REPO" \

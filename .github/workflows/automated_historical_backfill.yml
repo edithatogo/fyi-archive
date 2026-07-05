@@ -142,7 +142,7 @@ jobs:
             gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
               > .tmp/backfill-state.json
           else
-            printf '{"next_id": %s, "batches": [], "dispatched": []}\n' "$ID_FROM" > .tmp/backfill-state.json
+            printf '{"next_id": %s, "dispatch_next_id": %s, "summary": {}, "batches": [], "dispatched": []}\n' "$ID_FROM" "$ID_FROM" > .tmp/backfill-state.json
             issue_url="$(
               gh issue create \
                 --repo "$REPO" \
@@ -158,6 +158,20 @@ jobs:
             fi
           fi
           echo "$issue_number" > .tmp/backfill-state-issue-number.txt
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          sys.path.insert(0, str(Path("scripts")))
+
+          from backfill_state import prepare_backfill_state
+
+          state_path = Path(".tmp/backfill-state.json")
+          state = json.loads(state_path.read_text(encoding="utf-8"))
+          compact = prepare_backfill_state(state)
+          state_path.write_text(json.dumps(compact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
           cat .tmp/backfill-state.json
 
       - name: Determine controller batch cap
@@ -323,7 +337,10 @@ jobs:
           )
           updated["id_from"] = int(os.environ["ID_FROM"])
           updated["id_to"] = int(os.environ["ID_TO"])
-          payload = json.dumps(updated, indent=2, sort_keys=True) + "\n"
+          from backfill_state import prepare_backfill_state
+
+          payload_state = prepare_backfill_state(updated)
+          payload = json.dumps(payload_state, indent=2, sort_keys=True) + "\n"
           state_path.write_text(payload, encoding="utf-8")
           Path(".tmp/backfill-state.json").write_text(payload, encoding="utf-8")
           PY
