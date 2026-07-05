@@ -38,6 +38,11 @@ on:
         required: true
         default: "5"
         type: string
+      max_parallel:
+        description: Maximum chunk jobs to run in parallel
+        required: true
+        default: "3"
+        type: string
       dry_run:
         description: Use deterministic dry-run records instead of fyi-cli capture
         required: true
@@ -82,7 +87,7 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: ${{ fromJSON(inputs.max_parallel || '3') }}
       matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
