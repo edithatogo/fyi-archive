@@ -33,7 +33,13 @@ def test_prepare_backfill_state_compacts_legacy_history() -> None:
     state = {
         "next_id": 501,
         "batches": [
-            {"id_from": "1", "id_to": "500", "label": "1-500", "status": "merged", "record_count": 3},
+            {
+                "id_from": "1",
+                "id_to": "500",
+                "label": "1-500",
+                "status": "merged",
+                "record_count": 3,
+            },
             {"id_from": "501", "id_to": "750", "label": "501-750", "status": "pending"},
         ],
         "dispatched": [{"controller_run_id": "123"}, {"controller_run_id": "456"}],
@@ -41,7 +47,9 @@ def test_prepare_backfill_state_compacts_legacy_history() -> None:
 
     compact = backfill_state.prepare_backfill_state(state)
 
-    assert compact["batches"] == [{"id_from": "501", "id_to": "750", "label": "501-750", "status": "pending"}]
+    assert compact["batches"] == [
+        {"id_from": "501", "id_to": "750", "label": "501-750", "status": "pending"}
+    ]
     assert compact["dispatch_next_id"] == 751
     assert compact["summary"]["dispatched_batches"] == 2
     assert compact["summary"]["merged_batches"] == 1
@@ -84,7 +92,9 @@ def test_mark_merged_batches_advances_only_through_contiguous_merged_ranges() ->
     assert first["next_id"] == 1
     assert first["complete"] is False
     assert first["dispatch_next_id"] == 1001
-    assert first["batches"] == [{"id_from": "1", "id_to": "500", "label": "1-500", "status": "pending"}]
+    assert first["batches"] == [
+        {"id_from": "1", "id_to": "500", "label": "1-500", "status": "pending"}
+    ]
 
     second = backfill_state.mark_merged_batches(
         state=first,

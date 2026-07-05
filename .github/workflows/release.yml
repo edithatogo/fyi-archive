@@ -21,6 +21,8 @@ jobs:
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        with:
+          enable-cache: false
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
@@ -77,5 +79,7 @@ jobs:
 
       - name: Comment on PR (dry-run)
         if: steps.release.outputs.releases_created == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag_name }}
         run: |
-          echo "Release ${{ steps.release.outputs.tag_name }} created"
+          echo "Release ${RELEASE_TAG} created"

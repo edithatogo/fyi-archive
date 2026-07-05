@@ -59,11 +59,19 @@ def _trim_history(entries: list[Any], limit: int) -> list[Any]:
     return list(entries[-limit:])
 
 
-def _compute_summary_from_batches(state: dict[str, Any], *, dispatch_history_limit: int) -> dict[str, Any]:
+def _compute_summary_from_batches(
+    state: dict[str, Any], *, dispatch_history_limit: int
+) -> dict[str, Any]:
     batches = state_batches(state)
-    pending_batches = [batch for batch in batches if str(batch.get("status") or "pending") != "merged"]
-    merged_batches = [batch for batch in batches if str(batch.get("status") or "pending") == "merged"]
-    dispatched_history = [entry for entry in state.get("dispatched") or [] if isinstance(entry, dict)]
+    pending_batches = [
+        batch for batch in batches if str(batch.get("status") or "pending") != "merged"
+    ]
+    merged_batches = [
+        batch for batch in batches if str(batch.get("status") or "pending") == "merged"
+    ]
+    dispatched_history = [
+        entry for entry in state.get("dispatched") or [] if isinstance(entry, dict)
+    ]
     worker_runs = sorted(
         {
             str(batch.get("worker_run_id"))
@@ -83,7 +91,11 @@ def _compute_summary_from_batches(state: dict[str, Any], *, dispatch_history_lim
     }
     if dispatched_history:
         summary["recent_dispatch_runs"] = _trim_history(
-            [str(entry.get("controller_run_id") or "") for entry in dispatched_history if str(entry.get("controller_run_id") or "")],
+            [
+                str(entry.get("controller_run_id") or "")
+                for entry in dispatched_history
+                if str(entry.get("controller_run_id") or "")
+            ],
             dispatch_history_limit,
         )
     return summary
@@ -107,10 +119,14 @@ def prepare_backfill_state(
     """Normalize and compact controller state for storage in GitHub issue bodies."""
     updated = deepcopy(state or {})
     batches = _sorted_batches(state_batches(updated))
-    pending_batches = [batch for batch in batches if str(batch.get("status") or "pending") != "merged"]
+    pending_batches = [
+        batch for batch in batches if str(batch.get("status") or "pending") != "merged"
+    ]
     summary = state_summary(updated)
     if not summary:
-        summary = _compute_summary_from_batches(updated, dispatch_history_limit=dispatch_history_limit)
+        summary = _compute_summary_from_batches(
+            updated, dispatch_history_limit=dispatch_history_limit
+        )
     else:
         summary = dict(summary)
         summary.setdefault("dispatched_runs", 0)
@@ -204,7 +220,9 @@ def append_pending_batches(
         normalized["dispatched_at"] = iso_now()
         existing.append(normalized)
         summary["dispatched_batches"] = int(summary.get("dispatched_batches") or 0) + 1
-        summary["dispatched_requested_ids"] = int(summary.get("dispatched_requested_ids") or 0) + _batch_requested_ids(normalized)
+        summary["dispatched_requested_ids"] = int(
+            summary.get("dispatched_requested_ids") or 0
+        ) + _batch_requested_ids(normalized)
         summary["pending_batches"] = int(summary.get("pending_batches") or 0) + 1
         dispatch_next_id = max(int(updated.get("dispatch_next_id") or 1), _batch_cursor(normalized))
         updated["dispatch_next_id"] = dispatch_next_id
@@ -263,11 +281,15 @@ def mark_merged_batches(
         if status != "merged":
             break
         cursor = end + 1
-    pending_batches = [batch for batch in batches if str(batch.get("status") or "pending") != "merged"]
+    pending_batches = [
+        batch for batch in batches if str(batch.get("status") or "pending") != "merged"
+    ]
     if not pending_batches:
         cursor = max(cursor, int(updated.get("dispatch_next_id") or 1))
     highest_pending_end = max((int(batch["id_to"]) for batch in pending_batches), default=0)
-    dispatch_next_id = max(int(updated.get("dispatch_next_id") or 1), highest_pending_end + 1, cursor)
+    dispatch_next_id = max(
+        int(updated.get("dispatch_next_id") or 1), highest_pending_end + 1, cursor
+    )
     summary["merged_batches"] = int(summary.get("merged_batches") or 0) + merged_count
     summary["captured_records"] = int(summary.get("captured_records") or 0) + merged_record_count
     summary["pending_batches"] = len(pending_batches)
