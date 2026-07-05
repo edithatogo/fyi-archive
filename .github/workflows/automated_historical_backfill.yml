@@ -93,6 +93,8 @@ jobs:
       MAX_DISK_GB: ${{ inputs.max_disk_gb || '5' }}
       MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '50' }}
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '30' }}
+      WORKER_MAX_PARALLEL_DAYTIME: "3"
+      WORKER_MAX_PARALLEL_OVERNIGHT: "4"
       REPO: ${{ github.repository }}
       STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
       STATE_TITLE: FYI historical backfill state (${{ inputs.state_label || 'fyi-backfill-state' }})
@@ -179,23 +181,34 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           import os
+          from datetime import datetime
+          from zoneinfo import ZoneInfo
 
+          hour = datetime.now(ZoneInfo("Pacific/Auckland")).hour
+          overnight = hour >= 20 or hour < 6
+          worker_parallel = int(
+              os.environ["WORKER_MAX_PARALLEL_OVERNIGHT"] if overnight else os.environ["WORKER_MAX_PARALLEL_DAYTIME"]
+          )
+          window = "overnight" if overnight else "daytime"
           requested = os.environ.get("TARGET_ACTIVE_WORKERS_INPUT", "").strip()
           if requested:
               active_target = int(requested)
-              window = "manual"
+              window = f"manual-{window}"
           else:
               active_target = int(os.environ["TARGET_ACTIVE_WORKERS_DEFAULT"])
-              window = "scheduled"
           queue_buffer = int(os.environ["TARGET_QUEUE_BUFFER"])
           total_target = active_target + queue_buffer
 
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
               env_file.write(f"TARGET_ACTIVE_WORKERS_EFFECTIVE={active_target}\n")
               env_file.write(f"TARGET_TOTAL_WORKERS_EFFECTIVE={total_target}\n")
+              env_file.write(f"WORKER_MAX_PARALLEL={worker_parallel}\n")
               env_file.write(f"MAX_BATCH_WINDOW={window}\n")
 
-          print(f"Using target_active_workers={active_target} and total_target={total_target} ({window})")
+          print(
+              f"Using target_active_workers={active_target}, total_target={total_target}, "
+              f"worker_max_parallel={worker_parallel} ({window})"
+          )
           PY
 
       - name: Check active worker runs
@@ -282,6 +295,7 @@ jobs:
               -f id_to="$id_to" \
               -f chunk_size="$WORKER_CHUNK_SIZE" \
               -f max_chunks="$WORKER_MAX_CHUNKS" \
+              -f max_parallel="$WORKER_MAX_PARALLEL" \
               -f max_requests_per_chunk="$MAX_REQUESTS_PER_CHUNK" \
               -f max_runtime_minutes="$MAX_RUNTIME_MINUTES" \
               -f max_disk_gb="$MAX_DISK_GB" \
