@@ -94,7 +94,7 @@ jobs:
       MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '50' }}
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '30' }}
       WORKER_MAX_PARALLEL_DAYTIME: "3"
-      WORKER_MAX_PARALLEL_OVERNIGHT: "4"
+      WORKER_MAX_PARALLEL_OVERNIGHT: "20"
       REPO: ${{ github.repository }}
       STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
       STATE_TITLE: FYI historical backfill state (${{ inputs.state_label || 'fyi-backfill-state' }})
