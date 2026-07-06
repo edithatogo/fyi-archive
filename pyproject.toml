@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fyi_archive"
-version = "0.5.1"
+version = "0.5.2"
 description = "Orchestration scaffold for a read-only full-site archive of fyi.org.nz (NZ OIA request register, Alaveteli)."
 readme = "README.md"
 requires-python = ">=3.12"
