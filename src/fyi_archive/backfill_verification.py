@@ -145,20 +145,35 @@ def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
     """Summarize controller state into report-friendly counts."""
     state = state_info["state"]
     batches = [batch for batch in state.get("batches") or [] if isinstance(batch, dict)]
+    summary = state.get("summary") if isinstance(state.get("summary"), dict) else {}
     dispatched_runs = [entry for entry in state.get("dispatched") or [] if isinstance(entry, dict)]
-    worker_runs = sorted(
-        {
-            str(batch.get("worker_run_id"))
-            for batch in batches
-            if isinstance(batch.get("worker_run_id"), str) and batch.get("worker_run_id")
-        },
-    )
     pending_batches = [
         batch for batch in batches if str(batch.get("status") or "pending") == "pending"
     ]
     merged_batches = [batch for batch in batches if str(batch.get("status") or "") == "merged"]
-    captured_records = sum(int(batch.get("record_count") or 0) for batch in merged_batches)
-    dispatched_requested_ids = sum(batch_requested_ids(batch) for batch in batches)
+    worker_runs = (
+        [str(run) for run in summary.get("recent_worker_runs") or [] if str(run)]
+        if isinstance(summary, dict)
+        else []
+    )
+    if not worker_runs:
+        worker_runs = sorted(
+            {
+                str(batch.get("worker_run_id"))
+                for batch in batches
+                if isinstance(batch.get("worker_run_id"), str) and batch.get("worker_run_id")
+            },
+        )
+    captured_records = (
+        int(summary["captured_records"])
+        if "captured_records" in summary
+        else sum(int(batch.get("record_count") or 0) for batch in merged_batches)
+    )
+    dispatched_requested_ids = (
+        int(summary["dispatched_requested_ids"])
+        if "dispatched_requested_ids" in summary
+        else sum(batch_requested_ids(batch) for batch in batches)
+    )
     return {
         "state_issue_number": state_info["issue_number"],
         "state_issue_url": state_info["issue_url"],
@@ -168,11 +183,19 @@ def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
         "id_to": int(state.get("id_to") or 0),
         "complete": bool(state.get("complete")),
         "next_id": int(state.get("next_id") or 0),
-        "dispatched_runs": len(dispatched_runs),
-        "dispatched_batches": len(batches),
+        "dispatched_runs": int(summary["dispatched_runs"])
+        if "dispatched_runs" in summary
+        else len(dispatched_runs),
+        "dispatched_batches": int(summary["dispatched_batches"])
+        if "dispatched_batches" in summary
+        else len(batches),
         "dispatched_requested_ids": dispatched_requested_ids,
-        "pending_batches": len(pending_batches),
-        "merged_batches": len(merged_batches),
+        "pending_batches": int(summary["pending_batches"])
+        if "pending_batches" in summary
+        else len(pending_batches),
+        "merged_batches": int(summary["merged_batches"])
+        if "merged_batches" in summary
+        else len(merged_batches),
         "captured_records": captured_records,
         "worker_runs": worker_runs,
     }

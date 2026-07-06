@@ -148,16 +148,17 @@ def test_backfill_report_cli_writes_versioned_reports(tmp_path: Path, monkeypatc
             "id_from": 1,
             "id_to": 100,
             "next_id": 4,
-            "batches": [
-                {
-                    "id_from": "1",
-                    "id_to": "3",
-                    "label": "1-3",
-                    "status": "merged",
-                    "record_count": 3,
-                    "worker_run_id": "123",
-                }
-            ],
+            "dispatch_next_id": 4,
+            "summary": {
+                "captured_records": 3,
+                "dispatched_batches": 1,
+                "dispatched_requested_ids": 3,
+                "dispatched_runs": 1,
+                "merged_batches": 1,
+                "pending_batches": 0,
+                "recent_worker_runs": ["123"],
+            },
+            "batches": [],
             "dispatched": [{"controller_run_id": "456"}],
         },
     }
@@ -219,6 +220,9 @@ def test_backfill_report_cli_writes_versioned_reports(tmp_path: Path, monkeypatc
     assert report_path.exists()
     assert latest_path.exists()
     assert month_path.exists()
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["github_actions"]["captured_records"] == 3
+    assert report["comparison"]["fully_verified"] is True
 
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["github_actions"]["captured_records"] == 3
