@@ -5,6 +5,21 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.5.2](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.5.1...fyi_archive-v0.5.2) (2026-07-06)
+
+
+### Bug Fixes
+
+* redact security inventory outputs ([527e433](https://github.com/edithatogo/fyi-archive/commit/527e433288a9cd2cd950b8cf05c1bfabbea03a5a))
+* redact security inventory outputs ([7d5ed50](https://github.com/edithatogo/fyi-archive/commit/7d5ed508394ef8eba357d38712c3d572aab1ed5b))
+
+
+### Documentation
+
+* add code owners for sensitive paths ([ba14fae](https://github.com/edithatogo/fyi-archive/commit/ba14fae6d6f6be2e6c406afd9de7a12c96a3b38b))
+* add code owners for sensitive paths ([9dbc3af](https://github.com/edithatogo/fyi-archive/commit/9dbc3afad2c5ca7ddb8aa19bced2b780e26cd943))
+* protect code owners file ([a71da4a](https://github.com/edithatogo/fyi-archive/commit/a71da4a81360d5691f2fb6de57c4816cc3e9a9f7))
+
 ## [0.5.1](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.5.0...fyi_archive-v0.5.1) (2026-07-03)
 
 
