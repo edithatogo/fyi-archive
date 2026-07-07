@@ -13,11 +13,11 @@ from typing import Any, cast
 import httpx
 from huggingface_hub import snapshot_download
 
+from fyi_archive.backfill_state_codec import decode_state
 from fyi_archive.publish.evidence import archive_publication_version
 from fyi_archive.publish.hf_publish import sha256_file
 from fyi_archive.publish.verification import manifest_record_count
 from fyi_archive.publish.zenodo_publish import ZENODO_API, deposition_artifacts, get_deposition
-from fyi_archive.backfill_state_codec import decode_state
 
 LOCAL_BACKFILL_STATE_PATHS = (
     Path("versions/latest_backfill_controller_state.json"),
