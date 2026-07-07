@@ -7,6 +7,7 @@ import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from typer.testing import CliRunner
 
 from fyi_archive.cli import app
@@ -15,6 +16,7 @@ from fyi_archive.seed import (
     SeedCaps,
     SeedRequest,
     capture_with_fyi_cli,
+    capture_with_retry,
     load_ledger,
     requests_from_id_range,
     requests_from_jsonl,
@@ -188,6 +190,68 @@ def test_run_seed_can_continue_after_capture_failure(tmp_path: Path, monkeypatch
     assert summary["failed"] == 1
     assert ledger[0]["status"] == "failed"
     assert ledger[0]["stderr_tail"] == "err"
+
+
+def test_capture_with_retry_recovers_from_transient_timeout(tmp_path: Path, monkeypatch) -> None:
+    attempts = {"count": 0}
+
+    def fake_capture(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+        attempts["count"] += 1
+        if attempts["count"] == 1:
+            raise CaptureError(
+                request_id=20000,
+                command=["fyi", "capture", "20000"],
+                returncode=1,
+                stdout="",
+                stderr="httpx.ReadTimeout: The read operation timed out",
+            )
+        return {"derived_path": (tmp_path / "derived" / "20000").as_posix()}
+
+    monkeypatch.setattr("fyi_archive.seed.capture_with_fyi_cli", fake_capture)
+    monkeypatch.setattr("fyi_archive.seed.time.sleep", lambda _seconds: None)
+
+    summary = capture_with_retry(
+        SeedRequest(20000, "request-20000"),
+        tmp_path / "data",
+        tmp_path / "dist",
+        SeedCaps(max_requests=1),
+        (),
+        retry_attempts=2,
+        retry_backoff_seconds=0,
+    )
+
+    assert attempts["count"] == 2
+    assert summary == {"derived_path": (tmp_path / "derived" / "20000").as_posix()}
+
+
+def test_capture_with_retry_does_not_retry_non_transient_failure(tmp_path: Path, monkeypatch) -> None:
+    attempts = {"count": 0}
+
+    def fake_capture(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+        attempts["count"] += 1
+        raise CaptureError(
+            request_id=20000,
+            command=["fyi", "capture", "20000"],
+            returncode=1,
+            stdout="",
+            stderr="permission denied",
+        )
+
+    monkeypatch.setattr("fyi_archive.seed.capture_with_fyi_cli", fake_capture)
+    monkeypatch.setattr("fyi_archive.seed.time.sleep", lambda _seconds: None)
+
+    with pytest.raises(CaptureError):
+        capture_with_retry(
+            SeedRequest(20000, "request-20000"),
+            tmp_path / "data",
+            tmp_path / "dist",
+            SeedCaps(max_requests=1),
+            (),
+            retry_attempts=3,
+            retry_backoff_seconds=0,
+        )
+
+    assert attempts["count"] == 1
 
 
 def test_seed_cli_dry_run(tmp_path: Path) -> None:

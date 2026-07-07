@@ -6,12 +6,11 @@ from __future__ import annotations
 import argparse
 import json
 import subprocess
+import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, cast
-
-import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -111,12 +110,11 @@ def artifact_names(*, repo: str, run_id: int) -> list[str]:
         gh_json(["api", f"repos/{repo}/actions/runs/{run_id}/artifacts"]),
     )
     artifacts = payload.get("artifacts") or []
-    names = [
+    return [
         str(item.get("name"))
         for item in artifacts
         if isinstance(item, dict) and isinstance(item.get("name"), str)
     ]
-    return names
 
 
 def download_artifact(*, repo: str, run_id: int, pattern: str, destination: Path) -> Path:

@@ -39,6 +39,11 @@ on:
         required: true
         default: "10"
         type: string
+      worker_max_parallel:
+        description: Maximum chunk jobs to run in parallel inside each worker run
+        required: true
+        default: "1"
+        type: string
       max_requests_per_chunk:
         description: Maximum captured requests per worker chunk
         required: true
@@ -99,6 +104,7 @@ jobs:
       DISPATCH_DELAY_SECONDS: "0"
       WORKER_CHUNK_SIZE: ${{ inputs.worker_chunk_size || '50' }}
       WORKER_MAX_CHUNKS: ${{ inputs.worker_max_chunks || '10' }}
+      WORKER_MAX_PARALLEL: ${{ inputs.worker_max_parallel || '1' }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -144,18 +150,18 @@ jobs:
           else
             printf '{"next_id": %s, "batches": [], "dispatched": []}\n' "$ID_FROM" > .tmp/backfill-state.json
             python - <<'PY'
-            import json
-            from pathlib import Path
-            import sys
+          import json
+          from pathlib import Path
+          import sys
 
-            sys.path.insert(0, str(Path("src")))
+          sys.path.insert(0, str(Path("src")))
 
-            from fyi_archive.backfill_state_codec import state_body_from_state
+          from fyi_archive.backfill_state_codec import state_body_from_state
 
-            state_file = Path(".tmp/backfill-state.json")
-            state = json.loads(state_file.read_text(encoding="utf-8"))
-            Path(".tmp/backfill-state.body").write_text(state_body_from_state(state), encoding="utf-8")
-            PY
+          state_file = Path(".tmp/backfill-state.json")
+          state = json.loads(state_file.read_text(encoding="utf-8"))
+          Path(".tmp/backfill-state.body").write_text(state_body_from_state(state), encoding="utf-8")
+          PY
             issue_url="$(
               gh issue create \
                 --repo "$REPO" \
