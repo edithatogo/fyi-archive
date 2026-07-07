@@ -2,7 +2,7 @@ name: Automated Historical Backfill
 
 on:
   schedule:
-    # Keep the controller ticking frequently so the worker pool refills quickly.
+    # Keep the controller ticking through the day; overnight NZ time uses a higher cap.
     - cron: "*/5 * * * *"
   workflow_run:
     workflows: ["Historical Backfill Batch"]
@@ -25,9 +25,9 @@ on:
         default: "500"
         type: string
       max_batches:
-        description: Target number of concurrently running worker batches when manually triggered
+        description: Maximum worker runs to dispatch from this controller run when manually triggered
         required: true
-        default: "20"
+        default: "3"
         type: string
       worker_chunk_size:
         description: Inclusive request-ID span per worker matrix chunk
@@ -87,14 +87,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       ID_FROM: ${{ inputs.id_from || '1' }}
       ID_TO: ${{ inputs.id_to || '250000' }}
-      TARGET_ACTIVE_WORKERS_INPUT: ${{ inputs.max_batches || '' }}
-      TARGET_ACTIVE_WORKERS_DEFAULT: "20"
-      TARGET_QUEUE_BUFFER: "20"
+      MAX_BATCHES_INPUT: ${{ inputs.max_batches || '' }}
+      MAX_BATCHES_DAYTIME: "3"
+      MAX_BATCHES_OVERNIGHT: "20"
       MAX_DISK_GB: ${{ inputs.max_disk_gb || '5' }}
       MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '50' }}
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '30' }}
-      WORKER_MAX_PARALLEL_DAYTIME: "3"
-      WORKER_MAX_PARALLEL_OVERNIGHT: "20"
       REPO: ${{ github.repository }}
       STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
       STATE_TITLE: FYI historical backfill state (${{ inputs.state_label || 'fyi-backfill-state' }})
@@ -144,13 +142,26 @@ jobs:
             gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
               > .tmp/backfill-state.json
           else
-            printf '{"next_id": %s, "dispatch_next_id": %s, "summary": {}, "batches": [], "dispatched": []}\n' "$ID_FROM" "$ID_FROM" > .tmp/backfill-state.json
+            printf '{"next_id": %s, "batches": [], "dispatched": []}\n' "$ID_FROM" > .tmp/backfill-state.json
+            python - <<'PY'
+            import json
+            from pathlib import Path
+            import sys
+
+            sys.path.insert(0, str(Path("src")))
+
+            from fyi_archive.backfill_state_codec import state_body_from_state
+
+            state_file = Path(".tmp/backfill-state.json")
+            state = json.loads(state_file.read_text(encoding="utf-8"))
+            Path(".tmp/backfill-state.body").write_text(state_body_from_state(state), encoding="utf-8")
+            PY
             issue_url="$(
               gh issue create \
                 --repo "$REPO" \
                 --title "$STATE_TITLE" \
                 --label "$STATE_LABEL" \
-                --body-file .tmp/backfill-state.json
+                --body-file .tmp/backfill-state.body
             )"
             issue_number="${issue_url##*/}"
             printf '%s\n' "$issue_url" > .tmp/backfill-state-issue-url.txt
@@ -165,14 +176,13 @@ jobs:
           from pathlib import Path
           import sys
 
-          sys.path.insert(0, str(Path("scripts")))
+          sys.path.insert(0, str(Path("src")))
 
-          from backfill_state import prepare_backfill_state
+          from fyi_archive.backfill_state_codec import decode_state
 
-          state_path = Path(".tmp/backfill-state.json")
-          state = json.loads(state_path.read_text(encoding="utf-8"))
-          compact = prepare_backfill_state(state)
-          state_path.write_text(json.dumps(compact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          state_file = Path(".tmp/backfill-state.json")
+          body = state_file.read_text(encoding="utf-8")
+          state_file.write_text(json.dumps(decode_state(body), indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
           cat .tmp/backfill-state.json
 
@@ -184,31 +194,21 @@ jobs:
           from datetime import datetime
           from zoneinfo import ZoneInfo
 
-          hour = datetime.now(ZoneInfo("Pacific/Auckland")).hour
-          overnight = hour >= 20 or hour < 6
-          worker_parallel = int(
-              os.environ["WORKER_MAX_PARALLEL_OVERNIGHT"] if overnight else os.environ["WORKER_MAX_PARALLEL_DAYTIME"]
-          )
-          window = "overnight" if overnight else "daytime"
-          requested = os.environ.get("TARGET_ACTIVE_WORKERS_INPUT", "").strip()
+          requested = os.environ.get("MAX_BATCHES_INPUT", "").strip()
           if requested:
-              active_target = int(requested)
-              window = f"manual-{window}"
+              max_batches = int(requested)
+              window = "manual"
           else:
-              active_target = int(os.environ["TARGET_ACTIVE_WORKERS_DEFAULT"])
-          queue_buffer = int(os.environ["TARGET_QUEUE_BUFFER"])
-          total_target = active_target + queue_buffer
+              hour = datetime.now(ZoneInfo("Pacific/Auckland")).hour
+              overnight = hour >= 20 or hour < 6
+              max_batches = int(os.environ["MAX_BATCHES_OVERNIGHT"] if overnight else os.environ["MAX_BATCHES_DAYTIME"])
+              window = "overnight" if overnight else "daytime"
 
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env_file:
-              env_file.write(f"TARGET_ACTIVE_WORKERS_EFFECTIVE={active_target}\n")
-              env_file.write(f"TARGET_TOTAL_WORKERS_EFFECTIVE={total_target}\n")
-              env_file.write(f"WORKER_MAX_PARALLEL={worker_parallel}\n")
+              env_file.write(f"MAX_BATCHES_EFFECTIVE={max_batches}\n")
               env_file.write(f"MAX_BATCH_WINDOW={window}\n")
 
-          print(
-              f"Using target_active_workers={active_target}, total_target={total_target}, "
-              f"worker_max_parallel={worker_parallel} ({window})"
-          )
+          print(f"Using max_batches={max_batches} ({window})")
           PY
 
       - name: Check active worker runs
@@ -239,7 +239,7 @@ jobs:
       - name: Determine dispatch slots
         run: |
           set -euo pipefail
-          available=$((TARGET_TOTAL_WORKERS_EFFECTIVE - ACTIVE_WORKER_RUNS))
+          available=$((MAX_BATCHES_EFFECTIVE - ACTIVE_WORKER_RUNS))
           if [ "$available" -lt 0 ]; then
             available=0
           fi
@@ -325,8 +325,10 @@ jobs:
           from pathlib import Path
           import sys
 
+          sys.path.insert(0, str(Path("src")))
           sys.path.insert(0, str(Path("scripts")))
 
+          from fyi_archive.backfill_state_codec import state_body_from_state
           from backfill_state import append_pending_batches
 
           state_path = Path(".tmp/backfill-state.json")
@@ -351,16 +353,12 @@ jobs:
           )
           updated["id_from"] = int(os.environ["ID_FROM"])
           updated["id_to"] = int(os.environ["ID_TO"])
-          from backfill_state import prepare_backfill_state
-
-          payload_state = prepare_backfill_state(updated)
-          payload = json.dumps(payload_state, indent=2, sort_keys=True) + "\n"
-          state_path.write_text(payload, encoding="utf-8")
-          Path(".tmp/backfill-state.json").write_text(payload, encoding="utf-8")
+          state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          Path(".tmp/backfill-state.body").write_text(state_body_from_state(updated), encoding="utf-8")
           PY
           gh issue edit "$issue_number" \
             --repo "$REPO" \
-            --body-file .tmp/backfill-state.json
+            --body-file .tmp/backfill-state.body
 
       - name: Upload controller plan
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

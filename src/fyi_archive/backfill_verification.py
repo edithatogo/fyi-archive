@@ -17,6 +17,13 @@ from fyi_archive.publish.evidence import archive_publication_version
 from fyi_archive.publish.hf_publish import sha256_file
 from fyi_archive.publish.verification import manifest_record_count
 from fyi_archive.publish.zenodo_publish import ZENODO_API, deposition_artifacts, get_deposition
+from fyi_archive.backfill_state_codec import decode_state
+
+LOCAL_BACKFILL_STATE_PATHS = (
+    Path("versions/latest_backfill_controller_state.json"),
+    Path("versions/2026-07/backfill_controller_state.json"),
+    Path("versions/latest_backfill_state.json"),
+)
 
 
 def utc_now() -> datetime:
@@ -40,6 +47,20 @@ def load_controller_state(
     *, repo: str, state_label: str, issue_number: int | None = None
 ) -> dict[str, Any]:
     """Load the active backfill controller issue body and metadata."""
+    local_snapshot = os.environ.get("BACKFILL_STATE_SNAPSHOT")
+    if local_snapshot:
+        snapshot_path = Path(local_snapshot)
+        if snapshot_path.exists():
+            data = json.loads(snapshot_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict) and "state" in data:
+                return data
+            if isinstance(data, dict):
+                return {
+                    "issue_number": issue_number or 0,
+                    "issue_url": data.get("issue_url") or "",
+                    "issue_title": data.get("issue_title") or "",
+                    "state": data,
+                }
     if issue_number is None:
         issue_list = cast(
             "list[dict[str, object]]",
@@ -121,13 +142,10 @@ def load_controller_state(
     )
     body = str(body_payload["body"])
     try:
-        state = json.loads(body)
-    except json.JSONDecodeError as exc:
+        state = decode_state(body)
+    except (json.JSONDecodeError, ValueError) as exc:
         msg = f"backfill state issue {issue_number} does not contain JSON state"
         raise ValueError(msg) from exc
-    if not isinstance(state, dict):
-        msg = f"backfill state issue {issue_number} must contain a JSON object"
-        raise ValueError(msg)
     return {
         "issue_number": issue_number,
         "issue_url": issue_url,
@@ -145,35 +163,20 @@ def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
     """Summarize controller state into report-friendly counts."""
     state = state_info["state"]
     batches = [batch for batch in state.get("batches") or [] if isinstance(batch, dict)]
-    summary = state.get("summary") if isinstance(state.get("summary"), dict) else {}
     dispatched_runs = [entry for entry in state.get("dispatched") or [] if isinstance(entry, dict)]
+    worker_runs = sorted(
+        {
+            str(batch.get("worker_run_id"))
+            for batch in batches
+            if isinstance(batch.get("worker_run_id"), str) and batch.get("worker_run_id")
+        },
+    )
     pending_batches = [
         batch for batch in batches if str(batch.get("status") or "pending") == "pending"
     ]
     merged_batches = [batch for batch in batches if str(batch.get("status") or "") == "merged"]
-    worker_runs = (
-        [str(run) for run in summary.get("recent_worker_runs") or [] if str(run)]
-        if isinstance(summary, dict)
-        else []
-    )
-    if not worker_runs:
-        worker_runs = sorted(
-            {
-                str(batch.get("worker_run_id"))
-                for batch in batches
-                if isinstance(batch.get("worker_run_id"), str) and batch.get("worker_run_id")
-            },
-        )
-    captured_records = (
-        int(summary["captured_records"])
-        if "captured_records" in summary
-        else sum(int(batch.get("record_count") or 0) for batch in merged_batches)
-    )
-    dispatched_requested_ids = (
-        int(summary["dispatched_requested_ids"])
-        if "dispatched_requested_ids" in summary
-        else sum(batch_requested_ids(batch) for batch in batches)
-    )
+    captured_records = sum(int(batch.get("record_count") or 0) for batch in merged_batches)
+    dispatched_requested_ids = sum(batch_requested_ids(batch) for batch in batches)
     return {
         "state_issue_number": state_info["issue_number"],
         "state_issue_url": state_info["issue_url"],
@@ -183,19 +186,11 @@ def controller_summary(state_info: dict[str, Any]) -> dict[str, Any]:
         "id_to": int(state.get("id_to") or 0),
         "complete": bool(state.get("complete")),
         "next_id": int(state.get("next_id") or 0),
-        "dispatched_runs": int(summary["dispatched_runs"])
-        if "dispatched_runs" in summary
-        else len(dispatched_runs),
-        "dispatched_batches": int(summary["dispatched_batches"])
-        if "dispatched_batches" in summary
-        else len(batches),
+        "dispatched_runs": len(dispatched_runs),
+        "dispatched_batches": len(batches),
         "dispatched_requested_ids": dispatched_requested_ids,
-        "pending_batches": int(summary["pending_batches"])
-        if "pending_batches" in summary
-        else len(pending_batches),
-        "merged_batches": int(summary["merged_batches"])
-        if "merged_batches" in summary
-        else len(merged_batches),
+        "pending_batches": len(pending_batches),
+        "merged_batches": len(merged_batches),
         "captured_records": captured_records,
         "worker_runs": worker_runs,
     }

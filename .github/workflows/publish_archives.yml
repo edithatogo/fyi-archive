@@ -58,7 +58,11 @@ on:
         type: boolean
 
 permissions:
-  contents: read
+  attestations: write
+  contents: write
+  id-token: write
+  issues: read
+  pull-requests: write
 
 jobs:
   publish:

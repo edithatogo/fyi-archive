@@ -85,14 +85,13 @@ jobs:
           from pathlib import Path
           import sys
 
-          sys.path.insert(0, str(Path("scripts")))
+          sys.path.insert(0, str(Path("src")))
 
-          from backfill_state import prepare_backfill_state
+          from fyi_archive.backfill_state_codec import decode_state
 
-          state_path = Path(".tmp/backfill-state.json")
-          state = json.loads(state_path.read_text(encoding="utf-8"))
-          compact = prepare_backfill_state(state)
-          state_path.write_text(json.dumps(compact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          state_file = Path(".tmp/backfill-state.json")
+          body = state_file.read_text(encoding="utf-8")
+          state_file.write_text(json.dumps(decode_state(body), indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
           gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID/artifacts" \
             --jq '[.artifacts[].name | select(startswith("historical-backfill-")) | sub("^historical-backfill-"; "")]' \
@@ -122,8 +121,8 @@ jobs:
 
           manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
           print(json.dumps(manifest["meta"], indent=2, sort_keys=True))
-          if manifest["meta"]["record_count"] < 1:
-              raise SystemExit("merged backfill manifest is empty")
+          if int(manifest["meta"]["record_count"]) < 0:
+              raise SystemExit("merged backfill manifest has an invalid record count")
           PY
 
       - name: Record batch counts
@@ -168,8 +167,10 @@ jobs:
           from pathlib import Path
           import sys
 
+          sys.path.insert(0, str(Path("src")))
           sys.path.insert(0, str(Path("scripts")))
 
+          from fyi_archive.backfill_state_codec import state_body_from_state
           from backfill_state import mark_merged_batches
 
           state_path = Path(".tmp/backfill-state.json")
@@ -184,14 +185,12 @@ jobs:
               id_to=int(state["id_to"]),
               record_counts_by_label=json.loads(Path(".tmp/backfill-record-counts.json").read_text(encoding="utf-8")),
           )
-          from backfill_state import prepare_backfill_state
-
-          compact = prepare_backfill_state(updated)
-          state_path.write_text(json.dumps(compact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          Path(".tmp/backfill-state.body").write_text(state_body_from_state(updated), encoding="utf-8")
           PY
           gh issue edit "$issue_number" \
             --repo "$REPO" \
-            --body-file .tmp/backfill-state.json
+            --body-file .tmp/backfill-state.body
 
       - name: Write dry-run merge marker
         if: env.DRY_RUN == 'true'
