@@ -69,6 +69,51 @@ def _normalize_batch(batch: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def refresh_summary(state: dict[str, Any], *, id_to: int | None = None) -> dict[str, Any]:
+    """Recompute summary counters from the live controller state."""
+    updated = deepcopy(state)
+    batches = state_batches(updated)
+    dispatched = [entry for entry in updated.get("dispatched") or [] if isinstance(entry, dict)]
+    pending_batches = [
+        batch for batch in batches if str(batch.get("status") or "pending") == "pending"
+    ]
+    merged_batches = [batch for batch in batches if str(batch.get("status") or "") == "merged"]
+    dispatched_requested_ids = sum(
+        max(0, int(batch["id_to"]) - int(batch["id_from"]) + 1) for batch in batches
+    )
+    summary = dict(updated.get("summary") or {})
+    summary.update(
+        {
+            "captured_records": sum(int(batch.get("record_count") or 0) for batch in merged_batches),
+            "dispatch_next_id": state_dispatch_next_id(updated, int(updated.get("id_from") or 1)),
+            "dispatched_batches": len(batches),
+            "dispatched_requested_ids": dispatched_requested_ids,
+            "dispatched_runs": len(dispatched),
+            "last_updated_at": iso_now(),
+            "merged_batches": len(merged_batches),
+            "pending_batches": len(pending_batches),
+        },
+    )
+    if id_to is not None:
+        summary["complete"] = state_next_id(updated, 1) > id_to and not has_pending_batches(updated)
+    recent_dispatch_runs: list[str] = []
+    for entry in dispatched[-10:]:
+        run_id = entry.get("controller_run_id")
+        if isinstance(run_id, str) and run_id:
+            recent_dispatch_runs.append(run_id)
+    if recent_dispatch_runs:
+        summary["recent_dispatch_runs"] = recent_dispatch_runs
+    recent_worker_runs: list[str] = []
+    for batch in batches:
+        run_id = batch.get("worker_run_id")
+        if isinstance(run_id, str) and run_id and run_id not in recent_worker_runs:
+            recent_worker_runs.append(run_id)
+    if recent_worker_runs:
+        summary["recent_worker_runs"] = recent_worker_runs[-10:]
+    updated["summary"] = summary
+    return updated
+
+
 def append_pending_batches(
     *,
     state: dict[str, Any],
@@ -91,6 +136,7 @@ def append_pending_batches(
     updated.setdefault("dispatched", [])
     updated["dispatched"] = list(updated["dispatched"])
     updated["complete"] = False
+    updated = refresh_summary(updated)
     updated["updated_at"] = iso_now()
     return updated
 
@@ -134,5 +180,6 @@ def mark_merged_batches(
     updated["batches"] = batches
     updated["next_id"] = cursor
     updated["complete"] = cursor > id_to and not has_pending_batches(updated)
+    updated = refresh_summary(updated, id_to=id_to)
     updated["updated_at"] = iso_now()
     return updated
