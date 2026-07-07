@@ -13,6 +13,26 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+CAPTURE_RETRY_ATTEMPTS = 3
+CAPTURE_RETRY_BACKOFF_SECONDS = 15.0
+TRANSIENT_CAPTURE_ERROR_MARKERS = (
+    "httpx.readtimeout",
+    "readtimeout",
+    "read timeout",
+    "timed out",
+    "timeout",
+    "connection reset",
+    "connection aborted",
+    "temporarily unavailable",
+    "service unavailable",
+    "too many requests",
+    " 429 ",
+    " 500 ",
+    " 502 ",
+    " 503 ",
+    " 504 ",
+)
+
 
 @dataclass(frozen=True)
 class SeedCaps:
@@ -52,6 +72,12 @@ class CaptureError(RuntimeError):
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
+
+
+def is_transient_capture_error(error: CaptureError) -> bool:
+    """Return True when the capture failure looks retryable."""
+    error_text = " ".join([error.stdout, error.stderr, str(error)]).lower()
+    return any(marker in error_text for marker in TRANSIENT_CAPTURE_ERROR_MARKERS)
 
 
 def utc_now() -> str:
@@ -217,6 +243,35 @@ def capture_with_fyi_cli(
     return json.loads(completed.stdout)
 
 
+def capture_with_retry(
+    request: SeedRequest,
+    data_dir: Path,
+    dist_dir: Path,
+    caps: SeedCaps,
+    extra_args: Sequence[str],
+    *,
+    retry_attempts: int = CAPTURE_RETRY_ATTEMPTS,
+    retry_backoff_seconds: float = CAPTURE_RETRY_BACKOFF_SECONDS,
+) -> dict[str, Any]:
+    """Capture one request with bounded retry for transient upstream failures."""
+    attempts = max(1, retry_attempts)
+    last_error: CaptureError | None = None
+
+    for attempt in range(1, attempts + 1):
+        try:
+            return capture_with_fyi_cli(request, data_dir, dist_dir, caps, extra_args)
+        except CaptureError as error:
+            last_error = error
+            if attempt >= attempts or not is_transient_capture_error(error):
+                raise
+            time.sleep(max(0.0, retry_backoff_seconds) * attempt)
+
+    if last_error is None:
+        msg = "capture retry loop exited without a result"
+        raise RuntimeError(msg)
+    raise last_error
+
+
 def run_seed(
     *,
     requests: Iterable[SeedRequest],
@@ -259,7 +314,7 @@ def run_seed(
             output_path = dry_run_capture(request, derived_dir)
         else:
             try:
-                capture_summary = capture_with_fyi_cli(
+                capture_summary = capture_with_retry(
                     request,
                     data_dir,
                     dist_dir,
