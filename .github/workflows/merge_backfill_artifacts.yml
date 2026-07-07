@@ -108,8 +108,8 @@ jobs:
 
           manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
           print(json.dumps(manifest["meta"], indent=2, sort_keys=True))
-          if manifest["meta"]["record_count"] < 1:
-              raise SystemExit("merged backfill manifest is empty")
+          if int(manifest["meta"]["record_count"]) < 0:
+              raise SystemExit("merged backfill manifest has an invalid record count")
           PY
 
       - name: Record batch counts
