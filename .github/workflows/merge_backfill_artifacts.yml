@@ -26,6 +26,10 @@ permissions:
   contents: read
   issues: write
 
+concurrency:
+  group: merge-backfill-artifacts
+  cancel-in-progress: false
+
 jobs:
   merge:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
