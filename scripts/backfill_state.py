@@ -60,6 +60,22 @@ def _batch_key(batch: dict[str, Any]) -> tuple[int, int, str]:
     return (int(batch["id_from"]), int(batch["id_to"]), str(batch.get("label") or ""))
 
 
+def batch_span_from_label(label: str) -> tuple[int, int]:
+    """Return the inclusive request-ID span represented by a batch label."""
+    start_str, end_str = str(label).split("-", 1)
+    return int(start_str), int(end_str)
+
+
+def controller_labels_from_chunk_labels(chunk_labels: list[str]) -> list[str]:
+    """Collapse worker chunk labels into the controller batch label."""
+    spans = [batch_span_from_label(label) for label in chunk_labels]
+    if not spans:
+        return []
+    starts = [start for start, _ in spans]
+    ends = [end for _, end in spans]
+    return [f"{min(starts)}-{max(ends)}"]
+
+
 def _normalize_batch(batch: dict[str, Any]) -> dict[str, Any]:
     result = deepcopy(batch)
     result["id_from"] = str(int(result["id_from"]))

@@ -42,6 +42,12 @@ def test_state_dispatch_next_id_tracks_highest_dispatched_batch() -> None:
     assert backfill_state.state_dispatch_next_id(state, 1) == 1001
 
 
+def test_controller_labels_from_chunk_labels_collapses_worker_chunks() -> None:
+    labels = ["351-400", "1-50", "301-350", "51-100", "451-500", "101-150"]
+
+    assert backfill_state.controller_labels_from_chunk_labels(labels) == ["1-500"]
+
+
 def test_mark_merged_batches_advances_only_through_contiguous_merged_ranges() -> None:
     state = {
         "id_to": 1000,
