@@ -95,7 +95,25 @@ jobs:
           PY
           gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID/artifacts" \
             --jq '[.artifacts[].name | select(startswith("historical-backfill-")) | sub("^historical-backfill-"; "")]' \
-            > .tmp/backfill-merged-labels.json
+            > .tmp/backfill-chunk-labels.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          sys.path.insert(0, str(Path("scripts")))
+
+          from backfill_state import controller_labels_from_chunk_labels
+
+          chunk_labels = json.loads(Path(".tmp/backfill-chunk-labels.json").read_text(encoding="utf-8"))
+          controller_labels = controller_labels_from_chunk_labels(list(chunk_labels))
+          if not controller_labels:
+              raise SystemExit("No historical backfill artifact labels were found")
+          Path(".tmp/backfill-merged-labels.json").write_text(
+              json.dumps(controller_labels, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
 
       - name: Merge manifests
         run: |
@@ -132,11 +150,10 @@ jobs:
           import json
           from pathlib import Path
 
-          counts: dict[str, int] = {}
-          for manifest_path in Path(".tmp/backfill-artifacts").glob("historical-backfill-*/manifests/latest_manifest.json"):
-              label = manifest_path.parent.parent.name.removeprefix("historical-backfill-")
-              manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-              counts[label] = int(manifest.get("meta", {}).get("record_count") or 0)
+          manifest = json.loads(Path("manifests/latest_manifest.json").read_text(encoding="utf-8"))
+          record_count = int(manifest.get("meta", {}).get("record_count") or 0)
+          labels = json.loads(Path(".tmp/backfill-merged-labels.json").read_text(encoding="utf-8"))
+          counts = {str(label): record_count for label in labels}
           Path(".tmp/backfill-record-counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
 
@@ -202,6 +219,7 @@ jobs:
 
           manifest = json.loads(Path("manifests/latest_manifest.json").read_text(encoding="utf-8"))
           payload = {
+              "chunk_labels": json.loads(Path(".tmp/backfill-chunk-labels.json").read_text(encoding="utf-8")),
               "dry_run": True,
               "source_run_id": "${{ env.SOURCE_RUN_ID }}",
               "record_count": int(manifest.get("meta", {}).get("record_count") or 0),
