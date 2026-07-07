@@ -143,12 +143,25 @@ jobs:
               > .tmp/backfill-state.json
           else
             printf '{"next_id": %s, "batches": [], "dispatched": []}\n' "$ID_FROM" > .tmp/backfill-state.json
+            python - <<'PY'
+            import json
+            from pathlib import Path
+            import sys
+
+            sys.path.insert(0, str(Path("src")))
+
+            from fyi_archive.backfill_state_codec import state_body_from_state
+
+            state_file = Path(".tmp/backfill-state.json")
+            state = json.loads(state_file.read_text(encoding="utf-8"))
+            Path(".tmp/backfill-state.body").write_text(state_body_from_state(state), encoding="utf-8")
+            PY
             issue_url="$(
               gh issue create \
                 --repo "$REPO" \
                 --title "$STATE_TITLE" \
                 --label "$STATE_LABEL" \
-                --body-file .tmp/backfill-state.json
+                --body-file .tmp/backfill-state.body
             )"
             issue_number="${issue_url##*/}"
             printf '%s\n' "$issue_url" > .tmp/backfill-state-issue-url.txt
@@ -163,14 +176,13 @@ jobs:
           from pathlib import Path
           import sys
 
-          sys.path.insert(0, str(Path("scripts")))
+          sys.path.insert(0, str(Path("src")))
 
-          from backfill_state import prepare_backfill_state
+          from fyi_archive.backfill_state_codec import decode_state
 
-          state_path = Path(".tmp/backfill-state.json")
-          state = json.loads(state_path.read_text(encoding="utf-8"))
-          compact = prepare_backfill_state(state)
-          state_path.write_text(json.dumps(compact, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          state_file = Path(".tmp/backfill-state.json")
+          body = state_file.read_text(encoding="utf-8")
+          state_file.write_text(json.dumps(decode_state(body), indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
           cat .tmp/backfill-state.json
 
@@ -313,8 +325,10 @@ jobs:
           from pathlib import Path
           import sys
 
+          sys.path.insert(0, str(Path("src")))
           sys.path.insert(0, str(Path("scripts")))
 
+          from fyi_archive.backfill_state_codec import state_body_from_state
           from backfill_state import append_pending_batches
 
           state_path = Path(".tmp/backfill-state.json")
@@ -340,10 +354,11 @@ jobs:
           updated["id_from"] = int(os.environ["ID_FROM"])
           updated["id_to"] = int(os.environ["ID_TO"])
           state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          Path(".tmp/backfill-state.body").write_text(state_body_from_state(updated), encoding="utf-8")
           PY
           gh issue edit "$issue_number" \
             --repo "$REPO" \
-            --body-file .tmp/backfill-state.json
+            --body-file .tmp/backfill-state.body
 
       - name: Upload controller plan
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

@@ -80,6 +80,19 @@ jobs:
           echo "$issue_number" > .tmp/backfill-state-issue-number.txt
           gh issue view "$issue_number" --repo "$REPO" --json body --jq '.body' \
             > .tmp/backfill-state.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          sys.path.insert(0, str(Path("src")))
+
+          from fyi_archive.backfill_state_codec import decode_state
+
+          state_file = Path(".tmp/backfill-state.json")
+          body = state_file.read_text(encoding="utf-8")
+          state_file.write_text(json.dumps(decode_state(body), indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
           gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID/artifacts" \
             --jq '[.artifacts[].name | select(startswith("historical-backfill-")) | sub("^historical-backfill-"; "")]' \
             > .tmp/backfill-merged-labels.json
@@ -154,8 +167,10 @@ jobs:
           from pathlib import Path
           import sys
 
+          sys.path.insert(0, str(Path("src")))
           sys.path.insert(0, str(Path("scripts")))
 
+          from fyi_archive.backfill_state_codec import state_body_from_state
           from backfill_state import mark_merged_batches
 
           state_path = Path(".tmp/backfill-state.json")
@@ -171,10 +186,11 @@ jobs:
               record_counts_by_label=json.loads(Path(".tmp/backfill-record-counts.json").read_text(encoding="utf-8")),
           )
           state_path.write_text(json.dumps(updated, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          Path(".tmp/backfill-state.body").write_text(state_body_from_state(updated), encoding="utf-8")
           PY
           gh issue edit "$issue_number" \
             --repo "$REPO" \
-            --body-file .tmp/backfill-state.json
+            --body-file .tmp/backfill-state.body
 
       - name: Write dry-run merge marker
         if: env.DRY_RUN == 'true'

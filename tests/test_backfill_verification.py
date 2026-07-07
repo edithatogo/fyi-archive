@@ -12,6 +12,7 @@ from httpx import Response
 from typer.testing import CliRunner
 
 from fyi_archive import backfill_verification
+from fyi_archive.backfill_state_codec import state_body_from_state
 from fyi_archive.backfill_verification import remote_zenodo_record_count
 from fyi_archive.cli import app
 
@@ -82,6 +83,56 @@ def test_load_controller_state_rejects_invalid_body(monkeypatch) -> None:
         assert "does not contain JSON state" in str(exc)
     else:
         raise AssertionError("expected ValueError")
+
+
+def test_load_controller_state_prefers_local_snapshot(tmp_path: Path, monkeypatch) -> None:
+    snapshot = tmp_path / "versions" / "latest_backfill_controller_state.json"
+    snapshot.parent.mkdir(parents=True)
+    snapshot.write_text(
+        json.dumps(
+            {
+                "issue_number": 9,
+                "issue_url": "https://github.com/example/repo/issues/9",
+                "issue_title": "FYI historical backfill state (fyi-backfill-state)",
+                "state_label": "fyi-backfill-state",
+                "state": {"next_id": 4, "batches": [], "dispatched": []},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("BACKFILL_STATE_SNAPSHOT", str(snapshot))
+
+    state_info = backfill_verification.load_controller_state(
+        repo="example/repo",
+        state_label="fyi-backfill-state",
+    )
+
+    assert state_info["issue_number"] == 9
+    assert state_info["state"]["next_id"] == 4
+
+
+def test_load_controller_state_decodes_compressed_issue_body(monkeypatch) -> None:
+    encoded_state = state_body_from_state({"next_id": 4, "batches": [], "dispatched": []})
+
+    monkeypatch.setattr(
+        backfill_verification,
+        "gh_json",
+        lambda args: {
+            "body": encoded_state,
+            "number": 9,
+            "title": "FYI historical backfill state (fyi-backfill-state)",
+            "url": "https://github.com/example/repo/issues/9",
+        },
+    )
+
+    state_info = backfill_verification.load_controller_state(
+        repo="example/repo",
+        state_label="fyi-backfill-state",
+        issue_number=9,
+    )
+
+    assert state_info["state"]["next_id"] == 4
 
 
 def test_remote_huggingface_record_count_uses_downloaded_manifest(
@@ -285,6 +336,7 @@ def test_backfill_report_cli_allows_dry_run_without_full_verification(
 def test_backfill_verification_helpers_cover_state_loading_and_writers(
     tmp_path: Path, monkeypatch
 ) -> None:
+    monkeypatch.delenv("BACKFILL_STATE_SNAPSHOT", raising=False)
     manifest = tmp_path / "manifests/latest_manifest.json"
     manifest.parent.mkdir(parents=True)
     manifest.write_text('{"meta": {"record_count": 3}, "requests": []}\n', encoding="utf-8")

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -65,6 +66,10 @@ def report(
     """Build a cross-system count report for the historical backfill."""
     if repo is None:
         raise typer.BadParameter("GITHUB_REPOSITORY or --repo is required")
+
+    local_snapshot = Path("versions/latest_backfill_controller_state.json")
+    if local_snapshot.exists():
+        os.environ.setdefault("BACKFILL_STATE_SNAPSHOT", local_snapshot.as_posix())
 
     state_info = load_controller_state(
         repo=repo, state_label=state_label, issue_number=state_issue_number
