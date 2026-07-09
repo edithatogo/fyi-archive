@@ -5,6 +5,24 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.5.3](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.5.2...fyi_archive-v0.5.3) (2026-07-09)
+
+
+### Bug Fixes
+
+* adopt shared org code-scanning gate (issue [#27](https://github.com/edithatogo/fyi-archive/issues/27)) ([#44](https://github.com/edithatogo/fyi-archive/issues/44)) ([1c5375f](https://github.com/edithatogo/fyi-archive/commit/1c5375f19f4441521ee479cd4eaaf5525cc76c08))
+* allow empty backfill merge manifests ([9b3c7ad](https://github.com/edithatogo/fyi-archive/commit/9b3c7ada3740d32347ce0adff6a3af6e9ff80d2f))
+* clear backfill verification lint ([78138f9](https://github.com/edithatogo/fyi-archive/commit/78138f97ad09f003ed794a39386756e60ff2e793))
+* compress backfill issue state ([3c99961](https://github.com/edithatogo/fyi-archive/commit/3c999616bcd13b8cf286a96c67a9d03ee0fa2499))
+* compress backfill issue state ([4d949e0](https://github.com/edithatogo/fyi-archive/commit/4d949e02660cc2fcc2edd6975cef9ca7f3bc810e))
+* refresh backfill state summary counts ([ff64aca](https://github.com/edithatogo/fyi-archive/commit/ff64aca2a8dd4be72f195ca05df2ffcdedbc2b52))
+* satisfy backfill verification type checks ([726d3b0](https://github.com/edithatogo/fyi-archive/commit/726d3b0faf8c431c524f1ed94cf5ff8d1be6d52f))
+
+
+### Documentation
+
+* reconcile conductor state and add backfill ops runbook ([#34](https://github.com/edithatogo/fyi-archive/issues/34)) ([d2435a2](https://github.com/edithatogo/fyi-archive/commit/d2435a2e629fc3ecd84b3d1558da83de5fc53f23))
+
 ## [0.5.2](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.5.1...fyi_archive-v0.5.2) (2026-07-06)
 
 
