@@ -235,7 +235,17 @@ def remote_zenodo_record_count(
     if manifest_url is None:
         msg = f"Zenodo deposition {deposition_id} does not expose latest_manifest.json"
         raise ValueError(msg)
-    response = httpx.get(manifest_url, timeout=60)
+    response = httpx.get(
+        manifest_url,
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=60,
+    )
+    if response.status_code in {401, 403}:
+        response = httpx.get(
+            manifest_url,
+            params={"access_token": token},
+            timeout=60,
+        )
     response.raise_for_status()
     data = json.loads(response.text)
     return {
