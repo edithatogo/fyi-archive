@@ -21,6 +21,7 @@ class ArchiveInstance:
     status: str
     title: str
     source: str
+    seed_cap: int = 1000
 
     def capture_base_url(self) -> str:
         """Return base URL without trailing slash for fyi-cli --base-url."""

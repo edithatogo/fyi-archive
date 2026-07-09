@@ -110,6 +110,9 @@ jobs:
 
       - name: Build capped seed bundle
         if: env.SEED_BEFORE_PUBLISH == 'true'
+        env:
+          SEED_CONCURRENCY: "2"
+          SEED_MIN_INTERVAL: "1.0"
         run: |
           set -euo pipefail
           mkdir -p data/_state
@@ -130,6 +133,8 @@ jobs:
             --max-requests "$SEED_MAX_REQUESTS"
             --max-runtime-minutes 30
             --max-disk-gb 5
+            --min-interval "$SEED_MIN_INTERVAL"
+            --concurrency "$SEED_CONCURRENCY"
             --continue-on-error
           )
           if [ "$discovered" = "true" ]; then

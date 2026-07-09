@@ -192,3 +192,65 @@ def test_capture_with_fyi_cli_includes_base_url(monkeypatch: pytest.MonkeyPatch)
     assert summary["derived_path"] == "data/raw/1/request.json"
     base_url_index = recorded[0].index("--base-url")
     assert recorded[0][base_url_index + 1] == "https://www.righttoknow.org.au"
+
+
+def test_instance_seed_cap_default() -> None:
+    instance = get_instance("nz-fyi")
+    assert instance.seed_cap == 1000
+
+
+def test_instance_seed_cap_all_instances() -> None:
+    for instance in list_instances():
+        assert instance.seed_cap == 1000
+
+
+def test_capture_with_fyi_cli_passes_rate_limiting_flags(monkeypatch: pytest.MonkeyPatch) -> None:
+    recorded: list[list[str]] = []
+
+    class Completed:
+        stdout = json.dumps({"derived_path": "data/raw/1/request.json"})
+
+    def fake_run(command: list[str], check: bool, capture_output: bool, text: bool) -> Completed:
+        recorded.append(list(command))
+        return Completed()
+
+    monkeypatch.setattr("fyi_archive.seed.subprocess.run", fake_run)
+    capture_with_fyi_cli(
+        SeedRequest(request_id=1, url_title="r-1"),
+        Path("data"),
+        Path("dist"),
+        SeedCaps(),
+        ["--base-url", "https://fyi.org.nz", "--min-interval", "1.5", "--concurrency", "3"],
+    )
+    cmd = recorded[0]
+    assert "--min-interval" in cmd
+    assert cmd[cmd.index("--min-interval") + 1] == "1.5"
+    assert "--concurrency" in cmd
+    assert cmd[cmd.index("--concurrency") + 1] == "3"
+
+
+def test_seed_cli_dry_run_passes_rate_limiting(tmp_path: Path) -> None:
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "seed",
+            "run",
+            "--dry-run",
+            "--max-requests",
+            "1",
+            "--min-interval",
+            "2.0",
+            "--concurrency",
+            "4",
+            "--ledger-path",
+            str(tmp_path / "data" / "_state" / "test-rl-ledger.jsonl"),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--derived-dir",
+            str(tmp_path / "data" / "derived" / "test-rl"),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["processed"] == 1
