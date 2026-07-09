@@ -174,7 +174,7 @@ uv run fyi-archive doctor
 # writes conductor/archive_health.json (gitignored)
 ```
 
-3. Success criteria for this phase:
+1. Success criteria for this phase:
 
 | Check | Goal |
 | --- | --- |
@@ -183,7 +183,7 @@ uv run fyi-archive doctor
 | Coverage | Moving toward 60% target (full-site is longer-term) |
 | Issue #9 | `pending_batches == 0`, `complete` consistent with range |
 
-4. Update `conductor/operations_status.json` after a meaningful ops change so the
+1. Update `conductor/operations_status.json` after a meaningful ops change so the
    next `/conductor-status` read is not stale.
 
 ---
