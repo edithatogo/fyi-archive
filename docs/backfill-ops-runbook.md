@@ -103,9 +103,10 @@ gh run list --workflow "historical_backfill_batch.yml" \
   --status completed --limit 100 \
   --json databaseId,createdAt,conclusion,url
 # Then for a candidate:
-gh api "repos/edithatogo/fyi-archive/actions/runs/<RUN_ID>/artifacts" \
+gh api "repos/:owner/:repo/actions/runs/<RUN_ID>/artifacts" \
   --jq '.artifacts[].name'
 ```
+
 
 Confirm artifacts are **not** `expired: true` before merging.
 
