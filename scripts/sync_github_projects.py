@@ -549,6 +549,7 @@ def main() -> int:
 
     final_items = load_project_items(owner=args.owner, number=args.target_project)
     item_id_by_url = {}
+    current_source_by_url = {}
     for item in final_items:
         content = item.get("content")
         if not isinstance(content, dict):
@@ -556,6 +557,10 @@ def main() -> int:
         url = content.get("url")
         if isinstance(url, str) and url:
             item_id_by_url[url] = str(item["id"])
+            field_values = list_or_empty(item.get("fieldValues"))
+            for fv in field_values:
+                if isinstance(fv, dict) and fv.get("field") == DEFAULT_MIRROR_FIELD_NAME:
+                    current_source_by_url[url] = fv.get("value")
 
     for url in desired_urls:
         item_id = item_id_by_url.get(url)
@@ -563,6 +568,9 @@ def main() -> int:
         option_id = mirror_option_ids.get(source_label, mirror_option_ids.get("other"))
         if not item_id or not option_id:
             print(f"SKIP FIELD {url}")
+            continue
+        if current_source_by_url.get(url) == source_label:
+            print(f"ALREADY TAGGED {url} -> {source_label}")
             continue
         set_item_single_select_field(
             project_id=target_project_id,
