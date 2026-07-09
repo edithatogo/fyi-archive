@@ -107,15 +107,36 @@ def ensure_component(
 
 def upload_file(*, token: str, upload_url: str, path: Path) -> dict[str, Any]:
     """Upload one file to an OSF storage upload URL."""
-    response = request_with_retry(
-        lambda: httpx.put(
+    content = path.read_bytes()
+
+    def create_request() -> httpx.Response:
+        return httpx.put(
             upload_url,
             headers=auth_headers(token),
             params={"kind": "file", "name": path.name},
-            content=path.read_bytes(),
+            content=content,
             timeout=300,
         )
-    )
+
+    try:
+        response = request_with_retry(create_request)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code != 409:
+            raise
+        existing_upload_url = find_file_upload_url(
+            token=token,
+            files_url=upload_url,
+            name=path.name,
+        )
+        response = request_with_retry(
+            lambda: httpx.put(
+                existing_upload_url,
+                headers=auth_headers(token),
+                params={"kind": "file"},
+                content=content,
+                timeout=300,
+            )
+        )
     return response.json()
 
 
@@ -142,13 +163,7 @@ def get_osfstorage_upload_url(*, token: str, node_id: str, api_url: str = OSF_AP
 
 def list_files(*, token: str, node_id: str, api_url: str = OSF_API) -> list[RemoteArtifact]:
     """List OSF file evidence for a node."""
-    response = request_with_retry(
-        lambda: httpx.get(
-            f"{api_url}/nodes/{node_id}/files/osfstorage/",
-            headers=auth_headers(token),
-            timeout=60,
-        )
-    )
+    response = list_files_response(token=token, node_id=node_id, api_url=api_url)
     artifacts = []
     for file_data in response.json().get("data", []):
         attributes = file_data.get("attributes", {})
@@ -165,6 +180,38 @@ def list_files(*, token: str, node_id: str, api_url: str = OSF_API) -> list[Remo
             ),
         )
     return artifacts
+
+
+def list_files_response(*, token: str, node_id: str, api_url: str = OSF_API) -> httpx.Response:
+    """Return the raw OSF storage file listing response."""
+    return request_with_retry(
+        lambda: httpx.get(
+            f"{api_url}/nodes/{node_id}/files/osfstorage/",
+            headers=auth_headers(token),
+            timeout=60,
+        )
+    )
+
+
+def find_file_upload_url(*, token: str, files_url: str, name: str) -> str:
+    """Find the per-file upload URL for an existing OSF Storage file."""
+    response = request_with_retry(
+        lambda: httpx.get(
+            files_url,
+            headers=auth_headers(token),
+            timeout=60,
+        )
+    )
+    for file_data in response.json().get("data", []):
+        attributes = file_data.get("attributes", {})
+        file_name = str(attributes.get("name") or attributes.get("materialized_path") or "")
+        if Path(file_name).name != name:
+            continue
+        upload_url = file_data.get("links", {}).get("upload")
+        if upload_url:
+            return str(upload_url)
+    msg = f"Existing OSF file upload URL was not found for {name}"
+    raise ValueError(msg)
 
 
 def file_size(attributes: dict[str, Any]) -> int | None:

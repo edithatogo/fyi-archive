@@ -446,6 +446,42 @@ def test_osf_upload_retries_transient_storage_failure(tmp_path: Path, monkeypatc
     assert route.call_count == 2
 
 
+@respx.mock
+def test_osf_upload_updates_existing_file_after_conflict(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("fyi_archive.publish.osf_publish.sleep", lambda _: None)
+    file_path = tmp_path / "latest_manifest.json"
+    file_path.write_text('{"meta": {"record_count": 2}}\n', encoding="utf-8")
+    create_route = respx.put("https://files.osf.example/upload").mock(
+        return_value=Response(409, text="conflict")
+    )
+    respx.get("https://files.osf.example/upload").mock(
+        return_value=Response(
+            200,
+            json={
+                "data": [
+                    {
+                        "attributes": {"name": "latest_manifest.json"},
+                        "links": {"upload": "https://files.osf.example/file/123"},
+                    }
+                ]
+            },
+        )
+    )
+    update_route = respx.put("https://files.osf.example/file/123").mock(
+        return_value=Response(200, json={"data": {"id": "updated"}})
+    )
+
+    uploaded = upload_osf_file(
+        token="token",
+        upload_url="https://files.osf.example/upload",
+        path=file_path,
+    )
+
+    assert uploaded["data"]["id"] == "updated"
+    assert create_route.call_count == 1
+    assert update_route.call_count == 1
+
+
 def test_missing_remote_artifact_fails_verification(tmp_path: Path) -> None:
     file_path = tmp_path / "latest_manifest.json"
     file_path.write_text("{}\n", encoding="utf-8")
