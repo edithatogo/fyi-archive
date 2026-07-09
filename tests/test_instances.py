@@ -256,7 +256,17 @@ def test_seed_cli_dry_run_passes_rate_limiting(tmp_path: Path) -> None:
     assert payload["processed"] == 1
 
 
-def test_seed_cli_dry_run_with_au_instance(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("instance_id", "expected_url"),
+    [
+        ("au-rtk", "https://www.righttoknow.org.au"),
+        ("uk-wdtk", "https://www.whatdotheyknow.com"),
+        ("ie-myrighttoknow", "https://www.myrighttoknow.org"),
+    ],
+)
+def test_seed_cli_dry_run_with_instances(
+    tmp_path: Path, instance_id: str, expected_url: str
+) -> None:
     runner = CliRunner()
     result = runner.invoke(
         app,
@@ -267,68 +277,16 @@ def test_seed_cli_dry_run_with_au_instance(tmp_path: Path) -> None:
             "--max-requests",
             "1",
             "--instance",
-            "au-rtk",
+            instance_id,
             "--ledger-path",
-            str(tmp_path / "data" / "_state" / "test-instance-ledger.jsonl"),
+            str(tmp_path / "data" / "_state" / f"test-{instance_id}-ledger.jsonl"),
             "--data-dir",
             str(tmp_path / "data"),
             "--derived-dir",
-            str(tmp_path / "data" / "derived" / "test-instance"),
+            str(tmp_path / "data" / "derived" / f"test-{instance_id}"),
         ],
     )
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
-    assert payload["instance_id"] == "au-rtk"
-    assert payload["base_url"] == "https://www.righttoknow.org.au"
-
-
-def test_seed_cli_dry_run_with_uk_instance(tmp_path: Path) -> None:
-    runner = CliRunner()
-    result = runner.invoke(
-        app,
-        [
-            "seed",
-            "run",
-            "--dry-run",
-            "--max-requests",
-            "1",
-            "--instance",
-            "uk-wdtk",
-            "--ledger-path",
-            str(tmp_path / "data" / "_state" / "test-uk-ledger.jsonl"),
-            "--data-dir",
-            str(tmp_path / "data"),
-            "--derived-dir",
-            str(tmp_path / "data" / "derived" / "test-uk"),
-        ],
-    )
-    assert result.exit_code == 0, result.output
-    payload = json.loads(result.output)
-    assert payload["instance_id"] == "uk-wdtk"
-    assert payload["base_url"] == "https://www.whatdotheyknow.com"
-
-
-def test_seed_cli_dry_run_with_ie_instance(tmp_path: Path) -> None:
-    runner = CliRunner()
-    result = runner.invoke(
-        app,
-        [
-            "seed",
-            "run",
-            "--dry-run",
-            "--max-requests",
-            "1",
-            "--instance",
-            "ie-myrighttoknow",
-            "--ledger-path",
-            str(tmp_path / "data" / "_state" / "test-ie-ledger.jsonl"),
-            "--data-dir",
-            str(tmp_path / "data"),
-            "--derived-dir",
-            str(tmp_path / "data" / "derived" / "test-ie"),
-        ],
-    )
-    assert result.exit_code == 0, result.output
-    payload = json.loads(result.output)
-    assert payload["instance_id"] == "ie-myrighttoknow"
-    assert payload["base_url"] == "https://www.myrighttoknow.org"
+    assert payload["instance_id"] == instance_id
+    assert payload["base_url"] == expected_url
