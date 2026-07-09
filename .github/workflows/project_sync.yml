@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: read
+  issues: none
+  pull-requests: none
 
 jobs:
   sync:
