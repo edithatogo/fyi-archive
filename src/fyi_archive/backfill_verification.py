@@ -244,6 +244,32 @@ def remote_zenodo_record_count(
     if manifest_url is None:
         msg = f"Zenodo deposition {deposition_id} does not expose latest_manifest.json"
         raise ValueError(msg)
+    response = get_zenodo_manifest_response(
+        token=token,
+        manifest_url=manifest_url,
+        deposition_id=deposition_id,
+        api_url=api_url,
+    )
+    data = json.loads(response.text)
+    return {
+        "deposition_id": deposition_id,
+        "doi": deposition.get("doi"),
+        "api_url": api_url,
+        "manifest_url": manifest_url,
+        "record_count": int(
+            data.get("meta", {}).get("record_count") or data.get("record_count") or 0
+        ),
+    }
+
+
+def get_zenodo_manifest_response(
+    *,
+    token: str,
+    manifest_url: str,
+    deposition_id: int,
+    api_url: str = ZENODO_API,
+) -> httpx.Response:
+    """Fetch a Zenodo manifest from draft or published record URLs."""
     response = httpx.get(
         manifest_url,
         headers={"Authorization": f"Bearer {token}"},
@@ -255,17 +281,27 @@ def remote_zenodo_record_count(
             params={"access_token": token},
             timeout=60,
         )
+    if response.status_code != 404:
+        response.raise_for_status()
+        return response
+
+    published_manifest_url = (
+        f"{api_url.removesuffix('/deposit')}/records/"
+        f"{deposition_id}/files/latest_manifest.json/content"
+    )
+    response = httpx.get(
+        published_manifest_url,
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=60,
+    )
+    if response.status_code in {401, 403}:
+        response = httpx.get(
+            published_manifest_url,
+            params={"access_token": token},
+            timeout=60,
+        )
     response.raise_for_status()
-    data = json.loads(response.text)
-    return {
-        "deposition_id": deposition_id,
-        "doi": deposition.get("doi"),
-        "api_url": api_url,
-        "manifest_url": manifest_url,
-        "record_count": int(
-            data.get("meta", {}).get("record_count") or data.get("record_count") or 0
-        ),
-    }
+    return response
 
 
 def build_backfill_verification_report(
