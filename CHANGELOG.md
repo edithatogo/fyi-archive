@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.5.5](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.5.4...fyi_archive-v0.5.5) (2026-07-09)
+
+
+### Bug Fixes
+
+* skip redundant GraphQL mutations for already-tagged items ([18005e7](https://github.com/edithatogo/fyi-archive/commit/18005e7468f9dbabb4841c49c104ea245211dab8))
+
 ## [0.5.4](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.5.3...fyi_archive-v0.5.4) (2026-07-09)
 
 
