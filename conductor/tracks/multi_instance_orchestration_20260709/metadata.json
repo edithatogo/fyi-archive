@@ -1,0 +1,9 @@
+{
+  "track_id": "multi_instance_orchestration_20260709",
+  "type": "feature",
+  "status": "pending",
+  "created_at": "2026-07-09T00:00:00Z",
+  "updated_at": "2026-07-09T00:00:00Z",
+  "description": "Config registry; CLI --instance / env; plumb --base-url into seed/sync; relax manifest schema (source + instance_id); NZ default regression suite.",
+  "satisfies": ["R-40", "R-41", "R-42"]
+}

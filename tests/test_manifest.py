@@ -46,6 +46,8 @@ def test_assemble_manifest_writes_json_parquet_and_authorities(tmp_path: Path) -
 
     validate_manifest(manifest)
     assert manifest["meta"]["record_count"] == 2
+    assert manifest["meta"]["instance_id"] == "nz-fyi"
+    assert manifest["meta"]["source"] == "https://fyi.org.nz/"
     assert json.loads(authorities_path.read_text(encoding="utf-8")) == {"authorities": ["A", "B"]}
     assert pl.read_parquet(parquet_path).height == 2
 

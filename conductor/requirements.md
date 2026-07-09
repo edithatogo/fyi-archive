@@ -83,6 +83,27 @@ traces to, and the track(s) that satisfy it. Priorities:
 | R-28 | **W** | Full-text search index / query API over the archive. | future |
 | R-29 | **W** | OCR / text extraction / entity normalisation. | future |
 
+## 8. Multi-jurisdiction expansion
+
+Generalises the NZ phase-1 contract to **per-instance** Alaveteli surfaces. Capture
+remains exclusively in `fyi-cli` (R-05, R-06). Purpose is **public-policy research and
+operational transparency**, not AI training.
+
+| ID | Priority | Requirement | Source clause | Track(s) |
+| --- | --- | --- | --- | --- |
+| R-40 | **M** | Instance-aware orchestration: seed/sync/manifest/publish accept `instance_id` (default `nz-fyi`); no NZ regression. | multi-jurisdiction plan | `multi_instance_orchestration_20260709` |
+| R-41 | **M** | Capture remains exclusively in **fyi-cli**; archive only invokes CLI with `--base-url` / instance config and never reimplements fetch/WARC. | two-repo discipline | all multi-jurisdiction tracks |
+| R-42 | **M** | Respect **robots.txt**, shared **rate limits**, and contactable UA; per-instance limiter namespaces; never exceed fyi-cli site-safe defaults without documented justification. | politeness + RTK ops | `multi_instance_orchestration_20260709`, fyi-cli rate limiter |
+| R-43 | **M** | Archive purpose is **public-policy research / operational transparency**, not AI training; dataset cards and ethics docs state this; honour Content-Signals where present. | product purpose | `au_rtk_ethics_metadata_20260709` |
+| R-44 | **M** | AU RTK archive via `au-rtk`, with **jurisdiction taxonomy** from body tags; first production slice **NSW**. | AU RTK integration | `au_jurisdiction_taxonomy_20260709`, `au_nsw_historical_seed_20260709` |
+| R-45 | **M** | After NSW is evidence-backed, **automated iteration** through remaining AU jurisdictions in fixed order (VIC→QLD→…→federal→OTHER). | state-by-state rollout | `au_jurisdiction_rollout_controller_20260709` |
+| R-46 | **S** | Separate mirror identity per instance (e.g. `edithatogo/rtk-archive-au`); NZ dataset unchanged. | multi-mirror | `multi_instance_publish_20260709` |
+| R-47 | **S** | GitHub issues + sub-issues for each track, linked to Projects v2 and mirrored to RIOPA. | GitHub project model | `github_project_multi_jurisdiction_20260709` |
+| R-48 | **S** | Doctor/coverage/horizon are instance- and jurisdiction-aware. | observability | `multi_instance_observability_20260709` |
+| R-49 | **C** | English Alaveteli fleet archive onboarding template (post-AU). | global ladder | `english_alaveteli_archive_template_20260709` |
+| R-50 | **C** | Non-English Alaveteli archive onboarding (post-English). | global ladder | `global_alaveteli_archive_template_20260709` |
+| R-51 | **W** | Non-Alaveteli FOI portals; LLM training pipelines; NLP over archives. | explicit non-goal | future |
+
 ---
 
 ## Requirement → track traceability summary
@@ -96,6 +117,15 @@ traces to, and the track(s) that satisfy it. Priorities:
 | R-14 | `prospective_sync_orchestration` + fyi-cli `archival-content-diff` |
 | R-08, R-09, R-10, R-22, R-25, R-31 | `multi_mirror_publish` (+ fyi-cli `faithful-archive-capture` for R-31 capture) |
 | R-19, R-23 | `observability_quality` + fyi-cli `archive-health-doctor` |
-| R-03, R-04, R-28, R-29 | (non-goals / explicit exclusions) |
-| R-05, R-06 | (architectural principle — fyi-cli owns capture) |
+| R-03, R-04, R-28, R-29, R-51 | (non-goals / explicit exclusions) |
+| R-05, R-06, R-41 | (architectural principle — fyi-cli owns capture) |
 | R-17 | `tech-stack.md` |
+| R-40, R-42 | `multi_instance_orchestration_20260709` |
+| R-43 | `au_rtk_ethics_metadata_20260709` |
+| R-44 | `au_jurisdiction_taxonomy_20260709`, `au_nsw_historical_seed_20260709` |
+| R-45 | `au_jurisdiction_rollout_controller_20260709` |
+| R-46 | `multi_instance_publish_20260709` |
+| R-47 | `github_project_multi_jurisdiction_20260709` |
+| R-48 | `multi_instance_observability_20260709` |
+| R-49 | `english_alaveteli_archive_template_20260709` |
+| R-50 | `global_alaveteli_archive_template_20260709` |

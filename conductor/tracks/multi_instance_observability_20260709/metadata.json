@@ -1,0 +1,10 @@
+{
+  "track_id": "multi_instance_observability_20260709",
+  "type": "feature",
+  "status": "pending",
+  "created_at": "2026-07-09T00:00:00Z",
+  "updated_at": "2026-07-09T00:00:00Z",
+  "description": "Doctor/backfill report/horizon per instance and jurisdiction; CI parity checks.",
+  "satisfies": ["R-48"],
+  "depends_on": ["multi_instance_orchestration_20260709", "multi_instance_publish_20260709"]
+}

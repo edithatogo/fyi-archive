@@ -193,10 +193,115 @@ flowchart LR
 
 ## Design principles
 
-1. **fyi-cli owns the network.** No fetch logic in `fyi-archive` (R-05, R-06).
+1. **fyi-cli owns the network.** No fetch logic in `fyi-archive` (R-05, R-06, R-41).
 2. **WARC/WACZ is the source of truth.** Everything else is a projection (section 2).
-3. **Read-only & polite.** Rate-limited, robots-aware, capped (R-02, R-20, R-21).
+3. **Read-only & polite.** Rate-limited, robots-aware, capped (R-02, R-20, R-21, R-42).
 4. **Historical before prospective** (R-13 → R-14).
 5. **Draft-first, gated publication** (R-22).
 6. **Automated, evidence-backed releases** (R-15, R-16, R-24).
-7. **Storage-only in phase 1** — no analysis (R-03, R-04, R-28, R-29).
+7. **Storage-only in phase 1** — no analysis (R-03, R-04, R-28, R-29, R-51).
+8. **Instance-aware orchestration** — default `nz-fyi`; multi-instance via config (R-40).
+9. **Public-policy research purpose** — not AI training (R-43).
+
+## 9. Multi-instance architecture
+
+```mermaid
+flowchart TB
+  classDef capture fill:#e3f2fd,stroke:#1565c0
+  classDef orch fill:#f3e5f5,stroke:#6a1b9a
+  classDef mirror fill:#e8f5e9,stroke:#2e7d32
+  classDef ext fill:#fff3e0,stroke:#ef6c00
+
+  subgraph sources["Alaveteli sources"]
+    NZ["nz-fyi<br/>fyi.org.nz"]:::ext
+    AU["au-rtk<br/>righttoknow.org.au"]:::ext
+    EN["English fleet<br/>uk-wdtk, ie, …"]:::ext
+    I18N["Non-English fleet<br/>de-fds, fr-cada, …"]:::ext
+  end
+
+  subgraph cli["fyi-cli — capture only"]
+    CAT["instances.toml catalog"]:::capture
+    DISC["discover / bodies / tags<br/>robots + shared rate limit"]:::capture
+    CAP["capture → WARC/WACZ"]:::capture
+    DIFF["diff / archive-health"]:::capture
+  end
+
+  subgraph arch["fyi-archive — orchestration + distribution"]
+    INST["instance + jurisdiction config"]:::orch
+    SEED["seed / backfill controller"]:::orch
+    SYNC["prospective sync"]:::orch
+    MAN["manifest meta + partitions"]:::orch
+    PUB["multi-mirror publish"]:::orch
+  end
+
+  NZ --> DISC
+  AU --> DISC
+  EN --> DISC
+  I18N --> DISC
+  CAT --> DISC
+  DISC --> CAP --> DIFF
+  CAP --> SEED
+  DIFF --> SYNC
+  INST --> SEED
+  INST --> SYNC
+  SEED --> MAN --> PUB
+  SYNC --> MAN
+  PUB --> HF["HF datasets<br/>per instance"]:::mirror
+  PUB --> ZN["Zenodo / OSF"]:::mirror
+```
+
+## 10. AU jurisdiction rollout state machine
+
+Right to Know Australia is **one** national Alaveteli instance. Jurisdictions are
+body-tag partitions (`NSW_state`, `VIC_state`, …), not separate sites.
+
+```mermaid
+stateDiagram-v2
+  [*] --> NSW: first production slice
+  NSW --> VIC: NSW exit criteria met
+  VIC --> QLD
+  QLD --> SA
+  SA --> WA
+  WA --> TAS
+  TAS --> ACT
+  ACT --> NT
+  NT --> CTH: federal bodies
+  CTH --> OTHER: uncategorised / local residual
+  OTHER --> NationalSync: merge manifests
+  NationalSync --> ProspectiveAU: daily au-rtk sync
+  ProspectiveAU --> [*]
+```
+
+## 11. Global Alaveteli ladder
+
+```mermaid
+flowchart LR
+  NZ["NZ nz-fyi<br/>production"] --> AU["AU au-rtk<br/>state-by-state"]
+  AU --> EN["English fleet<br/>uk-wdtk → ie → …"]
+  EN --> I18N["Non-English fleet<br/>de / fr / es / …"]
+```
+
+## 12. Multi-instance data layout
+
+```mermaid
+flowchart TB
+  DATA["data/"]
+  DATA --> NZD["nz-fyi/<br/>warc · raw · _state"]
+  DATA --> AUD["au-rtk/"]
+  AUD --> NSW["nsw/<br/>ledger · derived"]
+  AUD --> VIC["vic/ …"]
+  AUD --> NAT["_national/<br/>merged manifest state"]
+  DIST["dist/<instance_id>/"]
+  MAN["manifests/<br/>latest may be NZ default;<br/>AU under instance paths or meta.instance_id"]
+```
+
+## 13. Conductor track → GitHub project flow
+
+```mermaid
+flowchart LR
+  REQ["requirements.md<br/>R-40…R-51"] --> TR["tracks/*/spec+plan"]
+  TR --> ISS["GitHub parent issue<br/>per track"]
+  ISS --> SUB["Sub-issues<br/>work breakdown"]
+  SUB --> PRJ["Repo project board<br/>native workflows"]
+  PRJ --> RIOPA["RIOPA umbrella<br/>item mirror sync"]
+```

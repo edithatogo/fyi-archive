@@ -1,0 +1,10 @@
+{
+  "track_id": "au_jurisdiction_rollout_controller_20260709",
+  "type": "feature",
+  "status": "pending",
+  "created_at": "2026-07-09T00:00:00Z",
+  "updated_at": "2026-07-09T00:00:00Z",
+  "description": "After NSW exit criteria: sequential VIC..OTHER; shared AU limiter; merge national AU manifest; controller issue state.",
+  "satisfies": ["R-45", "R-42"],
+  "depends_on": ["au_nsw_historical_seed_20260709"]
+}

@@ -83,6 +83,68 @@ Link: [./tracks/github_project_sync_20260701/](./tracks/github_project_sync_2026
 
 ---
 
+## Multi-jurisdiction expansion tracks
+
+### [ ] Track: Multi-instance orchestration
+Track ID: `multi_instance_orchestration_20260709` — satisfies **R-40, R-41, R-42**
+Goal: Instance registry; CLI `--instance` / env; plumb `--base-url` into seed/sync; multi-source manifests; NZ default regression.
+Link: [./tracks/multi_instance_orchestration_20260709/](./tracks/multi_instance_orchestration_20260709/)
+
+### [ ] Track: AU RTK ethics and metadata
+Track ID: `au_rtk_ethics_metadata_20260709` — satisfies **R-43**
+Goal: Policy-research purpose (not AI training); AU ethics/copyright notes; Content-Signal/robots documentation.
+Depends on: `multi_instance_orchestration_20260709`.
+Link: [./tracks/au_rtk_ethics_metadata_20260709/](./tracks/au_rtk_ethics_metadata_20260709/)
+
+### [ ] Track: AU jurisdiction taxonomy
+Track ID: `au_jurisdiction_taxonomy_20260709` — satisfies **R-44**
+Goal: Body-tag → jurisdiction map; fixtures; authorities with jurisdiction field.
+Depends on: `multi_instance_orchestration_20260709`; fyi-cli body enumeration companion.
+Link: [./tracks/au_jurisdiction_taxonomy_20260709/](./tracks/au_jurisdiction_taxonomy_20260709/)
+
+### [ ] Track: AU NSW historical seed
+Track ID: `au_nsw_historical_seed_20260709` — satisfies **R-44, R-21, R-42**
+Goal: NSW-only discover→seed→manifest→capped smoke; isolated paths; rate-limited workflows.
+Depends on: multi-instance, taxonomy, ethics; fyi-cli live AU smoke.
+Link: [./tracks/au_nsw_historical_seed_20260709/](./tracks/au_nsw_historical_seed_20260709/)
+
+### [ ] Track: AU jurisdiction rollout controller
+Track ID: `au_jurisdiction_rollout_controller_20260709` — satisfies **R-45, R-42**
+Goal: Sequential VIC…OTHER after NSW; shared AU limiter; national AU manifest merge.
+Depends on: `au_nsw_historical_seed_20260709`.
+Link: [./tracks/au_jurisdiction_rollout_controller_20260709/](./tracks/au_jurisdiction_rollout_controller_20260709/)
+
+### [ ] Track: Multi-instance publish
+Track ID: `multi_instance_publish_20260709` — satisfies **R-46, R-22**
+Goal: Separate HF/Zenodo/OSF identity for `au-rtk`; draft-first; never mix into NZ dataset.
+Depends on: multi-instance + NSW seed.
+Link: [./tracks/multi_instance_publish_20260709/](./tracks/multi_instance_publish_20260709/)
+
+### [ ] Track: Multi-instance observability
+Track ID: `multi_instance_observability_20260709` — satisfies **R-48**
+Goal: Doctor/coverage/horizon per instance and jurisdiction.
+Depends on: multi-instance + multi-instance publish.
+Link: [./tracks/multi_instance_observability_20260709/](./tracks/multi_instance_observability_20260709/)
+
+### [ ] Track: GitHub project multi-jurisdiction issues
+Track ID: `github_project_multi_jurisdiction_20260709` — satisfies **R-47**
+Goal: Parent/sub-issues for expansion tracks; labels; project + RIOPA sync.
+Link: [./tracks/github_project_multi_jurisdiction_20260709/](./tracks/github_project_multi_jurisdiction_20260709/)
+
+### [ ] Track: English Alaveteli archive template
+Track ID: `english_alaveteli_archive_template_20260709` — satisfies **R-49**
+Goal: Post-AU onboarding template; first candidate `uk-wdtk`.
+Depends on: AU rollout controller healthy.
+Link: [./tracks/english_alaveteli_archive_template_20260709/](./tracks/english_alaveteli_archive_template_20260709/)
+
+### [ ] Track: Global Alaveteli archive template
+Track ID: `global_alaveteli_archive_template_20260709` — satisfies **R-50**
+Goal: Non-English Alaveteli onboarding template; locale/GDPR notes.
+Depends on: English template track.
+Link: [./tracks/global_alaveteli_archive_template_20260709/](./tracks/global_alaveteli_archive_template_20260709/)
+
+---
+
 ## Companion capability tracks (in fyi-cli)
 
 These live in `fyi-cli`'s `.conductor/` and are prerequisites for the archive tracks

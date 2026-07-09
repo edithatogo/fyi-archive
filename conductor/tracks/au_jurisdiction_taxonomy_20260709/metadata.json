@@ -1,0 +1,10 @@
+{
+  "track_id": "au_jurisdiction_taxonomy_20260709",
+  "type": "feature",
+  "status": "pending",
+  "created_at": "2026-07-09T00:00:00Z",
+  "updated_at": "2026-07-09T00:00:00Z",
+  "description": "Body-tag to jurisdiction map; committed rules + fixtures; authorities manifest with jurisdiction field.",
+  "satisfies": ["R-44"],
+  "depends_on": ["multi_instance_orchestration_20260709"]
+}
