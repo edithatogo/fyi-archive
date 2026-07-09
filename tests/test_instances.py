@@ -254,3 +254,81 @@ def test_seed_cli_dry_run_passes_rate_limiting(tmp_path: Path) -> None:
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert payload["processed"] == 1
+
+
+def test_seed_cli_dry_run_with_au_instance(tmp_path: Path) -> None:
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "seed",
+            "run",
+            "--dry-run",
+            "--max-requests",
+            "1",
+            "--instance",
+            "au-rtk",
+            "--ledger-path",
+            str(tmp_path / "data" / "_state" / "test-instance-ledger.jsonl"),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--derived-dir",
+            str(tmp_path / "data" / "derived" / "test-instance"),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["instance_id"] == "au-rtk"
+    assert payload["base_url"] == "https://www.righttoknow.org.au"
+
+
+def test_seed_cli_dry_run_with_uk_instance(tmp_path: Path) -> None:
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "seed",
+            "run",
+            "--dry-run",
+            "--max-requests",
+            "1",
+            "--instance",
+            "uk-wdtk",
+            "--ledger-path",
+            str(tmp_path / "data" / "_state" / "test-uk-ledger.jsonl"),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--derived-dir",
+            str(tmp_path / "data" / "derived" / "test-uk"),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["instance_id"] == "uk-wdtk"
+    assert payload["base_url"] == "https://www.whatdotheyknow.com"
+
+
+def test_seed_cli_dry_run_with_ie_instance(tmp_path: Path) -> None:
+    runner = CliRunner()
+    result = runner.invoke(
+        app,
+        [
+            "seed",
+            "run",
+            "--dry-run",
+            "--max-requests",
+            "1",
+            "--instance",
+            "ie-myrighttoknow",
+            "--ledger-path",
+            str(tmp_path / "data" / "_state" / "test-ie-ledger.jsonl"),
+            "--data-dir",
+            str(tmp_path / "data"),
+            "--derived-dir",
+            str(tmp_path / "data" / "derived" / "test-ie"),
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    payload = json.loads(result.output)
+    assert payload["instance_id"] == "ie-myrighttoknow"
+    assert payload["base_url"] == "https://www.myrighttoknow.org"

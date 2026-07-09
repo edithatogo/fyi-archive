@@ -43,6 +43,11 @@ on:
         required: true
         default: "2"
         type: string
+      instance:
+        description: Archive instance id (nz-fyi, au-rtk, uk-wdtk, ie-myrighttoknow)
+        required: true
+        default: "nz-fyi"
+        type: string
       max_disk_gb:
         description: Minimum free disk budget in GiB
         required: true
@@ -117,6 +122,7 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run }}
           ID_FROM: ${{ matrix.id_from }}
           ID_TO: ${{ matrix.id_to }}
+          INSTANCE: ${{ inputs.instance }}
           MAX_DISK_GB: ${{ inputs.max_disk_gb }}
           MAX_REQUESTS: ${{ inputs.max_requests_per_chunk }}
           MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes }}
@@ -124,6 +130,7 @@ jobs:
         run: |
           set -euo pipefail
           args=(
+            --instance "$INSTANCE"
             --max-requests "$MAX_REQUESTS"
             --max-runtime-minutes "$MAX_RUNTIME_MINUTES"
             --max-disk-gb "$MAX_DISK_GB"
@@ -183,6 +190,7 @@ jobs:
       - name: Build chunk manifest
         env:
           DRY_RUN: ${{ inputs.dry_run }}
+          INSTANCE: ${{ inputs.instance }}
           MAX_REQUESTS: ${{ inputs.max_requests_per_chunk }}
         run: |
           set -euo pipefail
@@ -191,6 +199,7 @@ jobs:
             manifest_derived_dir=data/raw/requests
           fi
           uv run fyi-archive manifest build \
+            --instance "$INSTANCE" \
             --derived-dir "$manifest_derived_dir" \
             --fyi-cli-version 1.0.0
           uv run python -m json.tool manifests/latest_manifest.json > /dev/null

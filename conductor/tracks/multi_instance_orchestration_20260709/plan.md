@@ -2,16 +2,16 @@
 
 ## Phase 1: Foundations
 
-- [ ] instances registry module
-- [ ] CLI --instance and FYI_ARCHIVE_BASE_URL
-- [ ] manifest schema multi-source
-- [ ] seed/sync pass --base-url to fyi-cli
-- [ ] NZ regression tests
+- [x] instances registry module
+- [x] CLI --instance and FYI_ARCHIVE_BASE_URL
+- [x] manifest schema multi-source
+- [x] seed/sync pass --base-url to fyi-cli
+- [x] NZ regression tests
 
 ## Phase 2: Verification
 
-- [ ] Unit/integration tests or dry-run evidence
-- [ ] Update track metadata status when complete
+- [x] Unit/integration tests or dry-run evidence
+- [x] Update track metadata status when complete
 - [ ] Close GitHub sub-issues with evidence links
 
 ## Notes

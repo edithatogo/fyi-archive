@@ -70,6 +70,11 @@ on:
         required: true
         default: "2"
         type: string
+      instance:
+        description: Archive instance id (nz-fyi, au-rtk, uk-wdtk, ie-myrighttoknow)
+        required: true
+        default: "nz-fyi"
+        type: string
       dry_run:
         description: Dispatch dry-run worker batches instead of live FYI capture
         required: true
@@ -108,6 +113,7 @@ jobs:
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '60' }}
       MIN_INTERVAL: ${{ inputs.min_interval || '1.0' }}
       CONCURRENCY: ${{ inputs.concurrency || '2' }}
+      INSTANCE: ${{ inputs.instance || 'nz-fyi' }}
       REPO: ${{ github.repository }}
       STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
       STATE_TITLE: FYI historical backfill state (${{ inputs.state_label || 'fyi-backfill-state' }})
@@ -316,6 +322,7 @@ jobs:
               -f max_runtime_minutes="$MAX_RUNTIME_MINUTES" \
               -f min_interval="$MIN_INTERVAL" \
               -f concurrency="$CONCURRENCY" \
+              -f instance="$INSTANCE" \
               -f max_disk_gb="$MAX_DISK_GB" \
               -f dry_run="$DRY_RUN"
             if [ "${DISPATCH_DELAY_SECONDS:-0}" -gt 0 ]; then

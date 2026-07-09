@@ -50,6 +50,11 @@ on:
         required: true
         default: "2"
         type: string
+      instance:
+        description: Archive instance id (nz-fyi, au-rtk, uk-wdtk, ie-myrighttoknow)
+        required: true
+        default: "nz-fyi"
+        type: string
       dry_run:
         description: Use deterministic dry-run records instead of fyi-cli capture
         required: true
@@ -89,6 +94,7 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run }}
           ID_FROM: ${{ inputs.id_from }}
           ID_TO: ${{ inputs.id_to }}
+          INSTANCE: ${{ inputs.instance }}
           MAX_BYTES: ${{ inputs.max_bytes }}
           MAX_DISK_GB: ${{ inputs.max_disk_gb }}
           MAX_REQUESTS: ${{ inputs.max_requests }}
@@ -97,6 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           args=(
+            --instance "$INSTANCE"
             --date-from "$DATE_FROM"
             --date-to "$DATE_TO"
             --max-requests "$MAX_REQUESTS"
@@ -136,6 +143,7 @@ jobs:
       - name: Build manifest
         env:
           DRY_RUN: ${{ inputs.dry_run }}
+          INSTANCE: ${{ inputs.instance }}
           MAX_REQUESTS: ${{ inputs.max_requests }}
         run: |
           set -euo pipefail
@@ -144,6 +152,7 @@ jobs:
             manifest_derived_dir=data/raw/requests
           fi
           uv run fyi-archive manifest build \
+            --instance "$INSTANCE" \
             --derived-dir "$manifest_derived_dir" \
             --fyi-cli-version 1.0.0
           uv run python -m json.tool manifests/latest_manifest.json > /dev/null
