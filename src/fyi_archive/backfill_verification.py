@@ -273,9 +273,8 @@ def build_backfill_verification_report(
     hf_records = int(hf_info["record_count"]) if hf_info else None
     zenodo_records = int(zenodo_info["record_count"]) if zenodo_info else None
     captured_covers_merged = controller["captured_records"] >= merged_records
-    mirrors_match = (
-        (hf_records is None or merged_records == hf_records)
-        and (zenodo_records is None or merged_records == zenodo_records)
+    mirrors_match = (hf_records is None or merged_records == hf_records) and (
+        zenodo_records is None or merged_records == zenodo_records
     )
     return {
         "generated_at": generated_at.isoformat(),

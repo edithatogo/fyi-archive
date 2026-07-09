@@ -224,7 +224,9 @@ def test_capture_with_retry_recovers_from_transient_timeout(tmp_path: Path, monk
     assert summary == {"derived_path": (tmp_path / "derived" / "20000").as_posix()}
 
 
-def test_capture_with_retry_does_not_retry_non_transient_failure(tmp_path: Path, monkeypatch) -> None:
+def test_capture_with_retry_does_not_retry_non_transient_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
     attempts = {"count": 0}
 
     def fake_capture(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202

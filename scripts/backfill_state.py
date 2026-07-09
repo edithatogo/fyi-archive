@@ -100,7 +100,9 @@ def refresh_summary(state: dict[str, Any], *, id_to: int | None = None) -> dict[
     summary = dict(updated.get("summary") or {})
     summary.update(
         {
-            "captured_records": sum(int(batch.get("record_count") or 0) for batch in merged_batches),
+            "captured_records": sum(
+                int(batch.get("record_count") or 0) for batch in merged_batches
+            ),
             "dispatch_next_id": state_dispatch_next_id(updated, int(updated.get("id_from") or 1)),
             "dispatched_batches": len(batches),
             "dispatched_requested_ids": dispatched_requested_ids,

@@ -243,7 +243,13 @@ def main() -> int:
     rebuilt = canonicalize_state(state=state, repo=args.repo)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(rebuilt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({"issue_number": issue_number, "summary": rebuilt.get("summary", {})}, indent=2, sort_keys=True))
+    print(
+        json.dumps(
+            {"issue_number": issue_number, "summary": rebuilt.get("summary", {})},
+            indent=2,
+            sort_keys=True,
+        )
+    )
     return 0
 
 
