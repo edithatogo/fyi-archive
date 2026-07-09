@@ -2,8 +2,9 @@ name: Automated Historical Backfill
 
 on:
   schedule:
-    # Keep the controller ticking through the day; overnight NZ time uses a higher cap.
-    - cron: "*/5 * * * *"
+    # Off-peak NZ time only: controller ticks hourly overnight (20:00-05:59 NZST).
+    # Daytime NZ hours (06:00-19:59) dispatch zero batches — site is in use.
+    - cron: "0 * * * *"
   workflow_run:
     workflows: ["Historical Backfill Batch"]
     types: [completed]
@@ -22,22 +23,22 @@ on:
       batch_span:
         description: Inclusive request-ID span per dispatched worker run
         required: true
-        default: "500"
+        default: "200"
         type: string
       max_batches:
         description: Maximum worker runs to dispatch from this controller run when manually triggered
         required: true
-        default: "3"
+        default: "2"
         type: string
       worker_chunk_size:
         description: Inclusive request-ID span per worker matrix chunk
         required: true
-        default: "50"
+        default: "100"
         type: string
       worker_max_chunks:
         description: Maximum chunks per worker run
         required: true
-        default: "10"
+        default: "2"
         type: string
       worker_max_parallel:
         description: Maximum chunk jobs to run in parallel inside each worker run
@@ -47,17 +48,27 @@ on:
       max_requests_per_chunk:
         description: Maximum captured requests per worker chunk
         required: true
-        default: "50"
+        default: "10"
         type: string
       max_runtime_minutes:
         description: Maximum runtime per worker chunk
         required: true
-        default: "30"
+        default: "60"
         type: string
       max_disk_gb:
         description: Minimum free disk budget in GiB
         required: true
         default: "5"
+        type: string
+      min_interval:
+        description: Minimum seconds between requests to the same host
+        required: true
+        default: "1.0"
+        type: string
+      concurrency:
+        description: Max concurrent in-flight requests to the site
+        required: true
+        default: "2"
         type: string
       dry_run:
         description: Dispatch dry-run worker batches instead of live FYI capture
@@ -84,23 +95,25 @@ jobs:
     permissions:
       contents: read
     env:
-      BATCH_SPAN: ${{ inputs.batch_span || '500' }}
+      BATCH_SPAN: ${{ inputs.batch_span || '200' }}
       DRY_RUN: ${{ inputs.dry_run || false }}
       GH_TOKEN: ${{ secrets.WORKFLOW_PAT }}
       ID_FROM: ${{ inputs.id_from || '1' }}
       ID_TO: ${{ inputs.id_to || '250000' }}
       MAX_BATCHES_INPUT: ${{ inputs.max_batches || '' }}
-      MAX_BATCHES_DAYTIME: "3"
-      MAX_BATCHES_OVERNIGHT: "20"
+      MAX_BATCHES_DAYTIME: "0"
+      MAX_BATCHES_OVERNIGHT: "2"
       MAX_DISK_GB: ${{ inputs.max_disk_gb || '5' }}
-      MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '50' }}
-      MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '30' }}
+      MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '10' }}
+      MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '60' }}
+      MIN_INTERVAL: ${{ inputs.min_interval || '1.0' }}
+      CONCURRENCY: ${{ inputs.concurrency || '2' }}
       REPO: ${{ github.repository }}
       STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
       STATE_TITLE: FYI historical backfill state (${{ inputs.state_label || 'fyi-backfill-state' }})
-      DISPATCH_DELAY_SECONDS: "0"
-      WORKER_CHUNK_SIZE: ${{ inputs.worker_chunk_size || '50' }}
-      WORKER_MAX_CHUNKS: ${{ inputs.worker_max_chunks || '10' }}
+      DISPATCH_DELAY_SECONDS: "60"
+      WORKER_CHUNK_SIZE: ${{ inputs.worker_chunk_size || '100' }}
+      WORKER_MAX_CHUNKS: ${{ inputs.worker_max_chunks || '2' }}
       WORKER_MAX_PARALLEL: ${{ inputs.worker_max_parallel || '1' }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -301,6 +314,8 @@ jobs:
               -f max_parallel="$WORKER_MAX_PARALLEL" \
               -f max_requests_per_chunk="$MAX_REQUESTS_PER_CHUNK" \
               -f max_runtime_minutes="$MAX_RUNTIME_MINUTES" \
+              -f min_interval="$MIN_INTERVAL" \
+              -f concurrency="$CONCURRENCY" \
               -f max_disk_gb="$MAX_DISK_GB" \
               -f dry_run="$DRY_RUN"
             if [ "${DISPATCH_DELAY_SECONDS:-0}" -gt 0 ]; then

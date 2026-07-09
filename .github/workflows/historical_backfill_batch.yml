@@ -26,12 +26,22 @@ on:
       max_requests_per_chunk:
         description: Maximum captured requests per chunk
         required: true
-        default: "50"
+        default: "10"
         type: string
       max_runtime_minutes:
         description: Maximum runtime per chunk
         required: true
-        default: "30"
+        default: "60"
+        type: string
+      min_interval:
+        description: Minimum seconds between requests to the same host
+        required: true
+        default: "1.0"
+        type: string
+      concurrency:
+        description: Max concurrent in-flight requests to the site
+        required: true
+        default: "2"
         type: string
       max_disk_gb:
         description: Minimum free disk budget in GiB
@@ -41,7 +51,7 @@ on:
       max_parallel:
         description: Maximum chunk jobs to run in parallel
         required: true
-        default: "3"
+        default: "1"
         type: string
       dry_run:
         description: Use deterministic dry-run records instead of fyi-cli capture
@@ -103,18 +113,22 @@ jobs:
 
       - name: Run historical seed chunk
         env:
+          CONCURRENCY: ${{ inputs.concurrency }}
           DRY_RUN: ${{ inputs.dry_run }}
           ID_FROM: ${{ matrix.id_from }}
           ID_TO: ${{ matrix.id_to }}
           MAX_DISK_GB: ${{ inputs.max_disk_gb }}
           MAX_REQUESTS: ${{ inputs.max_requests_per_chunk }}
           MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes }}
+          MIN_INTERVAL: ${{ inputs.min_interval }}
         run: |
           set -euo pipefail
           args=(
             --max-requests "$MAX_REQUESTS"
             --max-runtime-minutes "$MAX_RUNTIME_MINUTES"
             --max-disk-gb "$MAX_DISK_GB"
+            --min-interval "$MIN_INTERVAL"
+            --concurrency "$CONCURRENCY"
             --continue-on-error
           )
           if [ "$DRY_RUN" = "true" ]; then

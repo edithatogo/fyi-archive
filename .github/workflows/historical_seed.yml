@@ -40,6 +40,16 @@ on:
         required: true
         default: "5"
         type: string
+      min_interval:
+        description: Minimum seconds between requests to the same host
+        required: true
+        default: "1.0"
+        type: string
+      concurrency:
+        description: Max concurrent in-flight requests to the site
+        required: true
+        default: "2"
+        type: string
       dry_run:
         description: Use deterministic dry-run records instead of fyi-cli capture
         required: true
@@ -73,6 +83,7 @@ jobs:
 
       - name: Run historical seed
         env:
+          CONCURRENCY: ${{ inputs.concurrency }}
           DATE_FROM: ${{ inputs.date_from }}
           DATE_TO: ${{ inputs.date_to }}
           DRY_RUN: ${{ inputs.dry_run }}
@@ -82,6 +93,7 @@ jobs:
           MAX_DISK_GB: ${{ inputs.max_disk_gb }}
           MAX_REQUESTS: ${{ inputs.max_requests }}
           MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes }}
+          MIN_INTERVAL: ${{ inputs.min_interval }}
         run: |
           set -euo pipefail
           args=(
@@ -90,6 +102,8 @@ jobs:
             --max-requests "$MAX_REQUESTS"
             --max-runtime-minutes "$MAX_RUNTIME_MINUTES"
             --max-disk-gb "$MAX_DISK_GB"
+            --min-interval "$MIN_INTERVAL"
+            --concurrency "$CONCURRENCY"
           )
           if [ -n "$MAX_BYTES" ]; then
             args+=(--max-bytes "$MAX_BYTES")

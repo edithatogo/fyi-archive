@@ -65,6 +65,20 @@ def run(
             envvar="FYI_ARCHIVE_BASE_URL",
         ),
     ] = None,
+    min_interval: Annotated[
+        float,
+        typer.Option(
+            help="Minimum seconds between requests to the same host.",
+            envvar="FYI_ARCHIVE_MIN_INTERVAL",
+        ),
+    ] = 1.0,
+    concurrency: Annotated[
+        int,
+        typer.Option(
+            help="Max concurrent in-flight requests to the site.",
+            envvar="FYI_ARCHIVE_CONCURRENCY",
+        ),
+    ] = 2,
 ) -> None:
     """Run historical seed orchestration."""
     if requests_file is not None:
@@ -85,7 +99,14 @@ def run(
     except ValueError as error:
         raise typer.BadParameter(str(error)) from error
 
-    fyi_cli_args = ["--base-url", archive_instance.capture_base_url()]
+    fyi_cli_args = [
+        "--base-url",
+        archive_instance.capture_base_url(),
+        "--min-interval",
+        str(min_interval),
+        "--concurrency",
+        str(concurrency),
+    ]
 
     summary = run_seed(
         requests=requests,
