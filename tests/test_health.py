@@ -125,7 +125,7 @@ def test_live_mirror_counts_queries_osf(monkeypatch) -> None:
         def raise_for_status(self) -> None:
             return None
 
-        def json(self) -> dict:
+        def json(self) -> dict[str, object]:
             return {"meta": {"record_count": 5}}
 
     monkeypatch.setattr(
