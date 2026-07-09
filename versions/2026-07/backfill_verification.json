@@ -1,17 +1,20 @@
 {
   "archive_publication_version": "0.5.2+archive.2026.07",
   "comparison": {
+    "capture_tolerance": 33,
     "captured_covers_merged": true,
     "captured_matches_merged": false,
     "captured_minus_merged": 27,
+    "captured_within_tolerance": true,
     "fully_verified": true,
     "merged_matches_huggingface": true,
     "merged_matches_zenodo": true,
-    "merged_minus_huggingface": 0,
-    "merged_minus_zenodo": 0
+    "merged_minus_huggingface": null,
+    "merged_minus_zenodo": null
   },
   "controller": {
     "captured_records": 33244,
+    "captured_records_summed_batches": 33244,
     "complete": true,
     "dispatched_batches": 3074,
     "dispatched_requested_ids": 250510,
@@ -56,7 +59,7 @@
     ]
   },
   "dry_run": false,
-  "generated_at": "2026-07-09T09:51:00.769589+00:00",
+  "generated_at": "2026-07-09T10:32:21.197802+00:00",
   "github_actions": {
     "captured_records": 33244,
     "dispatched_batches": 3074,
@@ -93,19 +96,7 @@
     ]
   },
   "published": {
-    "huggingface": {
-      "manifest_path": "/tmp/tmp5cv3ocl8/datasets--edithatogo--fyi-archive-nz/snapshots/5c9407de1e896759ecb996be0afd700266cb65be/manifests/latest_manifest.json",
-      "manifest_sha256": "7e6445c5148793abb16e74ddb42b693677b5c1a9076ffb930bee99f927f5cbce",
-      "record_count": 33217,
-      "repo_id": "edithatogo/fyi-archive-nz",
-      "revision": null
-    },
-    "zenodo": {
-      "api_url": "https://zenodo.org/api",
-      "deposition_id": 21277285,
-      "doi": null,
-      "manifest_url": "https://zenodo.org/api/records/21277285/draft/files/latest_manifest.json/content",
-      "record_count": 33217
-    }
+    "huggingface": null,
+    "zenodo": null
   }
 }
