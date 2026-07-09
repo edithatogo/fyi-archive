@@ -10,8 +10,15 @@ from typing import Any
 
 import polars as pl
 
+from fyi_archive.instances import (
+    DEFAULT_INSTANCE_ID,
+    get_instance,
+    instance_id_for_source,
+    known_sources,
+)
 from fyi_archive.version import __version__
 
+# Backward-compatible default (NZ). Prefer get_instance(...).source for multi-instance.
 SOURCE_URL = "https://fyi.org.nz/"
 
 
@@ -99,17 +106,28 @@ def merge_manifest_records(manifest_paths: list[Path]) -> list[dict[str, Any]]:
     return [by_request_id[request_id] for request_id in sorted(by_request_id)]
 
 
-def build_manifest(records: list[dict[str, Any]], fyi_cli_version: str) -> dict[str, Any]:
-    """Build a manifest document."""
+def build_manifest(
+    records: list[dict[str, Any]],
+    fyi_cli_version: str,
+    *,
+    instance_id: str = DEFAULT_INSTANCE_ID,
+    jurisdiction: str | None = None,
+) -> dict[str, Any]:
+    """Build a manifest document for the given archive instance."""
+    instance = get_instance(instance_id)
+    meta: dict[str, Any] = {
+        "generated_at": datetime.now(UTC).isoformat(),
+        "source": instance.source,
+        "instance_id": instance.id,
+        "version": __version__,
+        "record_count": len(records),
+        "schema": "schemas/manifest.schema.json",
+        "fyi_cli_version": fyi_cli_version,
+    }
+    if jurisdiction is not None and str(jurisdiction).strip():
+        meta["jurisdiction"] = str(jurisdiction).strip().upper()
     return {
-        "meta": {
-            "generated_at": datetime.now(UTC).isoformat(),
-            "source": SOURCE_URL,
-            "version": __version__,
-            "record_count": len(records),
-            "schema": "schemas/manifest.schema.json",
-            "fyi_cli_version": fyi_cli_version,
-        },
+        "meta": meta,
         "requests": records,
     }
 
@@ -121,8 +139,32 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
     if not isinstance(meta, dict) or not isinstance(requests, list):
         msg = "Manifest must contain object 'meta' and array 'requests'"
         raise ValueError(msg)
-    if meta.get("source") != SOURCE_URL:
-        msg = "Manifest source must be https://fyi.org.nz/"
+    source = meta.get("source")
+    if not isinstance(source, str) or source not in known_sources():
+        allowed = ", ".join(sorted(known_sources()))
+        msg = f"Manifest source must be one of: {allowed}"
+        raise ValueError(msg)
+    instance_id = meta.get("instance_id")
+    if instance_id is None:
+        # Legacy NZ manifests omit instance_id; infer from source.
+        inferred = instance_id_for_source(source)
+        if inferred is None:
+            msg = "Manifest meta.instance_id missing and source is not catalogued"
+            raise ValueError(msg)
+        instance_id = inferred
+    if not isinstance(instance_id, str):
+        msg = "Manifest meta.instance_id must be a string"
+        raise ValueError(msg)
+    instance = get_instance(instance_id)
+    if source != instance.source:
+        msg = (
+            f"Manifest source {source!r} does not match instance "
+            f"{instance_id!r} source {instance.source!r}"
+        )
+        raise ValueError(msg)
+    jurisdiction = meta.get("jurisdiction")
+    if jurisdiction is not None and not isinstance(jurisdiction, str):
+        msg = "Manifest meta.jurisdiction must be a string when present"
         raise ValueError(msg)
     if meta.get("record_count") != len(requests):
         msg = "Manifest record_count does not match request count"
@@ -169,10 +211,17 @@ def assemble_manifest(
     parquet_path: Path,
     authorities_path: Path,
     fyi_cli_version: str,
+    instance_id: str = DEFAULT_INSTANCE_ID,
+    jurisdiction: str | None = None,
 ) -> dict[str, Any]:
     """Assemble and write the latest manifest from derived records."""
     records = load_derived_records(derived_dir)
-    manifest = build_manifest(records, fyi_cli_version)
+    manifest = build_manifest(
+        records,
+        fyi_cli_version,
+        instance_id=instance_id,
+        jurisdiction=jurisdiction,
+    )
     validate_manifest(manifest)
     write_manifest_outputs(
         manifest=manifest,
@@ -190,10 +239,17 @@ def merge_manifests(
     parquet_path: Path,
     authorities_path: Path,
     fyi_cli_version: str,
+    instance_id: str = DEFAULT_INSTANCE_ID,
+    jurisdiction: str | None = None,
 ) -> dict[str, Any]:
     """Merge existing manifest JSON files and write consolidated outputs."""
     records = merge_manifest_records(manifest_paths)
-    manifest = build_manifest(records, fyi_cli_version)
+    manifest = build_manifest(
+        records,
+        fyi_cli_version,
+        instance_id=instance_id,
+        jurisdiction=jurisdiction,
+    )
     validate_manifest(manifest)
     write_manifest_outputs(
         manifest=manifest,

@@ -15,6 +15,7 @@ from typing import Any
 
 from huggingface_hub import snapshot_download
 
+from fyi_archive.instances import DEFAULT_INSTANCE_ID, get_instance
 from fyi_archive.manifest import assemble_manifest
 from fyi_archive.publish.hf_publish import publish_folder_to_hf, sha256_file, verify_remote_manifest
 from fyi_archive.version import __version__
@@ -310,8 +311,11 @@ def run_sync(
     hf_token: str | None = None,
     verify_remote: Callable[..., bool] = verify_remote_manifest,
     fyi_cli_args: Sequence[str] = (),
+    instance_id: str = DEFAULT_INSTANCE_ID,
+    jurisdiction: str | None = None,
 ) -> dict[str, Any]:
     """Run one prospective sync and advance state only after verification succeeds."""
+    instance = get_instance(instance_id)
     previous_state = load_sync_state(state_path)
     since = previous_state.last_successful_sync
 
@@ -351,6 +355,8 @@ def run_sync(
             parquet_path=parquet_path,
             authorities_path=authorities_path,
             fyi_cli_version=fyi_cli_version,
+            instance_id=instance.id,
+            jurisdiction=jurisdiction,
         )
     manifest_sha256 = sha256_file(manifest_path)
 
@@ -392,4 +398,7 @@ def run_sync(
         "manifest_sha256": manifest_sha256,
         "materialized_records": materialized,
         "verified": verified,
+        "instance_id": instance.id,
+        "jurisdiction": jurisdiction,
+        "rate_limit_name": instance.rate_limit_name,
     }

@@ -1,0 +1,8 @@
+{
+  "track_id": "github_project_best_practices_20260701",
+  "type": "governance",
+  "status": "complete",
+  "created_at": "2026-07-01T00:00:00Z",
+  "updated_at": "2026-07-01T00:00:00Z",
+  "description": "Maximize GitHub Projects v2 best practices, native workflows, views, and GraphQL automation while keeping custom code limited to cross-project sync."
+}

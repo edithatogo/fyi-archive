@@ -1,4 +1,4 @@
-"""fyi-archive: orchestration + distribution layer for a read-only archive of fyi.org.nz.
+"""fyi-archive: orchestration + distribution for read-only Alaveteli FOI archives.
 
 This package is intentionally thin. All network capture (enumeration, WARC/WACZ
 writing, attachment download, content diff, health) is delegated to the companion

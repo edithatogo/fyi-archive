@@ -20,7 +20,10 @@ from fyi_archive.version import __version__
 
 app = typer.Typer(
     name="fyi-archive",
-    help="Orchestration + distribution for the fyi.org.nz read-only archive.",
+    help=(
+        "Orchestration + distribution for Alaveteli FOI archives "
+        "(default instance: nz-fyi / fyi.org.nz)."
+    ),
     no_args_is_help=True,
 )
 

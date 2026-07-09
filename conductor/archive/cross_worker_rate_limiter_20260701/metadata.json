@@ -1,0 +1,8 @@
+{
+  "track_id": "cross_worker_rate_limiter_20260701",
+  "type": "dependency",
+  "status": "complete",
+  "created_at": "2026-07-01T00:00:00Z",
+  "updated_at": "2026-07-01T00:00:00Z",
+  "description": "Coordinate with fyi-cli to add a shared cross-worker limiter and shared backoff so archive discovery jobs bound aggregate request rate across processes."
+}

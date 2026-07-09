@@ -11,7 +11,25 @@
       "required": ["generated_at", "source", "version", "record_count"],
       "properties": {
         "generated_at": { "type": ["string", "null"], "format": "date-time" },
-        "source": { "type": "string", "const": "https://fyi.org.nz/" },
+        "source": {
+          "type": "string",
+          "format": "uri",
+          "description": "Canonical Alaveteli instance origin with trailing slash.",
+          "enum": [
+            "https://fyi.org.nz/",
+            "https://www.righttoknow.org.au/",
+            "https://www.whatdotheyknow.com/",
+            "https://www.myrighttoknow.org/"
+          ]
+        },
+        "instance_id": {
+          "type": "string",
+          "description": "Archive instance id (e.g. nz-fyi, au-rtk). Optional on legacy NZ manifests."
+        },
+        "jurisdiction": {
+          "type": "string",
+          "description": "Optional within-instance partition (e.g. NSW for au-rtk body-tag slices)."
+        },
         "version": { "type": "string" },
         "record_count": { "type": "integer", "minimum": 0 },
         "schema": { "type": "string" },

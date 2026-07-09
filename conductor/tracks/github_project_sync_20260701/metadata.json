@@ -1,0 +1,8 @@
+{
+  "track_id": "github_project_sync_20260701",
+  "type": "governance",
+  "status": "complete",
+  "created_at": "2026-07-01T00:00:00Z",
+  "updated_at": "2026-07-01T00:00:00Z",
+  "description": "Mirror the repo project and sibling project boards into the RIOPA umbrella project with a verifiable item-level sync."
+}
