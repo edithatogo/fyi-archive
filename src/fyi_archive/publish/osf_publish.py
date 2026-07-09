@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from time import sleep
 from typing import Any
 
 import httpx
@@ -10,11 +12,41 @@ import httpx
 from fyi_archive.publish.verification import RemoteArtifact
 
 OSF_API = "https://api.osf.io/v2"
+RETRY_STATUS_CODES = {408, 429, 500, 502, 503, 504}
 
 
 def auth_headers(token: str) -> dict[str, str]:
     """Build OSF bearer-token headers."""
     return {"Authorization": f"Bearer {token}"}
+
+
+def request_with_retry(
+    request: Callable[[], httpx.Response],
+    *,
+    attempts: int = 4,
+    backoff_seconds: float = 2.0,
+) -> httpx.Response:
+    """Run an OSF request with bounded retry for transient storage/API failures."""
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            response = request()
+            response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            last_error = exc
+            if exc.response.status_code not in RETRY_STATUS_CODES or attempt == attempts:
+                raise
+        except (httpx.TimeoutException, httpx.TransportError) as exc:
+            last_error = exc
+            if attempt == attempts:
+                raise
+        else:
+            return response
+        sleep(backoff_seconds * attempt)
+    if last_error is not None:
+        raise last_error
+    msg = "OSF request failed without an exception"
+    raise RuntimeError(msg)
 
 
 def create_project(*, token: str, title: str, api_url: str = OSF_API) -> dict[str, Any]:
@@ -75,15 +107,15 @@ def ensure_component(
 
 def upload_file(*, token: str, upload_url: str, path: Path) -> dict[str, Any]:
     """Upload one file to an OSF storage upload URL."""
-    with path.open("rb") as handle:
-        response = httpx.put(
+    response = request_with_retry(
+        lambda: httpx.put(
             upload_url,
             headers=auth_headers(token),
             params={"kind": "file", "name": path.name},
-            content=handle,
+            content=path.read_bytes(),
             timeout=300,
         )
-    response.raise_for_status()
+    )
     return response.json()
 
 
@@ -110,12 +142,13 @@ def get_osfstorage_upload_url(*, token: str, node_id: str, api_url: str = OSF_AP
 
 def list_files(*, token: str, node_id: str, api_url: str = OSF_API) -> list[RemoteArtifact]:
     """List OSF file evidence for a node."""
-    response = httpx.get(
-        f"{api_url}/nodes/{node_id}/files/osfstorage/",
-        headers=auth_headers(token),
-        timeout=60,
+    response = request_with_retry(
+        lambda: httpx.get(
+            f"{api_url}/nodes/{node_id}/files/osfstorage/",
+            headers=auth_headers(token),
+            timeout=60,
+        )
     )
-    response.raise_for_status()
     artifacts = []
     for file_data in response.json().get("data", []):
         attributes = file_data.get("attributes", {})
