@@ -56,6 +56,10 @@ into a single merged manifest artifact. The monthly publish workflow also emits 
 dispatched request IDs, captured counts, merged counts, and published counts across
 GitHub Actions, Hugging Face, and Zenodo.
 
+For live operations after the ID range is fully dispatched—especially draining
+pending merges, publishing to mirrors, and verifying health—see
+[backfill-ops-runbook.md](./backfill-ops-runbook.md).
+
 ## Full Crawl Shape
 
 Do not run the whole FYI corpus as one monolithic GitHub Actions job. Use the automated
