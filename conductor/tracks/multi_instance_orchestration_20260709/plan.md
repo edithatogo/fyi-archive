@@ -12,7 +12,7 @@
 
 - [x] Unit/integration tests or dry-run evidence
 - [x] Update track metadata status when complete
-- [ ] Close GitHub sub-issues with evidence links
+- [x] Close GitHub sub-issues with evidence links
 
 ## Notes
 

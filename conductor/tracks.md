@@ -85,7 +85,7 @@ Link: [./tracks/github_project_sync_20260701/](./tracks/github_project_sync_2026
 
 ## Multi-jurisdiction expansion tracks
 
-### [ ] Track: Multi-instance orchestration
+### [x] Track: Multi-instance orchestration
 Track ID: `multi_instance_orchestration_20260709` — satisfies **R-40, R-41, R-42**
 Goal: Instance registry; CLI `--instance` / env; plumb `--base-url` into seed/sync; multi-source manifests; NZ default regression.
 Link: [./tracks/multi_instance_orchestration_20260709/](./tracks/multi_instance_orchestration_20260709/)
