@@ -435,3 +435,38 @@ def test_remote_zenodo_record_count_downloads_manifest() -> None:
 
     assert info["record_count"] == 4
     assert info["doi"] == "10.5281/zenodo.42"
+
+
+@respx.mock
+def test_remote_zenodo_record_count_falls_back_to_published_record_after_doi() -> None:
+    respx.get("https://zenodo.example/api/deposit/depositions/42").mock(
+        return_value=Response(
+            200,
+            json={
+                "doi": "10.5281/zenodo.42",
+                "files": [
+                    {
+                        "filename": "latest_manifest.json",
+                        "links": {
+                            "download": "https://zenodo.example/api/records/42/draft/files/latest_manifest.json/content"
+                        },
+                    }
+                ],
+            },
+        ),
+    )
+    respx.get(
+        "https://zenodo.example/api/records/42/draft/files/latest_manifest.json/content"
+    ).mock(return_value=Response(404))
+    respx.get("https://zenodo.example/api/records/42/files/latest_manifest.json/content").mock(
+        return_value=Response(200, json={"meta": {"record_count": 4}})
+    )
+
+    info = remote_zenodo_record_count(
+        token="zenodo-token",
+        deposition_id=42,
+        api_url="https://zenodo.example/api",
+    )
+
+    assert info["record_count"] == 4
+    assert info["doi"] == "10.5281/zenodo.42"
