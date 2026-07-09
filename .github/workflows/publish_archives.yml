@@ -51,6 +51,16 @@ on:
         required: true
         default: "1"
         type: string
+      consolidate_backfill_artifacts:
+        description: Build the release manifest from successful merged-backfill workflow artifacts before publishing
+        required: true
+        default: false
+        type: boolean
+      backfill_merge_run_limit:
+        description: Maximum successful merge workflow runs to inspect when consolidating backfill artifacts
+        required: true
+        default: "500"
+        type: string
       dry_run:
         description: Build publication artifacts without remote mirror writes
         required: true
@@ -83,6 +93,8 @@ jobs:
       SEED_ID_FROM: ${{ inputs.seed_id_from || '20000' }}
       SEED_ID_TO: ${{ inputs.seed_id_to || '20000' }}
       SEED_MAX_REQUESTS: ${{ inputs.seed_max_requests || '1' }}
+      CONSOLIDATE_BACKFILL_ARTIFACTS: ${{ inputs.consolidate_backfill_artifacts || false }}
+      BACKFILL_MERGE_RUN_LIMIT: ${{ inputs.backfill_merge_run_limit || '500' }}
       ZENODO_CONFIRM: ${{ inputs.confirm || '' }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -145,6 +157,72 @@ jobs:
           manifest = json.loads(Path("manifests/latest_manifest.json").read_text())
           if manifest["meta"]["record_count"] < 1:
               raise SystemExit("seed manifest is empty; refusing to publish")
+          PY
+
+      - name: Consolidate merged backfill artifacts
+        if: env.CONSOLIDATE_BACKFILL_ARTIFACTS == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          LIMIT: ${{ env.BACKFILL_MERGE_RUN_LIMIT }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/merged-backfill
+          gh run list \
+            --repo "$REPO" \
+            --workflow "merge_backfill_artifacts.yml" \
+            --status success \
+            --limit "$LIMIT" \
+            --json databaseId,createdAt \
+            --jq 'sort_by(.createdAt) | .[].databaseId' \
+            > .tmp/merged-backfill-runs.txt
+          if [ ! -s .tmp/merged-backfill-runs.txt ]; then
+            echo "No successful merge_backfill_artifacts.yml runs found"
+            exit 1
+          fi
+          while IFS= read -r run_id; do
+            [ -n "$run_id" ] || continue
+            mkdir -p ".tmp/merged-backfill/$run_id"
+            if ! gh run download "$run_id" \
+              --repo "$REPO" \
+              --pattern 'merged-backfill-*' \
+              --dir ".tmp/merged-backfill/$run_id"; then
+              echo "No merged-backfill artifact found for merge run $run_id"
+            fi
+          done < .tmp/merged-backfill-runs.txt
+          mapfile -t manifests < <(find .tmp/merged-backfill -path '*/manifests/latest_manifest.json' | sort)
+          if [ "${#manifests[@]}" -lt 1 ]; then
+            echo "No merged backfill manifests were downloaded"
+            exit 1
+          fi
+          args=()
+          for manifest in "${manifests[@]}"; do
+            args+=(--input-manifest "$manifest")
+          done
+          uv run fyi-archive manifest merge \
+            "${args[@]}" \
+            --manifest-path manifests/latest_manifest.json \
+            --parquet-path manifests/latest_manifest.parquet \
+            --authorities-path manifests/authorities.json \
+            --fyi-cli-version 1.0.0
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("manifests/latest_manifest.json").read_text(encoding="utf-8"))
+          record_count = int(manifest.get("meta", {}).get("record_count") or 0)
+          payload = {
+              "merge_manifest_count": len(list(Path(".tmp/merged-backfill").glob("**/manifests/latest_manifest.json"))),
+              "record_count": record_count,
+          }
+          if record_count < 1:
+              raise SystemExit("consolidated backfill manifest is empty")
+          Path("dist").mkdir(parents=True, exist_ok=True)
+          Path("dist/backfill_consolidation.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          print(json.dumps(payload, indent=2, sort_keys=True))
           PY
 
       - name: Build release artifacts
