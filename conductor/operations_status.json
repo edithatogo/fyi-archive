@@ -1,61 +1,67 @@
 {
-  "generated_at": "2026-07-09T10:30:00Z",
+  "generated_at": "2026-07-09T09:15:00Z",
   "phase": "storage_operations",
   "branch_alignment": {
+    "pr": "https://github.com/edithatogo/fyi-archive/pull/34",
     "local_branch": "docs/conductor-reconcile-ops",
     "tracks": "origin/main",
-    "note": "Conductor reconcile + ops runbook PR branch based on origin/main."
+    "note": "PR #34 CI green; auto-merge enabled but blocked on required review (cannot self-approve)."
   },
   "backfill": {
     "state_issue": 9,
     "state_label": "fyi-backfill-state",
     "id_from": 1,
     "id_to": 250000,
-    "next_id": 142501,
+    "next_id": 153501,
     "dispatch_next_id": 250001,
     "captured_records": 33244,
-    "merged_batches": 2879,
-    "pending_batches": 195,
+    "merged_batches": 2930,
+    "pending_batches": 144,
     "dispatched_batches": 3074,
     "complete": false,
-    "state_updated_at": "2026-07-07T14:31:28.133854+00:00",
-    "controller": "Scheduled controller still succeeds but plans zero work (complete=true, next_id 250001)."
+    "state_updated_at": "2026-07-09T09:11:37.777587+00:00",
+    "progress_note": "Drain started 2026-07-09: bulk merges reduced pending 195→144; next_id advanced 142501→153501. Cursor only advances contiguously."
   },
-  "investigation_2026_07_09": {
-    "controller_run_sample": 29005773157,
-    "controller_plan": {
-      "batches": [],
-      "blocked_by_pending": false,
-      "complete": true,
-      "next_id": 250001,
-      "planned_count": 0
+  "drain_session_2026_07_09": {
+    "successful_bulk_merges": [
+      29006559867,
+      29006611315,
+      29006681945,
+      29007061300
+    ],
+    "cancelled_merges": [
+      29006944474,
+      29006866809,
+      29007336589
+    ],
+    "artifact_coverage": {
+      "pending_with_live_artifacts": 28,
+      "pending_needing_recapture": 116,
+      "contiguous_gap_from_next_id": "153501-159500 (12 batches)"
     },
-    "controller_message": "No worker batches to dispatch",
-    "active_workers_at_sample": 0,
-    "last_worker_runs": "2026-07-07 (Historical Backfill Batch)",
-    "last_successful_merge": 28874210754,
-    "last_successful_merge_at": "2026-07-07T14:30:58Z",
-    "merge_cancellation_storm": "2026-07-07 ~14:30Z many concurrent workflow_dispatch merges cancelled; leftover pending rows never marked merged",
-    "pending_batch_shape": "pending entries carry controller_run_id + label only (no worker_run_id); span starts ~142501-143000",
-    "artifact_retention": "sample worker artifacts still unexpired through ~2026-10-05",
-    "root_causes": [
-      "Dispatch range fully planned; controller does not re-drive merges for pending rows",
-      "2026-07-07 merge cancellation storm left ~195 pending",
-      "Publish Archives / HF not fed automatically from merge artifacts → mirror counts stay 0"
+    "recapture_workers_dispatched": [
+      29007435098,
+      29007439175,
+      29007442794,
+      29007446691,
+      29007450606,
+      29007454672,
+      29007459282,
+      29007463716,
+      29007467976,
+      29007471952,
+      29007475593,
+      29007479492
     ],
-    "related_fixes_on_main": [
-      "#31 Serialize backfill artifact merges",
-      "#32 Remove merge replay concurrency",
-      "#33 Support bulk backfill artifact merges (run_ids input)"
-    ],
-    "runbook": "docs/backfill-ops-runbook.md"
+    "recapture_range": "153501-159500",
+    "key_insight": "next_id advances only when pending batches from the cursor are contiguous merged; high-ID artifact merges mark merged but leave cursor stuck until the gap is recaptured/merged.",
+    "publish_note": "Publish Archives uploads workspace manifests/data; merge GHA artifacts are not auto-ingested into HF. After merges advance, need an assemble+publish path or seed/publish job that consumes merged artifacts."
   },
   "mirrors": {
     "huggingface": {
       "repo_id": "edithatogo/fyi-archive-nz",
       "last_health_monitor_count": 0,
-      "last_health_monitor_run": 28989825250,
-      "note": "Backfill capture progress is not yet reflected in mirror record counts."
+      "last_health_monitor_run": 28989825250
     },
     "osf": {
       "parent_id": "hsp7e",
@@ -66,9 +72,11 @@
     }
   },
   "next_ops": [
-    "Drain pending merges serially per docs/backfill-ops-runbook.md Phase A",
-    "Publish merged corpus to HF (Phase B)",
-    "Re-run Archive Health Monitor and refresh this snapshot (Phase C)",
-    "Keep Sigstore optional until production Zenodo + release attach cycles are clean"
+    "Wait for recapture workers 153501-159500; merge their run_ids (auto workflow_run or bulk run_ids)",
+    "Continue recapture for remaining missing pending beyond 159500 until next_id catches up",
+    "Merge remaining pending that already have live artifacts (28 at last map)",
+    "Define/run assemble+publish of merged corpus to HF (Publish Archives alone needs workspace data)",
+    "Re-run Archive Health Monitor; update this snapshot",
+    "Human review/merge PR #34 (required review blocks auto-merge)"
   ]
 }
