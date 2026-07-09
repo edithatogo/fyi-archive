@@ -18,7 +18,11 @@ on:
         type: boolean
       run_id:
         description: Historical Backfill Batch run ID to merge
-        required: true
+        required: false
+        type: string
+      run_ids:
+        description: Historical Backfill Batch run IDs to merge, separated by commas, spaces, or newlines
+        required: false
         type: string
 
 permissions:
@@ -35,6 +39,7 @@ jobs:
       DRY_RUN: ${{ inputs.dry_run || false }}
       STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
       SOURCE_RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
+      SOURCE_RUN_IDS: ${{ inputs.run_ids || inputs.run_id || github.event.workflow_run.id }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -50,13 +55,28 @@ jobs:
       - name: Download backfill artifacts
         env:
           GH_TOKEN: ${{ github.token }}
-          RUN_ID: ${{ env.SOURCE_RUN_ID }}
+          RUN_IDS: ${{ env.SOURCE_RUN_IDS }}
         run: |
           set -euo pipefail
           mkdir -p .tmp/backfill-artifacts
-          gh run download "$RUN_ID" \
-            --pattern 'historical-backfill-*' \
-            --dir .tmp/backfill-artifacts
+          python - <<'PY'
+          import re
+          import os
+          from pathlib import Path
+
+          raw_run_ids = os.environ["RUN_IDS"]
+          run_ids = [part for part in re.split(r"[\s,]+", raw_run_ids.strip()) if part]
+          if not run_ids:
+              raise SystemExit("No source run IDs were provided")
+          Path(".tmp/source-run-ids.txt").write_text("\n".join(run_ids) + "\n", encoding="utf-8")
+          PY
+          while IFS= read -r run_id; do
+            [ -n "$run_id" ] || continue
+            mkdir -p ".tmp/backfill-artifacts/$run_id"
+            gh run download "$run_id" \
+              --pattern 'historical-backfill-*' \
+              --dir ".tmp/backfill-artifacts/$run_id"
+          done < .tmp/source-run-ids.txt
 
       - name: Load persisted controller state
         env:
@@ -93,9 +113,6 @@ jobs:
           body = state_file.read_text(encoding="utf-8")
           state_file.write_text(json.dumps(decode_state(body), indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
-          gh api "repos/$REPO/actions/runs/$SOURCE_RUN_ID/artifacts" \
-            --jq '[.artifacts[].name | select(startswith("historical-backfill-")) | sub("^historical-backfill-"; "")]' \
-            > .tmp/backfill-chunk-labels.json
           python - <<'PY'
           import json
           from pathlib import Path
@@ -105,12 +122,43 @@ jobs:
 
           from backfill_state import controller_labels_from_chunk_labels
 
-          chunk_labels = json.loads(Path(".tmp/backfill-chunk-labels.json").read_text(encoding="utf-8"))
-          controller_labels = controller_labels_from_chunk_labels(list(chunk_labels))
+          chunks_by_run: dict[str, list[str]] = {}
+          controller_labels: list[str] = []
+          counts: dict[str, int] = {}
+          for run_dir in sorted(Path(".tmp/backfill-artifacts").iterdir()):
+              if not run_dir.is_dir():
+                  continue
+              chunk_labels: list[str] = []
+              record_count = 0
+              for manifest_path in sorted(run_dir.glob("historical-backfill-*/manifests/latest_manifest.json")):
+                  artifact_label = manifest_path.parents[1].name.removeprefix("historical-backfill-")
+                  chunk_labels.append(artifact_label)
+                  manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                  record_count += int(manifest.get("meta", {}).get("record_count") or 0)
+              if not chunk_labels:
+                  continue
+              run_controller_labels = controller_labels_from_chunk_labels(chunk_labels)
+              if len(run_controller_labels) != 1:
+                  raise SystemExit(f"Expected one controller label for run {run_dir.name}, got {run_controller_labels!r}")
+              controller_label = run_controller_labels[0]
+              chunks_by_run[run_dir.name] = chunk_labels
+              controller_labels.append(controller_label)
+              counts[controller_label] = record_count
           if not controller_labels:
               raise SystemExit("No historical backfill artifact labels were found")
+          if len(set(controller_labels)) != len(controller_labels):
+              duplicates = sorted({label for label in controller_labels if controller_labels.count(label) > 1})
+              raise SystemExit(f"Duplicate controller labels found: {duplicates}")
+          Path(".tmp/backfill-chunk-labels.json").write_text(
+              json.dumps(chunks_by_run, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
           Path(".tmp/backfill-merged-labels.json").write_text(
               json.dumps(controller_labels, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          Path(".tmp/backfill-record-counts.json").write_text(
+              json.dumps(counts, indent=2, sort_keys=True) + "\n",
               encoding="utf-8",
           )
           PY
@@ -153,13 +201,16 @@ jobs:
           manifest = json.loads(Path("manifests/latest_manifest.json").read_text(encoding="utf-8"))
           record_count = int(manifest.get("meta", {}).get("record_count") or 0)
           labels = json.loads(Path(".tmp/backfill-merged-labels.json").read_text(encoding="utf-8"))
-          counts = {str(label): record_count for label in labels}
+          existing_counts = json.loads(Path(".tmp/backfill-record-counts.json").read_text(encoding="utf-8"))
+          if sum(int(value) for value in existing_counts.values()) != record_count:
+              raise SystemExit("controller batch record counts do not match merged manifest record count")
+          counts = {str(label): int(existing_counts[str(label)]) for label in labels}
           Path(".tmp/backfill-record-counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
 
       - name: Generate merge provenance
         env:
-          RUN_ID: ${{ env.SOURCE_RUN_ID }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
           uv run python scripts/gen_provenance.py \
@@ -173,8 +224,8 @@ jobs:
         env:
           ISSUE_NUMBER_PATH: .tmp/backfill-state-issue-number.txt
           REPO: ${{ github.repository }}
-          RUN_ID: ${{ env.SOURCE_RUN_ID }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ env.SOURCE_RUN_ID }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
           issue_number="$(cat "$ISSUE_NUMBER_PATH")"
@@ -221,8 +272,9 @@ jobs:
           payload = {
               "chunk_labels": json.loads(Path(".tmp/backfill-chunk-labels.json").read_text(encoding="utf-8")),
               "dry_run": True,
-              "source_run_id": "${{ env.SOURCE_RUN_ID }}",
+              "source_run_ids": Path(".tmp/source-run-ids.txt").read_text(encoding="utf-8").splitlines(),
               "record_count": int(manifest.get("meta", {}).get("record_count") or 0),
+              "record_counts": json.loads(Path(".tmp/backfill-record-counts.json").read_text(encoding="utf-8")),
               "merged_labels": json.loads(Path(".tmp/backfill-merged-labels.json").read_text(encoding="utf-8")),
           }
           Path("dist").mkdir(parents=True, exist_ok=True)
@@ -232,7 +284,7 @@ jobs:
       - name: Upload merged backfill
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: merged-backfill-${{ env.SOURCE_RUN_ID }}
+          name: merged-backfill-${{ github.run_id }}
           path: |
             manifests/latest_manifest.json
             manifests/latest_manifest.parquet
