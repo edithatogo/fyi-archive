@@ -616,6 +616,7 @@ jobs:
         if: hashFiles('versions/latest_mirror_verification.json') != ''
         uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7
         with:
+          token: ${{ secrets.WORKFLOW_PAT }}
           commit-message: "chore: store monthly mirror verification evidence"
           title: "chore: store monthly mirror verification evidence"
           body: "Stores the latest small JSON evidence report for archive mirror verification. Archive payloads remain on the mirrors."
