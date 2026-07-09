@@ -33,3 +33,6 @@ contains no network-fetching logic of its own; all capture is delegated to
 - Release artifacts receive build-provenance attestations
   (`actions/attest-build-provenance@v4`).
 - OpenSSF Scorecard and CodeQL run continuously; `zizmor` audits workflow security.
+- CodeQL and Scorecard workflows finish with the org shared
+  `code-scanning-gate` action (pinned to a commit SHA on `edithatogo/.github`)
+  so open **high** / **critical** code-scanning alerts fail the job.
