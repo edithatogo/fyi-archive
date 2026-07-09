@@ -107,7 +107,6 @@ gh api "repos/:owner/:repo/actions/runs/<RUN_ID>/artifacts" \
   --jq '.artifacts[].name'
 ```
 
-
 Confirm artifacts are **not** `expired: true` before merging.
 
 ### A3. Re-run merge (prefer bulk `run_ids`, still one *merge job* at a time)
