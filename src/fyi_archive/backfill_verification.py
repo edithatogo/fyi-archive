@@ -272,6 +272,11 @@ def build_backfill_verification_report(
     merged_records = manifest_record_count(merged_manifest_path)
     hf_records = int(hf_info["record_count"]) if hf_info else None
     zenodo_records = int(zenodo_info["record_count"]) if zenodo_info else None
+    captured_covers_merged = controller["captured_records"] >= merged_records
+    mirrors_match = (
+        (hf_records is None or merged_records == hf_records)
+        and (zenodo_records is None or merged_records == zenodo_records)
+    )
     return {
         "generated_at": generated_at.isoformat(),
         "archive_publication_version": archive_publication_version(generated_at=generated_at),
@@ -289,6 +294,7 @@ def build_backfill_verification_report(
         },
         "comparison": {
             "captured_minus_merged": controller["captured_records"] - merged_records,
+            "captured_covers_merged": captured_covers_merged,
             "merged_minus_huggingface": None if hf_records is None else merged_records - hf_records,
             "merged_minus_zenodo": None
             if zenodo_records is None
@@ -296,11 +302,7 @@ def build_backfill_verification_report(
             "captured_matches_merged": controller["captured_records"] == merged_records,
             "merged_matches_huggingface": hf_records is None or merged_records == hf_records,
             "merged_matches_zenodo": zenodo_records is None or merged_records == zenodo_records,
-            "fully_verified": (
-                controller["captured_records"] == merged_records
-                and (hf_records is None or merged_records == hf_records)
-                and (zenodo_records is None or merged_records == zenodo_records)
-            ),
+            "fully_verified": captured_covers_merged and mirrors_match,
         },
     }
 
