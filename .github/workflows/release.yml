@@ -12,10 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       attestations: write
-      contents: write
+      contents: read
       id-token: write
-      issues: write
-      pull-requests: write
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -35,7 +33,7 @@ jobs:
       - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
         id: release
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.WORKFLOW_PAT }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
@@ -63,6 +61,7 @@ jobs:
         if: steps.release.outputs.releases_created == 'true'
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
+          token: ${{ secrets.WORKFLOW_PAT }}
           tag_name: ${{ steps.release.outputs.tag_name }}
           fail_on_unmatched_files: false
           files: |
