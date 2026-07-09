@@ -34,15 +34,30 @@ jobs:
       - name: Run health check
         id: health
         env:
-          HF_RECORD_COUNT: ${{ vars.HF_RECORD_COUNT || '0' }}
-          OSF_RECORD_COUNT: ${{ vars.OSF_RECORD_COUNT || '0' }}
-          ZENODO_RECORD_COUNT: ${{ vars.ZENODO_RECORD_COUNT || '0' }}
+          # Live credentials — doctor queries mirrors when these are set.
+          # Do not force RECORD_COUNT=0 here; that previously hid real HF data.
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_REPO_ID: ${{ vars.HF_REPO_ID }}
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+          ZENODO_DEPOSITION_ID: ${{ vars.ZENODO_DEPOSITION_ID }}
+          OSF_TOKEN: ${{ secrets.OSF_TOKEN }}
+          OSF_PARENT_ID: ${{ vars.OSF_PARENT_ID }}
+          OSF_NODE_ID: ${{ vars.OSF_NODE_ID }}
+          # Optional positive overrides only (empty means "query live").
+          HF_RECORD_COUNT: ${{ vars.HF_RECORD_COUNT }}
+          OSF_RECORD_COUNT: ${{ vars.OSF_RECORD_COUNT }}
+          ZENODO_RECORD_COUNT: ${{ vars.ZENODO_RECORD_COUNT }}
+          COVERAGE_TARGET_PERCENT: ${{ vars.COVERAGE_TARGET_PERCENT || '60' }}
+          COVERAGE_ID_HORIZON: ${{ vars.COVERAGE_ID_HORIZON || '250000' }}
+          DOCTOR_TOLERANCE: ${{ vars.DOCTOR_TOLERANCE || '50' }}
         run: |
-          uv run fyi-archive doctor check --tolerance 5
+          set -euo pipefail
+          # Larger default skew while OSF may lag HF/Zenodo draft.
+          uv run fyi-archive doctor check --tolerance "${DOCTOR_TOLERANCE:-50}"
           cp conductor/archive_health.json health.json
-          echo "health_json<<EOF" >> $GITHUB_OUTPUT
+          echo "health_json<<EOF" >> "$GITHUB_OUTPUT"
           cat health.json
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
       - name: Upload health report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

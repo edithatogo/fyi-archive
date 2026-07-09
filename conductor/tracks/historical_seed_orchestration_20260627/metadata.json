@@ -1,10 +1,16 @@
 {
   "track_id": "historical_seed_orchestration_20260627",
   "type": "feature",
-  "status": "blocked",
+  "status": "complete",
   "created_at": "2026-06-27T16:20:00Z",
-  "updated_at": "2026-06-29T05:35:00Z",
+  "updated_at": "2026-07-09T00:00:00Z",
   "description": "Resumable, date-windowed, capped historical backfill of fyi.org.nz by driving fyi-cli capture; assemble initial manifest; capped smoke seed.",
   "satisfies": ["R-01", "R-02", "R-03", "R-13", "R-20", "R-21"],
-  "depends_on": ["fyi-cli:bulk-site-enumeration", "fyi-cli:faithful-archive-capture"]
+  "depends_on": ["fyi-cli:bulk-site-enumeration", "fyi-cli:faithful-archive-capture"],
+  "evidence": {
+    "full_path_smoke_gha_run": "28378172250",
+    "commit": "3d9296c",
+    "hf_commit": "f13d7b22f97bfa5434e593edf871b69c18004b09",
+    "notes": "Plan phases 1-4 complete; live smoke seed recorded in conductor/live_seed_smoke.json. Full-site crawl remains operational work, not track delivery."
+  }
 }

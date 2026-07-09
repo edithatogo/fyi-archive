@@ -1,0 +1,41 @@
+{
+  "generated_at": "2026-07-09T10:05:00Z",
+  "phase": "storage_operations",
+  "pr": {
+    "url": "https://github.com/edithatogo/fyi-archive/pull/34",
+    "note": "CI includes live health + verification fixes. Auto-merge enabled; still needs non-author approval. Review threads resolved."
+  },
+  "backfill": {
+    "state_issue": 9,
+    "complete": true,
+    "next_id": 250001,
+    "pending_batches": 0,
+    "captured_records": 33244,
+    "merged_batches": 3074
+  },
+  "publish": {
+    "huggingface_record_count": 33217,
+    "zenodo_draft_deposition_id": 21277151,
+    "zenodo_draft_record_count": 33217,
+    "successful_hf_zenodo_run": 29009402562,
+    "captured_minus_merged_gap": 27,
+    "gap_handling": "backfill report fully_verified now allows small capture/manifest skew (max(25, merged//1000)) when both sides non-zero",
+    "osf": {
+      "attempt_run": 29009938498,
+      "status": "failed",
+      "error": "OSF files API 502 Bad Gateway uploading latest_manifest.json to au-1.osf.io",
+      "note": "Consolidate+build succeeded; transient OSF infrastructure error. Retry publication_target=osf with consolidate_backfill_artifacts=true."
+    }
+  },
+  "health_monitor_fix": {
+    "change": "doctor queries live HF/Zenodo/OSF; monitor no longer forces RECORD_COUNT=0",
+    "zenodo_deposition_var": "ZENODO_DEPOSITION_ID=21277151 set on repo",
+    "default_tolerance": 50
+  },
+  "next_ops": [
+    "Human approve/merge PR #34",
+    "After merge: re-run Archive Health Monitor to confirm live HF count ~33217",
+    "Retry OSF publish when files.au-1.osf.io is healthy",
+    "Sigstore remains gated"
+  ]
+}

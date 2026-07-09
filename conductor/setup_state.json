@@ -1,13 +1,14 @@
 {
   "project": "fyi-archive",
   "initialized_at": "2026-06-27",
-  "phase": "setup",
+  "phase": "storage_operations",
   "source_of_truth": "conductor/",
   "conductor_version": "1",
   "requirements_doc": "conductor/requirements.md",
   "design_doc": "conductor/design.md",
   "initial_concept": "conductor/initial-concept.md",
-  "track_count": 9,
+  "updated_at": "2026-07-09",
+  "track_count": 10,
   "tracks": [
     "repo_bootstrap_20260627",
     "ci_cd_foundation_20260627",
@@ -17,14 +18,20 @@
     "historical_seed_orchestration_20260627",
     "prospective_sync_orchestration_20260627",
     "multi_mirror_publish_20260627",
-    "observability_quality_20260627"
+    "observability_quality_20260627",
+    "github_project_sync_20260701"
+  ],
+  "archived_tracks": [
+    "cross_worker_rate_limiter_20260701",
+    "github_project_best_practices_20260701"
   ],
   "companion_repo": "fyi-cli",
   "companion_tracks": [
     "bulk-site-enumeration",
     "faithful-archive-capture",
     "archival-content-diff",
-    "archive-health-doctor"
+    "archive-health-doctor",
+    "cross-worker-rate-limiter"
   ],
-  "notes": "Read-only archive of fyi.org.nz. Two-repo split: fyi-cli owns capture (new capability tracks added there); fyi-archive owns orchestration + distribution only. Initial phase is storage only (no analysis). Remote wired: https://github.com/edithatogo/fyi-archive.git (empty)."
+  "notes": "Foundation + orchestration tracks delivered. Phase is storage_operations: grow the live corpus via historical backfill and prospective sync; keep archive_health.json current. Two-repo split: fyi-cli owns capture; fyi-archive owns orchestration + distribution."
 }

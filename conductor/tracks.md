@@ -76,6 +76,11 @@ Goal: `fyi-archive doctor` (freshness, coverage gaps, mirror parity); metadata p
 Depends on: fyi-cli `archive-health-doctor`.
 Link: [./tracks/observability_quality_20260627/](./tracks/observability_quality_20260627/)
 
+### [x] Track: GitHub project mirror and RIOPA sync
+Track ID: `github_project_sync_20260701`
+Goal: Mirror the `fyi-archive` repo project and sibling repo boards into the RIOPA umbrella project with a verifiable item-level sync and scheduled automation.
+Link: [./tracks/github_project_sync_20260701/](./tracks/github_project_sync_20260701/)
+
 ---
 
 ## Companion capability tracks (in fyi-cli)
@@ -90,6 +95,19 @@ calls for (R-05). Registered there in parallel.
 | `faithful-archive-capture` | historical_seed_orchestration | R-01, R-02 |
 | `archival-content-diff` | prospective_sync_orchestration | R-14 |
 | `archive-health-doctor` | observability_quality | R-23 |
+| `cross-worker-rate-limiter` | archive discovery and backfill jobs with bounded aggregate pacing | safer concurrent request rate across workers; archived in [./archive/cross_worker_rate_limiter_20260701/](./archive/cross_worker_rate_limiter_20260701/) |
+
+## Archived tracks
+
+### [x] Track: GitHub project best practices and workflow maximization
+Track ID: `github_project_best_practices_20260701`
+Goal: Maximize GitHub Projects v2 best practices, native workflows, views, and GraphQL automation while keeping custom code limited to cross-project sync.
+Link: [./archive/github_project_best_practices_20260701/](./archive/github_project_best_practices_20260701/)
+
+### [x] Track: Cross-worker rate limiter
+Track ID: `cross_worker_rate_limiter_20260701`
+Goal: Ensure the sibling `fyi-cli` repo provides a shared cross-worker limiter or shared backoff mechanism so concurrent archive discovery and sync jobs bound aggregate request rate, not just per-process pacing.
+Link: [./archive/cross_worker_rate_limiter_20260701/](./archive/cross_worker_rate_limiter_20260701/)
 
 ---
 

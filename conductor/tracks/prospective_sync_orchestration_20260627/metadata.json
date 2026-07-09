@@ -1,10 +1,16 @@
 {
   "track_id": "prospective_sync_orchestration_20260627",
   "type": "feature",
-  "status": "in_progress",
+  "status": "complete",
   "created_at": "2026-06-27T16:21:00Z",
-  "updated_at": "2026-06-29T05:35:00Z",
+  "updated_at": "2026-07-09T00:00:00Z",
   "description": "Daily content-addressed incremental sync to Hugging Face: restore -> diff -> capture-new -> manifest -> upload -> SHA-256 verify.",
   "satisfies": ["R-14"],
-  "depends_on": ["fyi-cli:archival-content-diff", "historical_seed_orchestration_20260627"]
+  "depends_on": ["fyi-cli:archival-content-diff", "historical_seed_orchestration_20260627"],
+  "evidence": {
+    "empty_diff_gha_run": "28378940339",
+    "normalization_gha_run": "28378701221",
+    "commit": "d575583",
+    "notes": "Plan phases 1-3 complete; empty-diff and non-empty sync publish paths verified on GHA."
+  }
 }
