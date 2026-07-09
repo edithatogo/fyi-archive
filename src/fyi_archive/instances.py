@@ -124,6 +124,7 @@ def resolve_instance(
         status=instance.status,
         title=instance.title,
         source=source,
+        seed_cap=instance.seed_cap,
     )
 
 
