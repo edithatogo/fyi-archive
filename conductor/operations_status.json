@@ -43,6 +43,11 @@
       "2026-07-07 merge cancellation storm left ~195 pending",
       "Publish Archives / HF not fed automatically from merge artifacts → mirror counts stay 0"
     ],
+    "related_fixes_on_main": [
+      "#31 Serialize backfill artifact merges",
+      "#32 Remove merge replay concurrency",
+      "#33 Support bulk backfill artifact merges (run_ids input)"
+    ],
     "runbook": "docs/backfill-ops-runbook.md"
   },
   "mirrors": {

@@ -109,21 +109,30 @@ gh api "repos/edithatogo/fyi-archive/actions/runs/<RUN_ID>/artifacts" \
 
 Confirm artifacts are **not** `expired: true` before merging.
 
-### A3. Re-run merge **serially** (one run_id at a time)
+### A3. Re-run merge (prefer bulk `run_ids`, still one *merge job* at a time)
 
-After #31/#32, avoid fan-out. For each worker run that still has unmerged chunks:
+After #31/#32, do not fan out many concurrent merge *workflow runs*. Since #33 the
+merge workflow accepts either `run_id` or multi-value `run_ids` (commas, spaces, or
+newlines) and downloads each worker's artifacts in one job:
 
 ```bash
+# Single worker
 gh workflow run merge_backfill_artifacts.yml \
   --ref main \
   -f state_label=fyi-backfill-state \
   -f dry_run=false \
   -f run_id=<WORKER_RUN_ID>
-# Wait for success before the next run_id
-gh run list --workflow "merge_backfill_artifacts.yml" --limit 1
+
+# Bulk (preferred for the ~195-pending backlog once run IDs are known)
+gh workflow run merge_backfill_artifacts.yml \
+  --ref main \
+  -f state_label=fyi-backfill-state \
+  -f dry_run=false \
+  -f run_ids='28860349310,28860348191,28860346970'
 ```
 
-Optional dry-run first (`dry_run=true`) to validate downloads without mutating issue #9.
+Wait for each merge job to finish before starting another. Optional dry-run first
+(`dry_run=true`) to validate downloads without mutating issue #9.
 
 ### A4. Confirm drain progress
 
