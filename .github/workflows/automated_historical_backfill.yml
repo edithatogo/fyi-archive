@@ -76,20 +76,17 @@ concurrency:
 
 permissions:
   contents: read
-  issues: write
 
 jobs:
   dispatch:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
-      actions: write
       contents: read
-      issues: write
     env:
       BATCH_SPAN: ${{ inputs.batch_span || '500' }}
       DRY_RUN: ${{ inputs.dry_run || false }}
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.WORKFLOW_PAT }}
       ID_FROM: ${{ inputs.id_from || '1' }}
       ID_TO: ${{ inputs.id_to || '250000' }}
       MAX_BATCHES_INPUT: ${{ inputs.max_batches || '' }}
