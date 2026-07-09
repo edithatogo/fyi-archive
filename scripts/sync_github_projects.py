@@ -76,8 +76,12 @@ def run_gh(args: list[str]) -> str:
 def run_graphql(query: str, **variables: object) -> dict[str, object]:
     args = ["api", "graphql", "-f", f"query={' '.join(query.split())}"]
     for key, value in variables.items():
-        rendered = ("true" if value else "false") if isinstance(value, bool) else str(value)
-        args.extend(["-F", f"{key}={rendered}"])
+        if isinstance(value, bool):
+            args.extend(["-F", f"{key}={'true' if value else 'false'}"])
+        elif isinstance(value, int):
+            args.extend(["-F", f"{key}={value}"])
+        else:
+            args.extend(["-f", f"{key}={value}"])
     payload = json.loads(run_gh(args))
     errors = payload.get("errors")
     if errors:
