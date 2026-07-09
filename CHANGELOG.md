@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.5.4](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.5.3...fyi_archive-v0.5.4) (2026-07-09)
+
+
+### Documentation
+
+* update Zenodo DOI citation ([#51](https://github.com/edithatogo/fyi-archive/issues/51)) ([dfb40a8](https://github.com/edithatogo/fyi-archive/commit/dfb40a870fd0a077bad1cba93d17197a16f44174))
+
 ## [0.5.3](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.5.2...fyi_archive-v0.5.3) (2026-07-09)
 
 
