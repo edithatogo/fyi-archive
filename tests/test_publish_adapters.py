@@ -23,6 +23,9 @@ from fyi_archive.publish.osf_publish import (
     get_osfstorage_upload_url,
     list_files,
 )
+from fyi_archive.publish.osf_publish import (
+    upload_file as upload_osf_file,
+)
 from fyi_archive.publish.verification import (
     RemoteArtifact,
     build_local_artifacts,
@@ -419,6 +422,28 @@ def test_osf_file_listing_and_upload_url_are_verifiable(tmp_path: Path) -> None:
 
     assert upload_url == "https://files.osf.example/upload"
     assert mirror_verified(results)
+
+
+@respx.mock
+def test_osf_upload_retries_transient_storage_failure(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("fyi_archive.publish.osf_publish.sleep", lambda _: None)
+    file_path = tmp_path / "latest_manifest.json"
+    file_path.write_text('{"meta": {"record_count": 1}}\n', encoding="utf-8")
+    route = respx.put("https://files.osf.example/upload").mock(
+        side_effect=[
+            Response(502, text="bad gateway"),
+            Response(201, json={"data": {"id": "uploaded"}}),
+        ]
+    )
+
+    uploaded = upload_osf_file(
+        token="token",
+        upload_url="https://files.osf.example/upload",
+        path=file_path,
+    )
+
+    assert uploaded["data"]["id"] == "uploaded"
+    assert route.call_count == 2
 
 
 def test_missing_remote_artifact_fails_verification(tmp_path: Path) -> None:
