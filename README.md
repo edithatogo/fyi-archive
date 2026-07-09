@@ -144,6 +144,11 @@ Read-only capture only. Rate-limited, `robots.txt`-aware, contactable `User-Agen
 See [`docs/ethics-and-compliance.md`](docs/ethics-and-compliance.md) and
 [`NOTICE.md`](NOTICE.md).
 
+**This archive is not collected for AI training or LLM development.** It is a
+non-commercial research project for preserving public information and supporting
+transparency. Each instance runs at a deliberately slow pace (1 request/second,
+2 concurrent) to minimise impact on source sites.
+
 ## License
 
 [MIT](LICENSE). Archived content remains © its respective contributors / fyi.org.nz;
