@@ -160,10 +160,12 @@ def _live_osf_count() -> dict[str, Any]:
         files = list_files(token=token, node_id=node_id)
         manifest = next((item for item in files if item.name == "latest_manifest.json"), None)
         if manifest is None or not manifest.url:
+            # No published OSF mirror yet — treat as unavailable so parity does not
+            # fail the doctor solely because OSF lags HF/Zenodo.
             return {
                 "count": 0,
                 "last_updated": None,
-                "source": "osf",
+                "source": "unavailable",
                 "node_id": node_id,
                 "note": "latest_manifest.json not found on node",
             }

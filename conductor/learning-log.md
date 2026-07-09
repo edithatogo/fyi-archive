@@ -43,3 +43,8 @@ Short, dated entries capturing non-obvious findings during work.
   cancelled; PRs #31/#32 serialize merges going forward. Pending rows only store
   `controller_run_id` + label (no `worker_run_id`). Ops procedure:
   `docs/backfill-ops-runbook.md`.
+
+## 2026-07-09 (code-scanning gate)
+- Adopted org shared gate `edithatogo/.github/.github/actions/code-scanning-gate@90b399a731a17b792352d0c049834a22dbd32523`
+  in `codeql.yml` and `scorecard.yml` (issue #27). No repo-local
+  `check_code_scanning_alerts.py` enforcement path.

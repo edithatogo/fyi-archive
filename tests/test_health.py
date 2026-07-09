@@ -154,7 +154,7 @@ def test_live_mirror_counts_osf_missing_manifest(monkeypatch) -> None:
 
     counts = live_mirror_counts()
     assert counts["osf"]["count"] == 0
-    assert counts["osf"]["source"] == "osf"
+    assert counts["osf"]["source"] == "unavailable"
     assert "not found" in counts["osf"]["note"]
 
 

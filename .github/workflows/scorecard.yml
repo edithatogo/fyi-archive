@@ -14,6 +14,7 @@ jobs:
     if: github.event.repository.visibility == 'public'
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       security-events: write
     steps:
@@ -28,3 +29,7 @@ jobs:
       - uses: github/codeql-action/upload-sarif@411bbbe57033eedfc1a82d68c01345aa96c737d7 # v4
         with:
           sarif_file: results.sarif
+
+      # Org-wide shared gate after SARIF upload. Pinned SHA; see issue #27.
+      - name: Fail on blocking code-scanning alerts
+        uses: edithatogo/.github/.github/actions/code-scanning-gate@90b399a731a17b792352d0c049834a22dbd32523
