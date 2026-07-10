@@ -30,10 +30,10 @@ AU ethics, copyright sketch, policy-research purpose (not AI training), Content-
 
 ## Acceptance criteria
 
-- [ ] Spec scope delivered with tests or evidence where applicable
-- [ ] NZ default paths remain green (no regression)
-- [ ] Rate limits / robots discipline documented for any live work
-- [ ] Linked GitHub parent issue and sub-issues updated on completion
+- [x] Spec scope delivered with tests or evidence where applicable
+- [x] NZ default paths remain green (no regression)
+- [x] Rate limits / robots discipline documented for any live work
+- [x] Linked GitHub parent issue and sub-issues updated on completion
 
 ## Risks
 

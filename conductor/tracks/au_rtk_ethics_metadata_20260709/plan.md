@@ -2,16 +2,16 @@
 
 ## Phase 1: Foundations
 
-- [ ] docs/ethics updates
-- [ ] AU copyright note
-- [ ] dataset card purpose language
-- [ ] Content-Signal documentation
+- [x] docs/ethics updates
+- [x] AU copyright note
+- [x] dataset card purpose language
+- [x] Content-Signal documentation
 
 ## Phase 2: Verification
 
-- [ ] Unit/integration tests or dry-run evidence
-- [ ] Update track metadata status when complete
-- [ ] Close GitHub sub-issues with evidence links
+- [x] Unit/integration tests or dry-run evidence
+- [x] Update track metadata status when complete
+- [x] Close GitHub sub-issues with evidence links
 
 ## Notes
 

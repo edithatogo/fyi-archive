@@ -90,7 +90,7 @@ Track ID: `multi_instance_orchestration_20260709` — satisfies **R-40, R-41, R-
 Goal: Instance registry; CLI `--instance` / env; plumb `--base-url` into seed/sync; multi-source manifests; NZ default regression.
 Link: [./tracks/multi_instance_orchestration_20260709/](./tracks/multi_instance_orchestration_20260709/)
 
-### [ ] Track: AU RTK ethics and metadata
+### [x] Track: AU RTK ethics and metadata
 Track ID: `au_rtk_ethics_metadata_20260709` — satisfies **R-43**
 Goal: Policy-research purpose (not AI training); AU ethics/copyright notes; Content-Signal/robots documentation.
 Depends on: `multi_instance_orchestration_20260709`.
