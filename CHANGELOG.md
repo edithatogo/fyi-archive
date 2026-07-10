@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.7.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.6.0...fyi_archive-v0.7.0) (2026-07-10)
+
+
+### Features
+
+* add AU jurisdiction taxonomy ([#100](https://github.com/edithatogo/fyi-archive/issues/100)) ([87f3d7c](https://github.com/edithatogo/fyi-archive/commit/87f3d7c0437738c7dc00a4fb9bf9c551c1730c08))
+* consume fyi-cli body discovery ([f54f8b0](https://github.com/edithatogo/fyi-archive/commit/f54f8b054a32edc3a7a38869536645e0d204d6e3))
+
+
+### Documentation
+
+* add AU RTK ethics and rights policy ([#98](https://github.com/edithatogo/fyi-archive/issues/98)) ([e8134f2](https://github.com/edithatogo/fyi-archive/commit/e8134f298309e3c7653374a648614c7c8598d415))
+* complete AU taxonomy track ([e20ad31](https://github.com/edithatogo/fyi-archive/commit/e20ad318cf4d40aedd1baf2a9f42629564f9cfad))
+
 ## [0.6.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.5.5...fyi_archive-v0.6.0) (2026-07-09)
 
 
