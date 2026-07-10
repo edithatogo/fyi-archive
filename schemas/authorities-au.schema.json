@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/edithatogo/fyi-archive/schemas/authorities-au.schema.json",
+  "title": "fyi-archive AU authorities manifest",
+  "type": "object",
+  "required": ["instance_id", "authorities"],
+  "properties": {
+    "instance_id": { "const": "au-rtk" },
+    "authorities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "jurisdiction"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "jurisdiction": {
+            "type": "string",
+            "enum": ["ACT", "FEDERAL", "NSW", "NT", "OTHER", "QLD", "SA", "TAS", "VIC", "WA"]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

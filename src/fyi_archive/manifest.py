@@ -16,6 +16,7 @@ from fyi_archive.instances import (
     instance_id_for_source,
     known_sources,
 )
+from fyi_archive.jurisdictions import authority_manifest_for_au
 from fyi_archive.version import __version__
 
 # Backward-compatible default (NZ). Prefer get_instance(...).source for multi-instance.
@@ -36,6 +37,7 @@ def normalize_request_record(data: dict[str, Any]) -> dict[str, Any]:
         "url_title": str(data.get("url_title") or f"request-{request_id}"),
         "title": str(data.get("title") or ""),
         "authority": normalize_authority(data.get("authority") or data.get("public_body")),
+        "body_tag": data.get("body_tag"),
         "state": str(data.get("state") or ""),
         "html_captured": bool(data.get("html_captured", False)),
         "attachments": data.get("attachments") or [],
@@ -185,6 +187,7 @@ def write_manifest_outputs(
     manifest_path: Path,
     parquet_path: Path,
     authorities_path: Path,
+    instance_id: str = DEFAULT_INSTANCE_ID,
 ) -> None:
     """Write JSON, Parquet, and authority summary outputs."""
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -195,11 +198,15 @@ def write_manifest_outputs(
     requests = manifest["requests"]
     pl.DataFrame(requests).write_parquet(parquet_path)
 
-    authorities = sorted(
-        {record.get("authority", "") for record in requests if record.get("authority")}
-    )
+    if instance_id == "au-rtk":
+        authorities_document = authority_manifest_for_au(requests)
+    else:
+        authorities = sorted(
+            {record.get("authority", "") for record in requests if record.get("authority")}
+        )
+        authorities_document = {"authorities": authorities}
     authorities_path.write_text(
-        json.dumps({"authorities": authorities}, indent=2, sort_keys=True) + "\n",
+        json.dumps(authorities_document, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
 
@@ -228,6 +235,7 @@ def assemble_manifest(
         manifest_path=manifest_path,
         parquet_path=parquet_path,
         authorities_path=authorities_path,
+        instance_id=instance_id,
     )
     return manifest
 
@@ -256,5 +264,6 @@ def merge_manifests(
         manifest_path=manifest_path,
         parquet_path=parquet_path,
         authorities_path=authorities_path,
+        instance_id=instance_id,
     )
     return manifest

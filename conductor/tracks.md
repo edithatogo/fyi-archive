@@ -96,7 +96,7 @@ Goal: Policy-research purpose (not AI training); AU ethics/copyright notes; Cont
 Depends on: `multi_instance_orchestration_20260709`.
 Link: [./tracks/au_rtk_ethics_metadata_20260709/](./tracks/au_rtk_ethics_metadata_20260709/)
 
-### [ ] Track: AU jurisdiction taxonomy
+### [~] Track: AU jurisdiction taxonomy
 Track ID: `au_jurisdiction_taxonomy_20260709` — satisfies **R-44**
 Goal: Body-tag → jurisdiction map; fixtures; authorities with jurisdiction field.
 Depends on: `multi_instance_orchestration_20260709`; fyi-cli body enumeration companion.

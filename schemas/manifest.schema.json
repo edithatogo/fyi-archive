@@ -46,6 +46,10 @@
           "url_title": { "type": "string" },
           "title": { "type": "string" },
           "authority": { "type": "string" },
+          "body_tag": {
+            "type": ["string", "null"],
+            "description": "Source body tag used for AU jurisdiction taxonomy, when available."
+          },
           "state": { "type": "string" },
           "content_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
           "html_captured": { "type": "boolean" },

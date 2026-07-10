@@ -2,16 +2,22 @@
 
 ## Phase 1: Foundations
 
-- [ ] jurisdiction rules JSON
-- [ ] fixtures from RTK tags
-- [ ] mapping helpers + tests
-- [ ] authorities_au schema
+- [x] jurisdiction rules JSON
+- [x] fixtures from RTK tags
+- [x] mapping helpers + tests
+- [x] authorities_au schema
 
 ## Phase 2: Verification
 
-- [ ] Unit/integration tests or dry-run evidence
+- [x] Unit/integration tests or dry-run evidence
 - [ ] Update track metadata status when complete
-- [ ] Close GitHub sub-issues with evidence links
+- [x] Close GitHub sub-issues with evidence links
+
+## Blocker
+
+Live body-tag enumeration remains blocked on fyi-cli issue #84. The archive-side
+taxonomy is deterministic and tested, but no live AU classification claim is made
+until the companion capability is available.
 
 ## Notes
 
