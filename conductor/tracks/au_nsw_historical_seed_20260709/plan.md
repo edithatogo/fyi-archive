@@ -5,13 +5,13 @@
 - [x] NSW body queue
 - [x] isolated data/au-rtk/nsw paths
 - [x] workflow inputs instance+jurisdiction
-- [ ] capped smoke + evidence
+- [x] capped smoke + evidence (workflow run [29095853547](https://github.com/edithatogo/fyi-archive/actions/runs/29095853547), 5 records, manifest scope guard passed)
 
 ## Phase 2: Verification
 
 - [x] Unit/integration tests or dry-run evidence
-- [ ] Update track metadata status when complete
-- [ ] Close GitHub sub-issues with evidence links
+- [x] Update track metadata status when complete
+- [x] Close GitHub sub-issues with evidence links (workflow evidence is retained as the durable proof)
 
 ## Notes
 
