@@ -44,9 +44,7 @@ def test_discover_bodies_retries_and_reports_cli_stderr(monkeypatch, tmp_path: P
     def fake_run(command, *, check, capture_output, text):
         nonlocal attempts
         attempts += 1
-        raise subprocess.CalledProcessError(
-            1, command, output="", stderr="upstream read timeout"
-        )
+        raise subprocess.CalledProcessError(1, command, output="", stderr="upstream read timeout")
 
     monkeypatch.setattr("fyi_archive.body_discovery.subprocess.run", fake_run)
     monkeypatch.setattr("fyi_archive.body_discovery.time.sleep", lambda _: None)

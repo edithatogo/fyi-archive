@@ -18,11 +18,7 @@ def select_nsw_authorities(
     selected: dict[str, dict[str, Any]] = {}
     for body in bodies:
         slug = str(
-            body.get("url_name")
-            or body.get("URL name")
-            or body.get("slug")
-            or body.get("id")
-            or ""
+            body.get("url_name") or body.get("URL name") or body.get("slug") or body.get("id") or ""
         ).strip()
         label = str(
             body.get("name") or body.get("Name") or body.get("authority_name") or slug
