@@ -34,7 +34,15 @@ def select_nsw_authorities(
         if not any(jurisdiction_for_body_tag(str(tag), rules) == "NSW" for tag in candidates):
             continue
         if slug:
-            selected[slug] = {**body, "slug": slug, "name": label, "jurisdiction": "NSW"}
+            normalized = {
+                key: value for key, value in body.items() if key not in {"URL name", "Name", "Tags"}
+            }
+            selected[slug] = {
+                **normalized,
+                "slug": slug,
+                "name": label,
+                "jurisdiction": "NSW",
+            }
     return [selected[slug] for slug in sorted(selected)]
 
 
