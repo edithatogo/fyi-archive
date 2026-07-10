@@ -1,0 +1,117 @@
+name: AU NSW historical seed
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_requests:
+        description: Maximum requests for this capped smoke/seed run
+        required: true
+        default: "50"
+        type: string
+      max_runtime_minutes:
+        description: Maximum runtime
+        required: true
+        default: "30"
+        type: string
+      dry_run:
+        description: Use deterministic records instead of network capture
+        required: true
+        default: true
+        type: boolean
+      min_interval:
+        description: Minimum interval between requests to the same host
+        required: true
+        default: "1.0"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  nsw-seed:
+    runs-on: ubuntu-latest
+    env:
+      INSTANCE: au-rtk
+      JURISDICTION: NSW
+      ROOT: data/au-rtk/nsw
+      DB: data/_state/au-rtk/nsw/fyi-cli.db
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+      - name: Discover AU bodies
+        run: |
+          set -euo pipefail
+          uv run fyi-archive discover bodies \
+            --instance "$INSTANCE" \
+            --delay-seconds "${{ inputs.min_interval }}" \
+            --shared-rate-limit-db "$DB" \
+            --output "$ROOT/discovered_bodies.json"
+      - name: Build NSW authority queue
+        run: |
+          set -euo pipefail
+          uv run python -c 'from pathlib import Path; from fyi_archive.nsw_seed import write_nsw_authority_queue; rows = write_nsw_authority_queue(bodies_path=Path("data/au-rtk/nsw/discovered_bodies.json"), output_path=Path("data/au-rtk/nsw/nsw_authorities.json")); raise SystemExit("No NSW authorities discovered") if not rows else None'
+      - name: Discover NSW request queue
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          set -euo pipefail
+          uv run python scripts/discover_nsw_requests.py \
+            --queue "$ROOT/nsw_authorities.json" \
+            --output "$ROOT/discovered_requests.jsonl" \
+            --base-url "$(uv run python -c 'from fyi_archive.instances import get_instance; print(get_instance("au-rtk").capture_base_url())')" \
+            --db "$DB" \
+            --delay-seconds "${{ inputs.min_interval }}"
+      - name: Run capped NSW seed
+        run: |
+          set -euo pipefail
+          args=(
+            --instance "$INSTANCE"
+            --jurisdiction "$JURISDICTION"
+            --ledger-path "$ROOT/ledger.jsonl"
+            --data-dir "$ROOT/data"
+            --derived-dir "$ROOT/derived/requests"
+            --dist-dir "$ROOT/dist"
+            --max-requests "${{ inputs.max_requests }}"
+            --max-runtime-minutes "${{ inputs.max_runtime_minutes }}"
+            --min-interval "${{ inputs.min_interval }}"
+            --concurrency 2
+          )
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            args+=(--dry-run)
+          else
+            args+=(--requests-file "$ROOT/discovered_requests.jsonl")
+          fi
+          uv run fyi-archive seed run "${args[@]}"
+      - name: Build and guard NSW manifest
+        run: |
+          set -euo pipefail
+          uv run fyi-archive manifest build \
+            --instance "$INSTANCE" \
+            --jurisdiction "$JURISDICTION" \
+            --derived-dir "$ROOT/derived/requests" \
+            --manifest-path "$ROOT/manifests/latest_manifest.json" \
+            --parquet-path "$ROOT/manifests/latest_manifest.parquet" \
+            --authorities-path "$ROOT/manifests/authorities.json" \
+            --fyi-cli-version 1.1.0
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("data/au-rtk/nsw/manifests/latest_manifest.json").read_text())
+          meta = manifest["meta"]
+          if meta["instance_id"] != "au-rtk" or meta.get("jurisdiction") != "NSW":
+              raise SystemExit("manifest scope guard failed")
+          if meta["record_count"] < 1:
+              raise SystemExit("NSW seed manifest is empty")
+          PY
+      - name: Upload NSW seed evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: au-rtk-nsw-historical-seed
+          path: data/au-rtk/nsw

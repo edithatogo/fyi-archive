@@ -1,6 +1,6 @@
 # fyi-archive
 
-> Work in progress toward a **read-only, full-site archive** of [fyi.org.nz](https://fyi.org.nz/) — the New
+> Work in progress toward a **read-only, full-site archive** of a public FOI repository — the New
 > Zealand Official Information Act (OIA) request register (Alaveteli) — into
 > **GitHub**, **Hugging Face**, **Zenodo**, and **OSF**.
 
@@ -12,7 +12,7 @@
 
 ```mermaid
 flowchart LR
-  A["fyi.org.nz<br/>(Alaveteli, read-only)"] -->|public endpoints| B["fyi-cli<br/>enumeration + WARC/WACZ capture"]
+  A["foi-repository<br/>(Alaveteli, read-only)"] -->|public endpoints| B["fyi-cli<br/>enumeration + WARC/WACZ capture"]
   B -->|drives| C["fyi-archive<br/>orchestration + manifests"]
   C --> D["Hugging Face<br/>(live, revised)"]
   C --> E["Zenodo<br/>(annual DOI snapshot)"]
@@ -61,9 +61,9 @@ fyi-archive/
 
 | source | status | capture |
 | --- | --- | --- |
-| `fyi.org.nz` requests | target | JSON + HTML + attachments → WARC/WACZ (via `fyi-cli`) |
-| `fyi.org.nz` authorities (bodies) | target | bodies spreadsheet → `manifests/authorities.json` |
-| `fyi.org.nz` search feeds | target | advanced-search Atom/JSON feeds for enumeration |
+| `foi-repository` requests | target | JSON + HTML + attachments → WARC/WACZ (via `fyi-cli`) |
+| `foi-repository` authorities (bodies) | target | bodies spreadsheet → `manifests/authorities.json` |
+| `foi-repository` search feeds | target | advanced-search Atom/JSON feeds for enumeration |
 
 ## Distribution channels
 
@@ -114,8 +114,8 @@ GIT_MIRROR_SSH_PRIVATE_KEY  # if secondary mirror enabled
 
 ```env
 HF_REPO_ID            = edithatogo/fyi-archive-nz
-FYI_ARCHIVE_BASE_URL  = https://fyi.org.nz
-ARCHIVE_TITLE         = fyi-archive (fyi.org.nz OIA register)
+FYI_ARCHIVE_BASE_URL  = <foi-repository-base-url>
+ARCHIVE_TITLE         = fyi-archive (FOI repository register)
 ARCHIVE_LICENSE       = MIT
 ```
 
@@ -126,8 +126,15 @@ See [`.env.example`](.env.example) for the local-run equivalents.
 ```bash
 uv sync --extra dev          # from the lockfile
 uv run pytest -q
+uv run pytest -q --cov=fyi_archive --cov-report=term-missing
 make quality                 # ruff + ty + typos + taplo + actionlint + zizmor
 ```
+
+The test harness enforces a 90% branch-aware coverage floor and exposes focused
+profiles for unit, integration, end-to-end, system/smoke, property, edge,
+security/regression, performance, compatibility, usability, and sanity tests.
+Use `make test-all` for the strict local gate and `make mutation` from WSL for
+the full mutmut run; scheduled Linux mutation reports are published by CI.
 
 > `fyi-cli` is referenced as a local path dependency (`../fyi-cli`); clone it
 > alongside this repo inside the `legal-nz` workspace.
@@ -151,7 +158,7 @@ transparency. Each instance runs at a deliberately slow pace (1 request/second,
 
 ## License
 
-[MIT](LICENSE). Archived content remains © its respective contributors / fyi.org.nz;
+[MIT](LICENSE). Archived content remains © its respective contributors / source repository;
 this project preserves it for research and transparency only.
 
 ## Related projects

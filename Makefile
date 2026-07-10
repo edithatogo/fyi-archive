@@ -1,6 +1,8 @@
 .PHONY: help install sync lock lint format format-fix typecheck test test-cov \
         quality spell toml-check workflow-audit workflow-syntax security-audit \
-        sbom dead-code dependency-check clean
+        sbom dead-code dependency-check clean test-all test-unit test-integration \
+        test-e2e test-smoke test-property test-edge test-security test-performance \
+        test-compatibility mutation
 
 PYTHON ?= python
 PKG := fyi_archive
@@ -35,6 +37,39 @@ test: ## Run the test suite
 
 test-cov: ## Run tests with coverage
 	uv run pytest --cov=$(PKG) --cov-report=term-missing --cov-report=html
+
+test-all: ## Run the complete strict harness with coverage
+	uv run pytest -q --cov=$(PKG) --cov-report=term-missing
+
+test-unit: ## Run isolated unit tests
+	uv run pytest -q -m unit
+
+test-integration: ## Run integration tests
+	uv run pytest -q -m integration
+
+test-e2e: ## Run end-to-end tests
+	uv run pytest -q -m e2e
+
+test-smoke: ## Run CLI smoke and system tests
+	uv run pytest -q -m 'smoke or system or usability or sanity'
+
+test-property: ## Run property-based and hypothesis tests
+	uv run pytest -q -m 'property or hypothesis'
+
+test-edge: ## Run malformed-input and boundary tests
+	uv run pytest -q -m edge
+
+test-security: ## Run security and regression tests
+	uv run pytest -q -m 'security or regression'
+
+test-performance: ## Run bounded performance tests
+	uv run pytest -q -m performance
+
+test-compatibility: ## Run supported-runtime compatibility tests
+	uv run pytest -q -m compatibility
+
+mutation: ## Run mutmut mutation testing (explicit, intentionally expensive)
+	uv run mutmut run --paths-to-mutate src/fyi_archive --tests-dir tests
 
 quality: lint format typecheck spell toml-check workflow-audit workflow-syntax ## Full quality gate
 

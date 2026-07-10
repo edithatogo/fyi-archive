@@ -1,0 +1,58 @@
+name: Test harness profiles
+
+on:
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  profiles:
+    name: ${{ matrix.profile }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - profile: unit
+            marker: unit
+          - profile: integration
+            marker: integration
+          - profile: e2e
+            marker: e2e
+          - profile: smoke-system-usability
+            marker: "smoke or system or usability or sanity"
+          - profile: property-edge
+            marker: "property or hypothesis or edge"
+          - profile: security-regression
+            marker: "security or regression"
+          - profile: performance
+            marker: performance
+          - profile: compatibility
+            marker: compatibility
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+      - name: Run ${{ matrix.profile }} tests
+        run: uv run pytest -q -m "${{ matrix.marker }}"
+
+  mutation-contract:
+    name: Mutation harness contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+      - name: Run mutation profile contract
+        run: uv run pytest -q -m mutation

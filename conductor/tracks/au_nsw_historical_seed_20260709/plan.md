@@ -2,14 +2,14 @@
 
 ## Phase 1: Foundations
 
-- [ ] NSW body queue
-- [ ] isolated data/au-rtk/nsw paths
-- [ ] workflow inputs instance+jurisdiction
+- [x] NSW body queue
+- [x] isolated data/au-rtk/nsw paths
+- [x] workflow inputs instance+jurisdiction
 - [ ] capped smoke + evidence
 
 ## Phase 2: Verification
 
-- [ ] Unit/integration tests or dry-run evidence
+- [x] Unit/integration tests or dry-run evidence
 - [ ] Update track metadata status when complete
 - [ ] Close GitHub sub-issues with evidence links
 
