@@ -11,7 +11,25 @@ on:
       fyi_cli_version:
         description: fyi-cli version recorded in generated manifests
         required: true
-        default: "1.1.0"
+        default: "1.2.0"
+        type: string
+      max_requests:
+        description: Per-jurisdiction capture cap for live rollout
+        required: true
+        default: "50"
+        type: string
+      max_runtime_minutes:
+        description: Per-jurisdiction runtime cap for live rollout
+        required: true
+        default: "30"
+        type: string
+      catalog_url:
+        description: Optional AU authority catalog URL override
+        required: false
+        type: string
+      capture_base_url:
+        description: Optional AU capture base URL override
+        required: false
         type: string
 
 permissions:
@@ -24,6 +42,9 @@ concurrency:
 jobs:
   controller:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -43,11 +64,31 @@ jobs:
             --output-dir data/au-rtk/rollout \
             --fyi-cli-version "${{ inputs.fyi_cli_version }}" \
             --dry-run
-      - name: Reject unimplemented live mode
+      - name: Run capped sequential AU live rollout
         if: ${{ !inputs.dry_run }}
         run: |
-          echo "Live jurisdiction capture must be enabled only after a worker adapter is configured." >&2
-          exit 1
+          set -euo pipefail
+          uv run python scripts/run_au_live_rollout.py \
+            --config configs/au/jurisdiction_rollout.json \
+            --state data/_state/au-rollout/state.json \
+            --output-dir data/au-rtk/rollout \
+            --provenance data/au-rtk/rollout/discovered_bodies.provenance.json \
+            --rate-limit-db data/_state/au-rollout/fyi-cli.db \
+            --repository "${{ github.repository }}" \
+            --capture-base-url "${{ inputs.capture_base_url || 'https://www.righttoknow.org.au' }}" \
+            --catalog-url "${{ inputs.catalog_url }}" \
+            --fyi-cli-version "${{ inputs.fyi_cli_version }}" \
+            --max-requests "${{ inputs.max_requests }}" \
+            --max-runtime-minutes "${{ inputs.max_runtime_minutes }}"
+      - name: Retain successful live catalog
+        if: ${{ !inputs.dry_run && hashFiles('data/_state/discovered_bodies.json') != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: catalog-${{ github.run_id }}
+          retention-days: 90
+          path: |
+            data/au-rtk/rollout/discovered_bodies.json
+            data/au-rtk/rollout/discovered_bodies.provenance.json
       - name: Verify national manifest
         if: ${{ inputs.dry_run }}
         run: |
@@ -73,3 +114,20 @@ jobs:
           path: |
             data/_state/au-rollout
             data/au-rtk/rollout
+      - name: Verify live national manifest and provenance
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("data/au-rtk/rollout/national_manifest.json").read_text())
+          provenance = json.loads(Path("data/au-rtk/rollout/discovered_bodies.provenance.json").read_text())
+          if manifest["meta"]["instance_id"] != "au-rtk":
+              raise SystemExit("live national manifest instance guard failed")
+          if not manifest["meta"]["record_count"]:
+              raise SystemExit("live national manifest is empty")
+          if provenance.get("mode") not in {"live", "fallback"}:
+              raise SystemExit("catalog provenance mode is invalid")
+          PY
