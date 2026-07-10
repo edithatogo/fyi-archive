@@ -61,7 +61,18 @@ jobs:
       - name: Build NSW authority queue
         run: |
           set -euo pipefail
-          uv run python -c 'from pathlib import Path; from fyi_archive.nsw_seed import write_nsw_authority_queue; rows = write_nsw_authority_queue(bodies_path=Path("data/au-rtk/nsw/discovered_bodies.json"), output_path=Path("data/au-rtk/nsw/nsw_authorities.json")); raise SystemExit("No NSW authorities discovered") if not rows else None'
+          uv run python - <<'PY'
+          from pathlib import Path
+
+          from fyi_archive.nsw_seed import write_nsw_authority_queue
+
+          rows = write_nsw_authority_queue(
+              bodies_path=Path("data/au-rtk/nsw/discovered_bodies.json"),
+              output_path=Path("data/au-rtk/nsw/nsw_authorities.json"),
+          )
+          if not rows:
+              raise SystemExit("No NSW authorities discovered")
+          PY
       - name: Discover NSW request queue
         if: ${{ inputs.dry_run == false }}
         run: |
