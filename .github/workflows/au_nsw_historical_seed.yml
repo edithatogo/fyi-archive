@@ -48,6 +48,7 @@ jobs:
       - name: Discover AU bodies
         run: |
           set -euo pipefail
+          mkdir -p "$ROOT"
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             cp tests/fixtures/au_nsw_bodies.json "$ROOT/discovered_bodies.json"
           else
