@@ -1,9 +1,10 @@
 # Copyright & licensing provisions
 
 This archive preserves **already-published, public** material from
-[fyi.org.nz](https://fyi.org.nz/). This document records the New Zealand copyright
-provisions under which that preservation and redistribution is permitted, with
-citations. It is informational, not legal advice.
+[fyi.org.nz](https://fyi.org.nz/) and, in a separate instance,
+[righttoknow.org.au](https://www.righttoknow.org.au/). This document records the
+relevant New Zealand and Australian copyright boundaries for preservation and
+redistribution. It is informational, not legal advice.
 
 ## 1. What is archived, and whose copyright it is
 
@@ -64,7 +65,29 @@ material for re-use.
 > the archive records it per-item in the manifest (`license` field) and preserves any
 > attribution/notice text verbatim.
 
-## 4. IPONZ — what copyright protects
+## 4. Australia — Copyright Act 1968 (Cth)
+
+The Australian instance preserves public material from Right to Know, an Alaveteli
+service that publishes freedom-of-information requests and responses. The governing
+statute is the [Copyright Act 1968 (Cth)](https://www.legislation.gov.au/C1968A00063/latest/text).
+Copyright may subsist in original request text, response documents, attachments,
+images, and site presentation. Public availability does not by itself grant a
+blanket licence to reproduce or redistribute every item.
+
+The [Australian Attorney-General's Department copyright guidance](https://www.ag.gov.au/rights-and-protections/copyright)
+and its [guidance for copyright users](https://www.ag.gov.au/rights-and-protections/copyright/copyright-users)
+distinguish government material from third-party material and recommend checking the
+applicable licence or obtaining permission where no licence applies. Accordingly,
+the AU archive preserves source-declared licence, attribution, and rights notices,
+records item-level rights metadata where available, and makes no assumption that a
+government response, requester text, or attachment is CC BY merely because it is
+publicly accessible.
+
+The archive is not legal advice and does not determine whether a particular item may
+be reused. Downstream users must assess the item, source terms, applicable exceptions,
+and any permission required for their intended use.
+
+## 5. IPONZ — what copyright protects
 
 Per the **Intellectual Property Office of New Zealand (IPONZ)**:
 
@@ -78,7 +101,7 @@ Per the **Intellectual Property Office of New Zealand (IPONZ)**:
   [IPONZ — Duration](https://www.iponz.govt.nz/get-ip/copyright/duration/);
   [MBIE — Copyright protection in NZ](https://www.mbie.govt.nz/business-and-employment/business/intellectual-property/copyright/copyright-protection-in-new-zealand))
 
-## 5. How this archive applies these provisions
+## 6. How this archive applies these provisions
 
 1. **Faithful preservation only.** Content is captured verbatim (WARC/WACZ); no
    derivative edits, no stripping of attribution or existing licence statements.
@@ -88,19 +111,19 @@ Per the **Intellectual Property Office of New Zealand (IPONZ)**:
 3. **Code vs data licence separation.**
    - **Code** (this repository, `fyi-cli`, and the orchestration/adapter source) is
      **MIT** — see [`LICENSE`](../LICENSE).
-   - **Archived data** (the captured fyi.org.nz material) retains the rights status of
-     the source: Crown works under NZGOAL (CC BY 4.0 / "no known rights"), s.27
-     material that carries no copyright, and private-author request text that remains
-     the requester's. The archive asserts **no new rights** over the data.
+   - **Archived data** retains the rights status of the source. NZ material is
+     described under the NZ provisions above; AU material is described under the
+     Copyright Act 1968 (Cth), source terms, and item-level notices. The archive
+     asserts **no new rights** over the data.
 4. **No circumvention.** Read-only access to public endpoints only; no login, no
    access controls bypassed, no non-public material sought.
 
-## 6. Takedown
+## 7. Takedown
 
 If a rights holder believes material in this archive should not be redistributed,
-contact `edithatogo@users.noreply.github.com` (or use GitHub's private vulnerability
-reporting). The item will be reviewed and, where appropriate, withdrawn from
-subsequent mirror publications pending resolution.
+contact `edithatogo@users.noreply.github.com` with the instance (`nz-fyi` or `au-rtk`),
+source URL, request id, and the reason for the request. The item will be reviewed and,
+where appropriate, withdrawn from subsequent mirror publications pending resolution.
 
 ## Citations
 
@@ -116,3 +139,9 @@ subsequent mirror publications pending resolution.
   <https://www.digital.govt.nz/standards-and-guidance/governance/copyright-and-licensing>
 - MBIE — Copyright protection in New Zealand —
   <https://www.mbie.govt.nz/business-and-employment/business/intellectual-property/copyright/copyright-protection-in-new-zealand>
+- Australian Copyright Act 1968 (Cth) —
+  <https://www.legislation.gov.au/C1968A00063/latest/text>
+- Australian Attorney-General's Department — Copyright —
+  <https://www.ag.gov.au/rights-and-protections/copyright>
+- Australian Attorney-General's Department — For copyright users —
+  <https://www.ag.gov.au/rights-and-protections/copyright/copyright-users>
