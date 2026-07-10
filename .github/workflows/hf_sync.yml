@@ -44,7 +44,7 @@ jobs:
           set -euo pipefail
           args=(
             --hf-repo-id "$HF_REPO_ID"
-            --fyi-cli-version 1.0.0
+            --fyi-cli-version 1.1.0
             --health-path conductor/archive_health.json
           )
           if [ "$DRY_RUN" = "true" ]; then

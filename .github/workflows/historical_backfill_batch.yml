@@ -201,7 +201,7 @@ jobs:
           uv run fyi-archive manifest build \
             --instance "$INSTANCE" \
             --derived-dir "$manifest_derived_dir" \
-            --fyi-cli-version 1.0.0
+            --fyi-cli-version 1.1.0
           uv run python -m json.tool manifests/latest_manifest.json > /dev/null
           if [ "$MAX_REQUESTS" != "0" ]; then
             uv run python - <<'PY'

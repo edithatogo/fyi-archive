@@ -1,0 +1,37 @@
+"""Read-only discovery commands delegated to fyi-cli."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Annotated
+
+import typer
+
+from fyi_archive.body_discovery import discover_bodies_with_fyi_cli
+from fyi_archive.instances import DEFAULT_INSTANCE_ID, resolve_instance
+
+app = typer.Typer(name="discover", help="Discover archive metadata via fyi-cli.")
+
+
+@app.command("bodies")
+def bodies(
+    output: Annotated[Path, typer.Option()] = Path("data/_state/discovered_bodies.json"),
+    shared_rate_limit_db: Annotated[Path, typer.Option()] = Path("data/_state/fyi-cli.db"),
+    delay_seconds: Annotated[float, typer.Option()] = 1.0,
+    instance: Annotated[str, typer.Option()] = DEFAULT_INSTANCE_ID,
+    base_url: Annotated[str | None, typer.Option()] = None,
+) -> None:
+    """Enumerate public authority bodies without implementing fetch logic here."""
+    try:
+        archive_instance = resolve_instance(instance_id=instance, base_url=base_url)
+    except ValueError as error:
+        raise typer.BadParameter(str(error)) from error
+    payload = discover_bodies_with_fyi_cli(
+        base_url=archive_instance.capture_base_url(),
+        output_path=output,
+        shared_rate_limit_db=shared_rate_limit_db,
+        delay_seconds=delay_seconds,
+    )
+    payload["instance_id"] = archive_instance.id
+    typer.echo(json.dumps(payload, indent=2, sort_keys=True))
