@@ -5,6 +5,24 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.6.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.5.5...fyi_archive-v0.6.0) (2026-07-09)
+
+
+### Features
+
+* wire --instance through backfill and seed workflows ([2f6d1b4](https://github.com/edithatogo/fyi-archive/commit/2f6d1b4efa832158776c4cc45322fb1c92fddb9c))
+* wire rate limiting flags and add seed_cap to instance registry ([8647bf9](https://github.com/edithatogo/fyi-archive/commit/8647bf9a5ee78201e55bf91585c5b2e6e345e3cf))
+
+
+### Bug Fixes
+
+* propagate seed_cap through resolve_instance base_url override ([3da4fa6](https://github.com/edithatogo/fyi-archive/commit/3da4fa6b1be2e1812fe4c4bbb89b763ea48a9782))
+
+
+### Documentation
+
+* add clear messaging about rate limits and AI use ([a9aa01e](https://github.com/edithatogo/fyi-archive/commit/a9aa01ed73ba34754207234a4faa8d188cf85bd4))
+
 ## [0.5.5](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.5.4...fyi_archive-v0.5.5) (2026-07-09)
 
 
