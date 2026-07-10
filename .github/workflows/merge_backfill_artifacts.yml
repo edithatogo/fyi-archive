@@ -180,7 +180,7 @@ jobs:
             --manifest-path manifests/latest_manifest.json \
             --parquet-path manifests/latest_manifest.parquet \
             --authorities-path manifests/authorities.json \
-            --fyi-cli-version 1.0.0
+            --fyi-cli-version 1.1.0
           uv run python - <<'PY'
           import json
           from pathlib import Path

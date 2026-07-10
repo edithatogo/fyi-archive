@@ -10,14 +10,16 @@
 ## Phase 2: Verification
 
 - [x] Unit/integration tests or dry-run evidence
-- [ ] Update track metadata status when complete
+- [x] Delegate live body enumeration to merged fyi-cli `discover-bodies`
+- [x] Update track metadata status when complete
 - [x] Close GitHub sub-issues with evidence links
 
-## Blocker
+## Resolved blocker
 
-Live body-tag enumeration remains blocked on fyi-cli issue #84. The archive-side
-taxonomy is deterministic and tested, but no live AU classification claim is made
-until the companion capability is available.
+The companion capability landed in fyi-cli PR #137. The AU historical-seed
+workflow now invokes `fyi-archive discover bodies`, which delegates to
+`fyi-cli discover-bodies` using its robots-aware pacing and shared limiter DB.
+The first live run is still required before making a completeness claim.
 
 ## Notes
 

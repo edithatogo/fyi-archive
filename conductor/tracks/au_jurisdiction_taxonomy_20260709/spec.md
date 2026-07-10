@@ -33,7 +33,7 @@ Body-tag to jurisdiction map; committed rules + fixtures; authorities manifest w
 - [x] Spec scope delivered with tests or evidence where applicable
 - [x] NZ default paths remain green (no regression)
 - [x] Rate limits / robots discipline documented for any live work
-- [~] Linked GitHub parent issue and sub-issues updated; live body enumeration remains blocked on #84
+- [x] Linked GitHub parent issue and sub-issues updated; live enumeration delegates to fyi-cli #137
 
 ## Risks
 

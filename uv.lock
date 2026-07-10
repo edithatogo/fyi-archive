@@ -879,8 +879,8 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "fyi-cli"
-version = "1.0.0"
-source = { git = "https://github.com/edithatogo/fyi-cli?branch=master#5d6522f4b3453f79b6cc9a81046f4605ea5363a2" }
+version = "1.1.0"
+source = { git = "https://github.com/edithatogo/fyi-cli?branch=master#614e28640becf035f0dae8cd8e5969465975b7ec" }
 dependencies = [
     { name = "cryptography" },
     { name = "fastmcp" },

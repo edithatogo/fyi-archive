@@ -61,8 +61,8 @@ dependencies = [
   # Publishing
   "huggingface_hub[hf_xet]>=0.27.0",
   # fyi-cli (the source tool) — version-pinned and locked from GitHub by uv.
-  # Pinned at its current 1.0.0; an assertion test guards against silent upstream drift.
-  "fyi-cli==1.0.0",
+  # Pinned at its current 1.1.0; an assertion test guards against silent upstream drift.
+  "fyi-cli==1.1.0",
 ]
 
 [project.optional-dependencies]

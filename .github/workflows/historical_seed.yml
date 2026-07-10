@@ -86,6 +86,19 @@ jobs:
           set -euo pipefail
           df -h .
 
+      - name: Enumerate AU authority bodies via fyi-cli
+        if: ${{ inputs.dry_run == false && inputs.instance == 'au-rtk' }}
+        env:
+          INSTANCE: ${{ inputs.instance }}
+          MIN_INTERVAL: ${{ inputs.min_interval }}
+        run: |
+          set -euo pipefail
+          uv run fyi-archive discover bodies \
+            --instance "$INSTANCE" \
+            --delay-seconds "$MIN_INTERVAL" \
+            --output data/_state/discovered_bodies.json \
+            --shared-rate-limit-db data/_state/fyi-cli.db
+
       - name: Run historical seed
         env:
           CONCURRENCY: ${{ inputs.concurrency }}
@@ -154,7 +167,7 @@ jobs:
           uv run fyi-archive manifest build \
             --instance "$INSTANCE" \
             --derived-dir "$manifest_derived_dir" \
-            --fyi-cli-version 1.0.0
+            --fyi-cli-version 1.1.0
           uv run python -m json.tool manifests/latest_manifest.json > /dev/null
           if [ "$MAX_REQUESTS" != "0" ]; then
             uv run python - <<'PY'
@@ -187,6 +200,8 @@ jobs:
           name: historical-seed
           path: |
             data/_state/ledger.jsonl
+            data/_state/discovered_bodies.json
+            data/_state/fyi-cli.db
             data/derived/requests/*.json
             manifests/latest_manifest.json
             manifests/latest_manifest.parquet
