@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from fyi_archive.body_discovery import discover_bodies_with_fyi_cli
+from fyi_archive.body_discovery import discover_bodies_with_fallback, discover_bodies_with_fyi_cli
 
 
 def test_discover_bodies_delegates_to_fyi_cli(monkeypatch, tmp_path: Path) -> None:
@@ -56,3 +56,44 @@ def test_discover_bodies_retries_and_reports_cli_stderr(monkeypatch, tmp_path: P
             shared_rate_limit_db=limiter,
         )
     assert attempts == 3
+
+
+def test_fallback_preserves_last_good_until_verified_restore(monkeypatch, tmp_path: Path) -> None:
+    output = tmp_path / "bodies.json"
+    provenance = tmp_path / "bodies.provenance.json"
+    limiter = tmp_path / "state" / "fyi-cli.db"
+    output.write_text(json.dumps({"bodies": [{"name": "old"}]}), encoding="utf-8")
+
+    def fail_live(**kwargs):
+        kwargs["output_path"].write_text('{"bodies": [{"name": "bad"}]}', encoding="utf-8")
+        raise RuntimeError("HTTP 403")
+
+    def restore(**kwargs):
+        kwargs["output_path"].write_text(
+            json.dumps(
+                {
+                    "bodies": [{"name": "verified"}],
+                    "provenance": {"payload_sha256": "abc"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        kwargs["provenance_path"].write_text(
+            json.dumps({"mode": "fallback", "failure_class": "RuntimeError"}), encoding="utf-8"
+        )
+
+    monkeypatch.setattr("fyi_archive.body_discovery.discover_bodies_with_fyi_cli", fail_live)
+    monkeypatch.setattr("fyi_archive.body_discovery.restore_latest_verified_catalog", restore)
+    payload = discover_bodies_with_fallback(
+        base_url="https://capture.example",
+        output_path=output,
+        provenance_path=provenance,
+        shared_rate_limit_db=limiter,
+        repository="example/archive",
+        workflow="rollout.yml",
+        catalog_url="https://catalog.example/au.csv",
+    )
+
+    assert payload["bodies"] == [{"name": "verified"}]
+    assert json.loads(output.read_text(encoding="utf-8"))["bodies"] == [{"name": "verified"}]
+    assert json.loads(provenance.read_text(encoding="utf-8"))["mode"] == "fallback"

@@ -802,7 +802,7 @@ wheels = [
 
 [[package]]
 name = "fyi-archive"
-version = "0.6.0"
+version = "0.7.0"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -884,8 +884,8 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "fyi-cli"
-version = "1.1.0"
-source = { git = "https://github.com/edithatogo/fyi-cli?branch=master#614e28640becf035f0dae8cd8e5969465975b7ec" }
+version = "1.2.0"
+source = { git = "https://github.com/edithatogo/fyi-cli?branch=master#86fcbd8914037735b6f27e5a329d5f3013033efd" }
 dependencies = [
     { name = "cryptography" },
     { name = "fastmcp" },
