@@ -2,13 +2,13 @@
 
 ## Phase 1: Foundations
 
-- [ ] doctor instance filters
-- [ ] coverage horizon per instance
-- [ ] CI parity multi-dataset
+- [x] doctor instance/jurisdiction filters
+- [x] coverage horizon and target overrides per instance
+- [x] CI parity multi-dataset (existing metadata/parity workflow retained)
 
 ## Phase 2: Verification
 
-- [ ] Unit/integration tests or dry-run evidence
+- [x] Unit/integration tests or dry-run evidence
 - [ ] Update track metadata status when complete
 - [ ] Close GitHub sub-issues with evidence links
 
@@ -16,4 +16,4 @@
 
 - Capture remains in fyi-cli only (R-05, R-06, R-41).
 - Public-policy research purpose, not AI training (R-43).
-- Honour default fyi-cli rate limits (~1 rps + jitter) unless justified (R-42).
+- Honour gentle archive defaults (two seconds between requests, one worker) plus fyi-cli safeguards (R-42).

@@ -198,6 +198,51 @@ def test_doctor_healthy_with_matching_env_counts(tmp_path: Path, monkeypatch) ->
     assert health["coverage"]["records"] == 10
 
 
+def test_doctor_accepts_instance_and_jurisdiction_scope(tmp_path: Path, monkeypatch) -> None:
+    manifest_dir = tmp_path / "manifests"
+    manifest_dir.mkdir()
+    (manifest_dir / "au.json").write_text(
+        json.dumps(
+            {
+                "meta": {
+                    "record_count": 2,
+                    "generated_at": "2026-01-01T00:00:00Z",
+                    "instance_id": "au-rtk",
+                    "jurisdiction": "NSW",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("COVERAGE_ID_HORIZON_AU_RTK", "10")
+    monkeypatch.setenv("COVERAGE_TARGET_PERCENT_AU_RTK", "20")
+    for name in ("HF_RECORD_COUNT", "ZENODO_RECORD_COUNT", "OSF_RECORD_COUNT"):
+        monkeypatch.setenv(name, "2")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "doctor",
+            "check",
+            "--manifest-path",
+            "manifests/au.json",
+            "--instance",
+            "au-rtk",
+            "--jurisdiction",
+            "nsw",
+            "--tolerance",
+            "1",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    health = json.loads((tmp_path / "conductor/archive_health.json").read_text(encoding="utf-8"))
+    assert health["scope"] == {"instance_id": "au-rtk", "jurisdiction": "NSW"}
+    assert health["coverage"]["id_horizon"] == 10
+    assert health["coverage"]["target"] == 20
+
+
 def test_doctor_falls_back_to_huggingface_manifest(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("HF_RECORD_COUNT", raising=False)

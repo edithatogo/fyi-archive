@@ -7,6 +7,16 @@ on:
   schedule:
     - cron: "0 */6 * * *"
   workflow_dispatch:
+    inputs:
+      instance:
+        description: Archive instance to inspect
+        required: true
+        default: nz-fyi
+        type: string
+      jurisdiction:
+        description: Optional jurisdiction scope (for example NSW)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -49,11 +59,17 @@ jobs:
           ZENODO_RECORD_COUNT: ${{ vars.ZENODO_RECORD_COUNT }}
           COVERAGE_TARGET_PERCENT: ${{ vars.COVERAGE_TARGET_PERCENT || '60' }}
           COVERAGE_ID_HORIZON: ${{ vars.COVERAGE_ID_HORIZON || '250000' }}
+          COVERAGE_TARGET_PERCENT_AU_RTK: ${{ vars.COVERAGE_TARGET_PERCENT_AU_RTK || '0' }}
+          COVERAGE_ID_HORIZON_AU_RTK: ${{ vars.COVERAGE_ID_HORIZON_AU_RTK || '0' }}
           DOCTOR_TOLERANCE: ${{ vars.DOCTOR_TOLERANCE || '50' }}
+          DOCTOR_INSTANCE: ${{ inputs.instance || 'nz-fyi' }}
+          DOCTOR_JURISDICTION: ${{ inputs.jurisdiction || '' }}
         run: |
           set -euo pipefail
           # Larger default skew while OSF may lag HF/Zenodo draft.
-          uv run fyi-archive doctor check --tolerance "${DOCTOR_TOLERANCE:-50}"
+          args=(--tolerance "${DOCTOR_TOLERANCE:-50}" --instance "$DOCTOR_INSTANCE")
+          if [ -n "$DOCTOR_JURISDICTION" ]; then args+=(--jurisdiction "$DOCTOR_JURISDICTION"); fi
+          uv run fyi-archive doctor check "${args[@]}"
           cp conductor/archive_health.json health.json
           echo "health_json<<EOF" >> "$GITHUB_OUTPUT"
           cat health.json

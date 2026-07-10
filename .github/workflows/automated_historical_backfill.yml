@@ -28,7 +28,7 @@ on:
       max_batches:
         description: Maximum worker runs to dispatch from this controller run when manually triggered
         required: true
-        default: "2"
+        default: "1"
         type: string
       worker_chunk_size:
         description: Inclusive request-ID span per worker matrix chunk
@@ -38,7 +38,7 @@ on:
       worker_max_chunks:
         description: Maximum chunks per worker run
         required: true
-        default: "2"
+        default: "1"
         type: string
       worker_max_parallel:
         description: Maximum chunk jobs to run in parallel inside each worker run
@@ -63,12 +63,12 @@ on:
       min_interval:
         description: Minimum seconds between requests to the same host
         required: true
-        default: "1.0"
+        default: "2.0"
         type: string
       concurrency:
         description: Max concurrent in-flight requests to the site
         required: true
-        default: "2"
+        default: "1"
         type: string
       instance:
         description: Archive instance id (nz-fyi, au-rtk, uk-wdtk, ie-myrighttoknow)
@@ -111,8 +111,8 @@ jobs:
       MAX_DISK_GB: ${{ inputs.max_disk_gb || '5' }}
       MAX_REQUESTS_PER_CHUNK: ${{ inputs.max_requests_per_chunk || '10' }}
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes || '60' }}
-      MIN_INTERVAL: ${{ inputs.min_interval || '1.0' }}
-      CONCURRENCY: ${{ inputs.concurrency || '2' }}
+      MIN_INTERVAL: ${{ inputs.min_interval || '2.0' }}
+      CONCURRENCY: ${{ inputs.concurrency || '1' }}
       INSTANCE: ${{ inputs.instance || 'nz-fyi' }}
       REPO: ${{ github.repository }}
       STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}

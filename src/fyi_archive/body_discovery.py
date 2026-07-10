@@ -34,7 +34,7 @@ def discover_bodies_with_fyi_cli(
         "discover-bodies",
         "--base-url",
         base_url,
-        *( ["--catalog-url", catalog_url] if catalog_url else [] ),
+        *(["--catalog-url", catalog_url] if catalog_url else []),
         "--delay-seconds",
         str(delay_seconds),
         "--db",
@@ -96,7 +96,8 @@ def discover_bodies_with_fallback(
             repository=repository,
             workflow=workflow,
             token=github_token,
-            failed_live_source_url=catalog_url or f"{base_url.rstrip('/')}/body/all-authorities.csv",
+            failed_live_source_url=catalog_url
+            or f"{base_url.rstrip('/')}/body/all-authorities.csv",
             failure_class=type(error).__name__,
             diagnostic=str(error),
         )

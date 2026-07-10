@@ -153,8 +153,8 @@ See [`docs/ethics-and-compliance.md`](docs/ethics-and-compliance.md) and
 
 **This archive is not collected for AI training or LLM development.** It is a
 non-commercial research project for preserving public information and supporting
-transparency. Each instance runs at a deliberately slow pace (1 request/second,
-2 concurrent) to minimise impact on source sites.
+transparency. Each instance defaults to a deliberately slow pace (two seconds
+between requests, one concurrent) to minimise impact on source sites.
 
 ## License
 

@@ -8,15 +8,15 @@ myrighttoknow.org). We treat every source with care:
 
 - **Public endpoints only.** No login, no write/submit, no use of any authenticated
   API. Alaveteli's read surface is public by design.
-- **Rate-limited.** A token-bucket (~1 request/second with jitter by default) and
-  bounded concurrency ensure sites are never hammered. Each instance has its own
+- **Rate-limited.** A token-bucket (two seconds between requests with jitter by
+  default) and one in-flight capture ensure sites are never hammered. Each instance has its own
   rate-limit bucket to prevent cross-site interference.
 - **`robots.txt`-aware.** Disallowed paths are skipped; the file is re-fetched
   periodically.
 - **Contactable identity.** Every request carries a descriptive `User-Agent`
   including a contact address, so site operators can reach us.
 - **Trickle pace.** Multi-instance capture runs at a deliberately slow pace
-  (1 request/second, 2 concurrent) to minimise impact on source sites.
+  (two seconds between requests, one concurrent) to minimise impact on source sites.
 
 ## Australian instance: righttoknow.org.au
 
@@ -30,7 +30,8 @@ The AU collection follows the same operational safeguards as the NZ collection:
 public read-only endpoints, a descriptive contactable `User-Agent`, independent
 rate-limit state, bounded concurrency, and a fresh `robots.txt` check before live
 work. A failed, unavailable, or ambiguous policy check stops the affected job rather
-than treating access as permission.
+than treating access as permission. Runs are observable through retained logs,
+manifests, and provenance sidecars; they do not attempt stealth or evasion.
 
 ## Not affiliated
 

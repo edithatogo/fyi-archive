@@ -111,8 +111,8 @@ jobs:
       - name: Build capped seed bundle
         if: env.SEED_BEFORE_PUBLISH == 'true'
         env:
-          SEED_CONCURRENCY: "2"
-          SEED_MIN_INTERVAL: "1.0"
+          SEED_CONCURRENCY: "1"
+          SEED_MIN_INTERVAL: "2.0"
         run: |
           set -euo pipefail
           mkdir -p data/_state
@@ -151,7 +151,7 @@ jobs:
           uv run fyi-archive seed run "${args[@]}"
           uv run fyi-archive manifest build \
             --derived-dir "$manifest_derived_dir" \
-            --fyi-cli-version 1.1.0
+            --fyi-cli-version 1.2.0
           uv run python -m json.tool manifests/latest_manifest.json > /dev/null
           uv run python - <<'PY'
           import json
@@ -207,7 +207,7 @@ jobs:
             --manifest-path manifests/latest_manifest.json \
             --parquet-path manifests/latest_manifest.parquet \
             --authorities-path manifests/authorities.json \
-            --fyi-cli-version 1.1.0
+            --fyi-cli-version 1.2.0
           uv run python - <<'PY'
           import json
           from pathlib import Path

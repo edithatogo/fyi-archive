@@ -192,7 +192,7 @@ def main() -> int:
     parser.add_argument("--workflow", default="au_jurisdiction_rollout.yml")
     parser.add_argument("--capture-base-url", required=True)
     parser.add_argument("--catalog-url")
-    parser.add_argument("--delay-seconds", type=float, default=1.0)
+    parser.add_argument("--delay-seconds", type=float, default=2.0)
     parser.add_argument("--fyi-cli-version", required=True)
     parser.add_argument("--max-requests", type=int, default=50)
     parser.add_argument("--max-runtime-minutes", type=float, default=30.0)

@@ -21,7 +21,7 @@ on:
       min_interval:
         description: Minimum interval between requests to the same host
         required: true
-        default: "1.0"
+        default: "2.0"
         type: string
 
 permissions:
@@ -95,7 +95,7 @@ jobs:
             --max-requests "${{ inputs.max_requests }}"
             --max-runtime-minutes "${{ inputs.max_runtime_minutes }}"
             --min-interval "${{ inputs.min_interval }}"
-            --concurrency 2
+            --concurrency 1
           )
           if [ "${{ inputs.dry_run }}" = "true" ]; then
             args+=(--dry-run)

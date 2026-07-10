@@ -71,7 +71,7 @@ def run(
             help="Minimum seconds between requests to the same host.",
             envvar="FYI_ARCHIVE_MIN_INTERVAL",
         ),
-    ] = 1.0,
+    ] = 2.0,
     concurrency: Annotated[
         int,
         typer.Option(

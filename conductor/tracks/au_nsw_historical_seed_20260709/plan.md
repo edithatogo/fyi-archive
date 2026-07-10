@@ -17,4 +17,4 @@
 
 - Capture remains in fyi-cli only (R-05, R-06, R-41).
 - Public-policy research purpose, not AI training (R-43).
-- Honour default fyi-cli rate limits (~1 rps + jitter) unless justified (R-42).
+- Honour gentle archive defaults (two seconds between requests, one worker) plus fyi-cli safeguards (R-42).
