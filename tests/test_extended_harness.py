@@ -573,6 +573,7 @@ def test_nsw_queue_selection_is_deduplicated_and_scoped(tmp_path: Path) -> None:
         [{"URL name": "nsw-health", "Name": "NSW Health", "Tags": "state-government-nsw"}]
     )
     assert [row["slug"] for row in csv_style] == ["nsw-health"]
+    assert set(csv_style[0]) == {"slug", "name", "jurisdiction"}
     bodies_path = tmp_path / "bodies.json"
     queue_path = tmp_path / "queue.json"
     bodies_path.write_text(json.dumps({"bodies": bodies}), encoding="utf-8")
