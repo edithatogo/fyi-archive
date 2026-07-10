@@ -19,7 +19,8 @@
 The companion capability landed in fyi-cli PR #137. The AU historical-seed
 workflow now invokes `fyi-archive discover bodies`, which delegates to
 `fyi-cli discover-bodies` using its robots-aware pacing and shared limiter DB.
-The first live run is still required before making a completeness claim.
+The live AU smoke returned 2,722 bodies. This proves the enumeration path only;
+the remaining NSW capture and full AU rollout are tracked separately.
 
 ## Notes
 
