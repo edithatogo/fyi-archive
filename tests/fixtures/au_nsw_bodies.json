@@ -1,0 +1,17 @@
+{
+  "base_url": "https://www.righttoknow.org.au",
+  "count": 2,
+  "bodies": [
+    {
+      "URL name": "nsw-health",
+      "Name": "NSW Health",
+      "Tags": "state-government-nsw"
+    },
+    {
+      "URL name": "nsw-treasury",
+      "Name": "NSW Treasury",
+      "Tags": "state-government-nsw"
+    }
+  ],
+  "source": "checked-in deterministic smoke fixture"
+}

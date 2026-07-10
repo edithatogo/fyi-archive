@@ -48,11 +48,15 @@ jobs:
       - name: Discover AU bodies
         run: |
           set -euo pipefail
-          uv run fyi-archive discover bodies \
-            --instance "$INSTANCE" \
-            --delay-seconds "${{ inputs.min_interval }}" \
-            --shared-rate-limit-db "$DB" \
-            --output "$ROOT/discovered_bodies.json"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            cp tests/fixtures/au_nsw_bodies.json "$ROOT/discovered_bodies.json"
+          else
+            uv run fyi-archive discover bodies \
+              --instance "$INSTANCE" \
+              --delay-seconds "${{ inputs.min_interval }}" \
+              --shared-rate-limit-db "$DB" \
+              --output "$ROOT/discovered_bodies.json"
+          fi
       - name: Build NSW authority queue
         run: |
           set -euo pipefail
