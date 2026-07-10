@@ -12,22 +12,45 @@ import typer
 
 from fyi_archive import __version__
 from fyi_archive.health import live_mirror_counts, manifest_count, parity_report
+from fyi_archive.instances import DEFAULT_INSTANCE_ID, get_instance
 
 app = typer.Typer(name="doctor", help="Check archive health and parity.")
 
 
 def get_manifest_counts(
     manifest_path: Path = Path("manifests/latest_manifest.json"),
+    *,
+    instance_id: str = DEFAULT_INSTANCE_ID,
+    jurisdiction: str | None = None,
 ) -> dict[str, Any]:
     """Get counts from the local manifest, or fall back to Hugging Face."""
     if manifest_path.exists():
         try:
+            raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+            meta = raw.get("meta", {})
+            if meta.get("instance_id", DEFAULT_INSTANCE_ID) != instance_id:
+                return {
+                    "record_count": 0,
+                    "last_updated": None,
+                    "source": "scope-mismatch",
+                    "path": manifest_path.as_posix(),
+                }
+            requested_jurisdiction = jurisdiction.upper() if jurisdiction else None
+            if requested_jurisdiction and meta.get("jurisdiction") != requested_jurisdiction:
+                return {
+                    "record_count": 0,
+                    "last_updated": None,
+                    "source": "scope-mismatch",
+                    "path": manifest_path.as_posix(),
+                }
             count, generated_at = manifest_count(manifest_path)
             return {
                 "record_count": count,
                 "last_updated": generated_at,
                 "source": "local",
                 "path": manifest_path.as_posix(),
+                "instance_id": instance_id,
+                "jurisdiction": requested_jurisdiction,
             }
         except (OSError, json.JSONDecodeError):
             pass
@@ -50,16 +73,28 @@ def get_mirror_counts() -> dict[str, dict[str, Any]]:
     return live_mirror_counts()
 
 
-def get_coverage_info(manifest_records: int) -> dict[str, Any]:
+def get_coverage_info(
+    manifest_records: int, *, instance_id: str = DEFAULT_INSTANCE_ID
+) -> dict[str, Any]:
     """Estimate coverage against the configured ID horizon / target."""
     # Historical controller default horizon is 1..250000 inclusive when complete.
-    target_percent = int(os.environ.get("COVERAGE_TARGET_PERCENT", "60"))
-    id_horizon = int(os.environ.get("COVERAGE_ID_HORIZON", "250000"))
+    suffix = instance_id.upper().replace("-", "_")
+    target_percent = int(
+        os.environ.get(
+            f"COVERAGE_TARGET_PERCENT_{suffix}", os.environ.get("COVERAGE_TARGET_PERCENT", "60")
+        )
+    )
+    id_horizon = int(
+        os.environ.get(
+            f"COVERAGE_ID_HORIZON_{suffix}", os.environ.get("COVERAGE_ID_HORIZON", "250000")
+        )
+    )
     percent = 0 if id_horizon <= 0 else min(100, round(100 * manifest_records / id_horizon))
     return {
         "percent_covered": percent,
         "target": target_percent,
         "id_horizon": id_horizon,
+        "instance_id": instance_id,
         "records": manifest_records,
     }
 
@@ -70,9 +105,17 @@ def check(
         int,
         typer.Option(help="Allowed mirror/manifest record skew."),
     ] = 5,
+    manifest_path: Annotated[Path, typer.Option()] = Path("manifests/latest_manifest.json"),
+    instance: Annotated[str, typer.Option()] = DEFAULT_INSTANCE_ID,
+    jurisdiction: Annotated[str | None, typer.Option()] = None,
 ) -> None:
     """Run health checks and output report."""
-    manifest = get_manifest_counts()
+    get_instance(instance)
+    manifest = get_manifest_counts(
+        manifest_path,
+        instance_id=instance,
+        jurisdiction=jurisdiction,
+    )
     mirrors = get_mirror_counts()
     # Only parity-check mirrors that returned a live or env count (skip pure unavailable).
     parity_inputs = {
@@ -94,8 +137,12 @@ def check(
         "manifest": manifest,
         "mirrors": mirrors,
         "parity": parity,
-        "coverage": get_coverage_info(int(manifest["record_count"])),
+        "coverage": get_coverage_info(int(manifest["record_count"]), instance_id=instance),
         "status": "healthy" if parity["healthy"] else "drift",
+        "scope": {
+            "instance_id": instance,
+            "jurisdiction": jurisdiction.upper() if jurisdiction else None,
+        },
     }
 
     typer.echo(json.dumps(health_data, indent=2))

@@ -36,12 +36,12 @@ on:
       min_interval:
         description: Minimum seconds between requests to the same host
         required: true
-        default: "1.0"
+        default: "2.0"
         type: string
       concurrency:
         description: Max concurrent in-flight requests to the site
         required: true
-        default: "2"
+        default: "1"
         type: string
       instance:
         description: Archive instance id (nz-fyi, au-rtk, uk-wdtk, ie-myrighttoknow)
@@ -201,7 +201,7 @@ jobs:
           uv run fyi-archive manifest build \
             --instance "$INSTANCE" \
             --derived-dir "$manifest_derived_dir" \
-            --fyi-cli-version 1.1.0
+            --fyi-cli-version 1.2.0
           uv run python -m json.tool manifests/latest_manifest.json > /dev/null
           if [ "$MAX_REQUESTS" != "0" ]; then
             uv run python - <<'PY'

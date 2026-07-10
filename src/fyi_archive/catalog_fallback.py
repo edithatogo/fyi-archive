@@ -77,16 +77,23 @@ def restore_latest_verified_catalog(
         run_id = run.get("id") if isinstance(run, dict) else None
         if not isinstance(run_id, int):
             continue
-        artifacts = _github_json(f"{root}/repos/{repository}/actions/runs/{run_id}/artifacts", token)
+        artifacts = _github_json(
+            f"{root}/repos/{repository}/actions/runs/{run_id}/artifacts", token
+        )
         for artifact in artifacts.get("artifacts", []) if isinstance(artifacts, dict) else []:
-            if not isinstance(artifact, dict) or not str(artifact.get("name", "")).startswith("catalog-"):
+            if not isinstance(artifact, dict) or not str(artifact.get("name", "")).startswith(
+                "catalog-"
+            ):
                 continue
             download_url = artifact.get("archive_download_url")
             if not isinstance(download_url, str):
                 continue
             request = urllib.request.Request(  # noqa: S310
                 download_url,
-                headers={"Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}"},
+                headers={
+                    "Accept": "application/vnd.github+json",
+                    "Authorization": f"Bearer {token}",
+                },
             )
             try:
                 with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310
@@ -97,7 +104,12 @@ def restore_latest_verified_catalog(
                         (name for name in names if name.endswith("discovered_bodies.json")), None
                     )
                     provenance_name = next(
-                        (name for name in names if name.endswith("discovered_bodies.provenance.json")), None
+                        (
+                            name
+                            for name in names
+                            if name.endswith("discovered_bodies.provenance.json")
+                        ),
+                        None,
                     )
                     if not catalog_name or not provenance_name:
                         raise CatalogArtifactError("catalog artifact is missing required files")
@@ -115,7 +127,8 @@ def restore_latest_verified_catalog(
                 temporary.replace(output_path)
                 fallback = {
                     "mode": "fallback",
-                    "failed_live_source_url": failed_live_source_url or source_provenance.get("catalog_url"),
+                    "failed_live_source_url": failed_live_source_url
+                    or source_provenance.get("catalog_url"),
                     "failure_class": failure_class,
                     "diagnostic": diagnostic[:4000],
                     "source_workflow": workflow,
@@ -127,5 +140,7 @@ def restore_latest_verified_catalog(
                 write_catalog_provenance(provenance_path, fallback)
                 return fallback  # noqa: TRY300
             except (OSError, zipfile.BadZipFile, KeyError, json.JSONDecodeError) as error:
-                raise CatalogArtifactError(f"catalog artifact validation failed: {error}") from error
+                raise CatalogArtifactError(
+                    f"catalog artifact validation failed: {error}"
+                ) from error
     raise CatalogArtifactError("no successful verified catalog artifact found")

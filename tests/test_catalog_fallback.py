@@ -35,7 +35,15 @@ def test_restore_latest_verified_catalog_accepts_checksum_matched_artifact(
         lambda url, token: (
             {"workflow_runs": [{"id": 42}]}
             if url.endswith("/runs?status=success&per_page=20")
-            else {"artifacts": [{"id": 7, "name": "catalog-42", "archive_download_url": "https://gh.test/artifact"}]}
+            else {
+                "artifacts": [
+                    {
+                        "id": 7,
+                        "name": "catalog-42",
+                        "archive_download_url": "https://gh.test/artifact",
+                    }
+                ]
+            }
         ),
     )
 
@@ -49,7 +57,9 @@ def test_restore_latest_verified_catalog_accepts_checksum_matched_artifact(
         def read(self):
             return archive.getvalue()
 
-    monkeypatch.setattr(catalog_fallback.urllib.request, "urlopen", lambda *args, **kwargs: Response())
+    monkeypatch.setattr(
+        catalog_fallback.urllib.request, "urlopen", lambda *args, **kwargs: Response()
+    )
     output = tmp_path / "discovered_bodies.json"
     provenance = tmp_path / "discovered_bodies.provenance.json"
     result = catalog_fallback.restore_latest_verified_catalog(

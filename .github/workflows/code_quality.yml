@@ -39,6 +39,10 @@ jobs:
         run: |
           set -euo pipefail
           uv run python scripts/check_version_consistency.py
+      - name: Gentle archive pacing defaults
+        run: |
+          set -euo pipefail
+          uv run python scripts/check_politeness_defaults.py
 
   repository-quality:
     runs-on: ubuntu-latest

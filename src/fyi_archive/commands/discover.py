@@ -19,12 +19,15 @@ app = typer.Typer(name="discover", help="Discover archive metadata via fyi-cli."
 def bodies(
     output: Annotated[Path, typer.Option()] = Path("data/_state/discovered_bodies.json"),
     shared_rate_limit_db: Annotated[Path, typer.Option()] = Path("data/_state/fyi-cli.db"),
-    delay_seconds: Annotated[float, typer.Option()] = 1.0,
+    delay_seconds: Annotated[float, typer.Option()] = 2.0,
     instance: Annotated[str, typer.Option()] = DEFAULT_INSTANCE_ID,
     base_url: Annotated[str | None, typer.Option()] = None,
     catalog_url: Annotated[str | None, typer.Option()] = None,
     provenance: Annotated[Path | None, typer.Option()] = None,
-    fallback: Annotated[bool, typer.Option(help="Restore the latest verified GitHub catalog on live failure.")] = False,
+    fallback: Annotated[
+        bool,
+        typer.Option(help="Restore the latest verified GitHub catalog on live failure."),
+    ] = False,
     repository: Annotated[str | None, typer.Option()] = None,
     workflow: Annotated[str, typer.Option()] = "au_jurisdiction_rollout.yml",
 ) -> None:
