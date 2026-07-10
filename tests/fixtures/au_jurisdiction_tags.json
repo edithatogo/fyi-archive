@@ -1,0 +1,8 @@
+[
+  {"tag": "nsw", "jurisdiction": "NSW"},
+  {"tag": "New South Wales", "jurisdiction": "NSW"},
+  {"tag": "state-government-nsw", "jurisdiction": "NSW"},
+  {"tag": "vic", "jurisdiction": "VIC"},
+  {"tag": "commonwealth", "jurisdiction": "FEDERAL"},
+  {"tag": "not-yet-classified", "jurisdiction": "OTHER"}
+]

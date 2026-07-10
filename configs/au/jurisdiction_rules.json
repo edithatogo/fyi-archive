@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "default": "OTHER",
+  "jurisdictions": {
+    "ACT": ["act", "australian capital territory"],
+    "FEDERAL": ["commonwealth", "federal", "australian government"],
+    "NSW": ["new south wales", "nsw", "state-government-nsw"],
+    "NT": ["northern territory", "nt"],
+    "OTHER": ["other", "unknown"],
+    "QLD": ["queensland", "qld"],
+    "SA": ["south australia", "sa"],
+    "TAS": ["tasmania", "tas"],
+    "VIC": ["victoria", "vic"],
+    "WA": ["western australia", "wa"]
+  }
+}
