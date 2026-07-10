@@ -17,10 +17,20 @@ def select_nsw_authorities(
     """Select and deduplicate authority rows classified as NSW."""
     selected: dict[str, dict[str, Any]] = {}
     for body in bodies:
-        slug = str(body.get("url_name") or body.get("slug") or body.get("id") or "").strip()
-        label = str(body.get("name") or body.get("authority_name") or slug).strip()
-        tags = body.get("tags") or body.get("tag") or body.get("jurisdiction") or label
-        candidates = tags if isinstance(tags, list) else [tags]
+        slug = str(
+            body.get("url_name") or body.get("URL name") or body.get("slug") or body.get("id") or ""
+        ).strip()
+        label = str(
+            body.get("name") or body.get("Name") or body.get("authority_name") or slug
+        ).strip()
+        tags = (
+            body.get("tags")
+            or body.get("Tags")
+            or body.get("tag")
+            or body.get("jurisdiction")
+            or label
+        )
+        candidates = tags if isinstance(tags, list) else str(tags).split()
         if not any(jurisdiction_for_body_tag(str(tag), rules) == "NSW" for tag in candidates):
             continue
         if slug:
