@@ -17,9 +17,7 @@ ROOT = Path(__file__).parents[1]
 def test_fixture_tags_resolve_to_expected_jurisdictions() -> None:
     rules = load_jurisdiction_rules()
     fixtures = json.loads(
-        (ROOT / "tests" / "fixtures" / "au_jurisdiction_tags.json").read_text(
-            encoding="utf-8"
-        )
+        (ROOT / "tests" / "fixtures" / "au_jurisdiction_tags.json").read_text(encoding="utf-8")
     )
 
     assert all(

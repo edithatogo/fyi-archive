@@ -56,7 +56,6 @@ def authority_manifest_for_au(
     return {
         "instance_id": "au-rtk",
         "authorities": [
-            {"name": name, "jurisdiction": authorities[name]}
-            for name in sorted(authorities)
+            {"name": name, "jurisdiction": authorities[name]} for name in sorted(authorities)
         ],
     }
