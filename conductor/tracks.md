@@ -102,7 +102,7 @@ Goal: Body-tag → jurisdiction map; fixtures; authorities with jurisdiction fie
 Depends on: `multi_instance_orchestration_20260709`; fyi-cli body enumeration companion.
 Link: [./tracks/au_jurisdiction_taxonomy_20260709/](./tracks/au_jurisdiction_taxonomy_20260709/)
 
-### [~] Track: AU NSW historical seed
+### [x] Track: AU NSW historical seed
 Track ID: `au_nsw_historical_seed_20260709` — satisfies **R-44, R-21, R-42**
 Goal: NSW-only discover→seed→manifest→capped smoke; isolated paths; rate-limited workflows.
 Depends on: multi-instance, taxonomy, ethics; fyi-cli live AU smoke.
