@@ -1,0 +1,75 @@
+name: AU jurisdiction rollout controller
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Verify ordered controller and national manifest without network capture
+        required: true
+        default: true
+        type: boolean
+      fyi_cli_version:
+        description: fyi-cli version recorded in generated manifests
+        required: true
+        default: "1.1.0"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: au-jurisdiction-rollout
+  cancel-in-progress: false
+
+jobs:
+  controller:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+      - name: Run ordered AU controller smoke
+        if: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          uv run python scripts/run_au_rollout_controller.py \
+            --state data/_state/au-rollout/state.json \
+            --output-dir data/au-rtk/rollout \
+            --fyi-cli-version "${{ inputs.fyi_cli_version }}" \
+            --dry-run
+      - name: Reject unimplemented live mode
+        if: ${{ !inputs.dry_run }}
+        run: |
+          echo "Live jurisdiction capture must be enabled only after a worker adapter is configured." >&2
+          exit 1
+      - name: Verify national manifest
+        if: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path("data/au-rtk/rollout/national_manifest.json").read_text())
+          state = json.loads(Path("data/_state/au-rollout/state.json").read_text())
+          if manifest["meta"]["instance_id"] != "au-rtk":
+              raise SystemExit("national manifest instance guard failed")
+          if manifest["meta"]["record_count"] != 10:
+              raise SystemExit("national manifest jurisdiction count guard failed")
+          if state["national_manifest"]["status"] != "complete":
+              raise SystemExit("controller state did not complete national merge")
+          PY
+      - name: Upload controller evidence
+        if: ${{ inputs.dry_run }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: au-jurisdiction-rollout-controller
+          path: |
+            data/_state/au-rollout
+            data/au-rtk/rollout

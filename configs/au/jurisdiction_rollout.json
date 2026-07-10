@@ -1,0 +1,16 @@
+{
+  "instance_id": "au-rtk",
+  "shared_rate_limit_name": "archive-discovery-au-rtk",
+  "jurisdictions": [
+    "NSW",
+    "VIC",
+    "QLD",
+    "SA",
+    "WA",
+    "TAS",
+    "ACT",
+    "NT",
+    "FEDERAL",
+    "OTHER"
+  ]
+}
