@@ -81,6 +81,7 @@ dev = [
   "pip-audit>=2.9.0",
   "vulture>=2.14",
   "deptry>=0.21",
+  "mutmut>=3.3.0",
 ]
 
 [project.scripts]
@@ -259,7 +260,7 @@ omit = ["*/__pycache__/*", "*/.venv/*", "*/.pixi/*"]
 branch = true
 
 [tool.coverage.report]
-fail_under = 80
+fail_under = 90
 show_missing = true
 exclude_lines = [
   "pragma: no cover",
@@ -282,4 +283,15 @@ markers = [
   "integration: tests that exercise multiple modules or the filesystem",
   "smoke: end-to-end smoke tests (gated, may touch the network)",
   "hypothesis: property-based tests",
+  "e2e: end-to-end workflow tests",
+  "system: system-level CLI and subprocess tests",
+  "mutation: mutation-testing contract tests",
+  "property: property-based invariant tests",
+  "edge: malformed input and boundary tests",
+  "performance: bounded performance tests",
+  "security: security and secret-handling tests",
+  "compatibility: supported Python/runtime compatibility tests",
+  "regression: regression tests for fixed defects",
+  "sanity: fast repository sanity checks",
+  "usability: operator-facing CLI usability tests",
 ]

@@ -1,9 +1,9 @@
 {
   "track_id": "au_nsw_historical_seed_20260709",
   "type": "feature",
-  "status": "pending",
+  "status": "in_progress",
   "created_at": "2026-07-09T00:00:00Z",
-  "updated_at": "2026-07-09T00:00:00Z",
+  "updated_at": "2026-07-10T03:00:00Z",
   "description": "NSW-only discover to seed to manifest to capped smoke; isolated paths; parameterised workflows; default rate limits.",
   "satisfies": ["R-44", "R-21", "R-42"],
   "depends_on": ["multi_instance_orchestration_20260709", "au_jurisdiction_taxonomy_20260709", "au_rtk_ethics_metadata_20260709"]
