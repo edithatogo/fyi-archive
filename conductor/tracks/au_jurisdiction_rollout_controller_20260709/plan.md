@@ -2,16 +2,20 @@
 
 ## Phase 1: Foundations
 
-- [ ] jurisdiction order config
-- [ ] GHA controller + issue state
-- [ ] merge national manifest
-- [ ] shared rate-limit name
+- [x] jurisdiction order config
+- [x] GHA controller + issue state
+- [x] merge national manifest
+- [x] shared rate-limit name
 
 ## Phase 2: Verification
 
-- [ ] Unit/integration tests or dry-run evidence
+- [x] Unit/integration tests or dry-run evidence (workflow run [29096913489](https://github.com/edithatogo/fyi-archive/actions/runs/29096913489), 10 records merged)
 - [ ] Update track metadata status when complete
 - [ ] Close GitHub sub-issues with evidence links
+
+## Remaining blocker
+
+- [ ] Enable live jurisdiction workers after the GitHub-hosted runner can access the AU catalog or fyi-cli issue #155 is implemented.
 
 ## Notes
 

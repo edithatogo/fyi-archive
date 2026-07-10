@@ -108,7 +108,7 @@ Goal: NSW-only discover→seed→manifest→capped smoke; isolated paths; rate-l
 Depends on: multi-instance, taxonomy, ethics; fyi-cli live AU smoke.
 Link: [./tracks/au_nsw_historical_seed_20260709/](./tracks/au_nsw_historical_seed_20260709/)
 
-### [ ] Track: AU jurisdiction rollout controller
+### [~] Track: AU jurisdiction rollout controller
 Track ID: `au_jurisdiction_rollout_controller_20260709` — satisfies **R-45, R-42**
 Goal: Sequential VIC…OTHER after NSW; shared AU limiter; national AU manifest merge.
 Depends on: `au_nsw_historical_seed_20260709`.
