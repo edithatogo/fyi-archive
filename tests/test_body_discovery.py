@@ -97,3 +97,38 @@ def test_fallback_preserves_last_good_until_verified_restore(monkeypatch, tmp_pa
     assert payload["bodies"] == [{"name": "verified"}]
     assert json.loads(output.read_text(encoding="utf-8"))["bodies"] == [{"name": "verified"}]
     assert json.loads(provenance.read_text(encoding="utf-8"))["mode"] == "fallback"
+
+
+def test_live_success_writes_verified_provenance(monkeypatch, tmp_path: Path) -> None:
+    output = tmp_path / "bodies.json"
+    provenance = tmp_path / "bodies.provenance.json"
+
+    def live(**kwargs):
+        kwargs["output_path"].write_text(
+            json.dumps(
+                {
+                    "bodies": [{"name": "live"}],
+                    "provenance": {"payload_sha256": "abc"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        return {"bodies": [{"name": "live"}], "provenance": {"payload_sha256": "abc"}}
+
+    monkeypatch.setattr("fyi_archive.body_discovery.discover_bodies_with_fyi_cli", live)
+    monkeypatch.setattr(
+        "fyi_archive.body_discovery.restore_latest_verified_catalog",
+        lambda **kwargs: pytest.fail("fallback should not run"),
+    )
+    payload = discover_bodies_with_fallback(
+        base_url="https://capture.example",
+        output_path=output,
+        provenance_path=provenance,
+        shared_rate_limit_db=tmp_path / "limiter.db",
+        repository="example/archive",
+        workflow="rollout.yml",
+    )
+
+    assert payload["bodies"] == [{"name": "live"}]
+    assert json.loads(output.read_text(encoding="utf-8"))["bodies"] == [{"name": "live"}]
+    assert json.loads(provenance.read_text(encoding="utf-8"))["mode"] == "live"
