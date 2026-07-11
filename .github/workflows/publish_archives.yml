@@ -138,18 +138,22 @@ jobs:
           set -euo pipefail
           mkdir -p data/_state
           discovered=false
-          for attempt in 1 2 3; do
-            if uv run fyi discover \
-              --backfill-ids \
-              --id-from "$SEED_ID_FROM" \
-              --id-to "$SEED_ID_TO" \
-              --output data/_state/discovered_requests.jsonl; then
-              discovered=true
-              break
-            fi
-            [ "$attempt" = "3" ] && break
-            sleep $((attempt * 20))
-          done
+          if [ "$SEED_DRY_RUN" = "true" ]; then
+            echo "Seed dry-run requested; skipping live request discovery"
+          else
+            for attempt in 1 2 3; do
+              if uv run fyi discover \
+                --backfill-ids \
+                --id-from "$SEED_ID_FROM" \
+                --id-to "$SEED_ID_TO" \
+                --output data/_state/discovered_requests.jsonl; then
+                discovered=true
+                break
+              fi
+              [ "$attempt" = "3" ] && break
+              sleep $((attempt * 20))
+            done
+          fi
           args=(
             --instance "$INSTANCE"
             --max-requests "$SEED_MAX_REQUESTS"
