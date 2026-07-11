@@ -87,7 +87,7 @@ jobs:
             --max-requests "${{ inputs.max_requests }}" \
             --max-runtime-minutes "${{ inputs.max_runtime_minutes }}"
       - name: Retain successful live catalog
-        if: ${{ !inputs.dry_run && hashFiles('data/_state/discovered_bodies.json') != '' }}
+        if: ${{ !inputs.dry_run && hashFiles('data/au-rtk/rollout/discovered_bodies.json') != '' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: catalog-${{ github.run_id }}

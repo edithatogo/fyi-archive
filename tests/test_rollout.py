@@ -39,3 +39,10 @@ def test_rollout_state_is_written_atomically(tmp_path: Path) -> None:
     loaded = json.loads(path.read_text(encoding="utf-8"))
     assert loaded["jurisdictions"]["NSW"]["status"] == "pending"
     assert not path.with_suffix(".json.tmp").exists()
+
+
+def test_rollout_workflow_retains_the_catalog_it_produces() -> None:
+    workflow = Path(".github/workflows/au_jurisdiction_rollout.yml").read_text(encoding="utf-8")
+    assert "data/au-rtk/rollout/discovered_bodies.json" in workflow
+    assert "data/_state/discovered_bodies.json" not in workflow
+    assert "actions: read" in workflow
