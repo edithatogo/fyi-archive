@@ -21,6 +21,7 @@ class ArchiveInstance:
     status: str
     title: str
     source: str
+    catalog_url: str | None = None
     seed_cap: int = 1000
 
     def capture_base_url(self) -> str:
@@ -39,6 +40,7 @@ _INSTANCES: dict[str, ArchiveInstance] = {
         status="supported",
         title="fyi-archive (fyi.org.nz OIA register)",
         source="https://fyi.org.nz/",
+        catalog_url="https://fyi.org.nz/body/all-authorities.csv",
     ),
     "au-rtk": ArchiveInstance(
         id="au-rtk",
@@ -50,6 +52,7 @@ _INSTANCES: dict[str, ArchiveInstance] = {
         status="experimental",
         title="rtk-archive (righttoknow.org.au FOI register)",
         source="https://www.righttoknow.org.au/",
+        catalog_url="https://www.righttoknow.org.au/body/all-authorities.csv",
     ),
     "uk-wdtk": ArchiveInstance(
         id="uk-wdtk",
@@ -61,6 +64,7 @@ _INSTANCES: dict[str, ArchiveInstance] = {
         status="experimental",
         title="wdtk-archive (whatdotheyknow.com FOI register)",
         source="https://www.whatdotheyknow.com/",
+        catalog_url="https://www.whatdotheyknow.com/body/all-authorities.csv",
     ),
     "ie-myrighttoknow": ArchiveInstance(
         id="ie-myrighttoknow",
@@ -72,6 +76,55 @@ _INSTANCES: dict[str, ArchiveInstance] = {
         status="experimental",
         title="mrtk-archive (myrighttoknow.org FOI register)",
         source="https://www.myrighttoknow.org/",
+        catalog_url="https://www.myrighttoknow.org/body/all-authorities.csv",
+    ),
+    "se-handlingar": ArchiveInstance(
+        id="se-handlingar",
+        base_url="https://handlingar.se",
+        country="SE",
+        locale="sv-SE",
+        hf_repo_id="edithatogo/handlingar-archive-se",
+        rate_limit_name="archive-discovery-se-handlingar",
+        status="experimental",
+        title="handlingar.se public-records register",
+        source="https://handlingar.se/",
+        catalog_url="https://handlingar.se/body/all-authorities.csv",
+    ),
+    "ua-dostup": ArchiveInstance(
+        id="ua-dostup",
+        base_url="https://dostup.org.ua",
+        country="UA",
+        locale="uk-UA",
+        hf_repo_id="edithatogo/dostup-archive-ua",
+        rate_limit_name="archive-discovery-ua-dostup",
+        status="experimental",
+        title="Доступ до правди public-records register",
+        source="https://dostup.org.ua/",
+        catalog_url="https://dostup.org.ua/body/all-authorities.csv",
+    ),
+    "uy-quesabes": ArchiveInstance(
+        id="uy-quesabes",
+        base_url="https://quesabes.org",
+        country="UY",
+        locale="es-UY",
+        hf_repo_id="edithatogo/quesabes-archive-uy",
+        rate_limit_name="archive-discovery-uy-quesabes",
+        status="experimental",
+        title="Qué Sabés public-information register",
+        source="https://quesabes.org/",
+        catalog_url="https://quesabes.org/body/all-authorities.csv",
+    ),
+    "ge-askgov": ArchiveInstance(
+        id="ge-askgov",
+        base_url="https://askgov.ge",
+        country="GE",
+        locale="ka-GE",
+        hf_repo_id="edithatogo/askgov-archive-ge",
+        rate_limit_name="archive-discovery-ge-askgov",
+        status="experimental",
+        title="Ask Gov Georgia public-information register",
+        source="https://askgov.ge/",
+        catalog_url="https://askgov.ge/body/all-authorities.csv",
     ),
 }
 
@@ -124,6 +177,7 @@ def resolve_instance(
         status=instance.status,
         title=instance.title,
         source=source,
+        catalog_url=instance.catalog_url,
         seed_cap=instance.seed_cap,
     )
 
