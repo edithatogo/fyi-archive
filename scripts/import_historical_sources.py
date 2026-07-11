@@ -13,6 +13,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--morph-csv", type=Path)
     parser.add_argument("--internet-archive-cdx", type=Path)
+    parser.add_argument("--alaveteli-feed-json", type=Path)
+    parser.add_argument("--alaveteli-atom", type=Path)
+    parser.add_argument("--instance-id")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     inputs = []
@@ -20,6 +23,22 @@ def main() -> int:
         inputs.append(load_historical_source(args.morph_csv, "morph"))
     if args.internet_archive_cdx:
         inputs.append(load_historical_source(args.internet_archive_cdx, "internet_archive_cdx"))
+    if args.alaveteli_feed_json:
+        inputs.append(
+            load_historical_source(
+                args.alaveteli_feed_json,
+                "alaveteli_feed_json",
+                instance_id=args.instance_id,
+            )
+        )
+    if args.alaveteli_atom:
+        inputs.append(
+            load_historical_source(
+                args.alaveteli_atom,
+                "alaveteli_atom",
+                instance_id=args.instance_id,
+            )
+        )
     if not inputs:
         parser.error("provide --morph-csv and/or --internet-archive-cdx")
     args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
+from defusedxml import ElementTree
+
 
 def sha256_file(path: Path) -> str:
     """Return the SHA-256 digest of a local input file."""
@@ -94,12 +96,116 @@ def _cdx_rows(path: Path) -> list[dict[str, Any]]:
     return output
 
 
-def load_historical_source(path: Path, source_kind: str) -> dict[str, Any]:
+def _feed_record(
+    *,
+    source_url: str,
+    source_record_id: str,
+    title: str = "",
+    authority: str = "",
+    state: str = "",
+    observed_at: str = "",
+    instance_id: str | None = None,
+    source: str,
+) -> dict[str, Any]:
+    record: dict[str, Any] = {
+        "source": source,
+        "source_url": source_url,
+        "source_record_id": source_record_id,
+        "title": title,
+        "authority": authority,
+        "state": state,
+        "observed_at": observed_at,
+    }
+    if instance_id:
+        record["instance_id"] = instance_id
+    return record
+
+
+def _feed_rows(path: Path, *, instance_id: str | None, source: str) -> list[dict[str, Any]]:
+    """Normalize an Alaveteli JSON feed or JSONL export."""
+    text = path.read_text(encoding="utf-8-sig")
+    try:
+        payload = json.loads(text)
+        raw_entries = payload.get("entries", payload.get("items", payload.get("requests", [])))
+    except json.JSONDecodeError:
+        raw_entries = [json.loads(line) for line in text.splitlines() if line.strip()]
+    if not isinstance(raw_entries, list):
+        raise ValueError("Alaveteli feed JSON must contain an entries/items/requests list")
+    output = []
+    for entry in raw_entries:
+        if not isinstance(entry, dict):
+            continue
+        link = str(entry.get("url") or entry.get("link") or entry.get("html_url") or "")
+        source_url = _url(link)
+        if not source_url:
+            continue
+        record_id = str(entry.get("id") or entry.get("request_id") or link)
+        authority = entry.get("authority") or entry.get("public_body") or ""
+        if isinstance(authority, dict):
+            authority = authority.get("name") or authority.get("url_name") or ""
+        output.append(
+            _feed_record(
+                source_url=source_url,
+                source_record_id=record_id,
+                title=str(entry.get("title") or entry.get("name") or ""),
+                authority=str(authority),
+                state=str(entry.get("state") or entry.get("status") or ""),
+                observed_at=str(entry.get("updated") or entry.get("created_at") or ""),
+                instance_id=instance_id,
+                source=source,
+            ),
+        )
+    return output
+
+
+def _atom_rows(path: Path, *, instance_id: str | None) -> list[dict[str, Any]]:
+    """Normalize an Atom feed export without contacting its source."""
+    root = ElementTree.fromstring(path.read_text(encoding="utf-8-sig"))
+    output = []
+    for entry in root.iter():
+        if entry.tag.rsplit("}", 1)[-1] != "entry":
+            continue
+        link = next(
+            (
+                str(child.attrib.get("href") or "")
+                for child in entry
+                if child.tag.rsplit("}", 1)[-1] == "link" and child.attrib.get("href")
+            ),
+            "",
+        )
+        source_url = _url(link)
+        if not source_url:
+            continue
+        values = {
+            child.tag.rsplit("}", 1)[-1]: (child.text or "").strip()
+            for child in entry
+            if child.tag.rsplit("}", 1)[-1] in {"id", "title", "updated", "published", "summary"}
+        }
+        output.append(
+            _feed_record(
+                source_url=source_url,
+                source_record_id=values.get("id", link),
+                title=values.get("title", ""),
+                observed_at=values.get("updated") or values.get("published", ""),
+                instance_id=instance_id,
+                source="alaveteli_atom",
+            ),
+        )
+    return output
+
+
+def load_historical_source(
+    path: Path, source_kind: str, *, instance_id: str | None = None
+) -> dict[str, Any]:
     """Load one local historical export and return records plus provenance."""
     if source_kind == "morph":
         records = _morph_rows(path)
     elif source_kind == "internet_archive_cdx":
         records = _cdx_rows(path)
+    elif source_kind == "alaveteli_feed_json":
+        records = _feed_rows(path, instance_id=instance_id, source=source_kind)
+    elif source_kind == "alaveteli_atom":
+        records = _atom_rows(path, instance_id=instance_id)
     else:
         raise ValueError(f"unsupported historical source kind: {source_kind}")
     return {
@@ -108,6 +214,7 @@ def load_historical_source(path: Path, source_kind: str) -> dict[str, Any]:
         "retrieved_at": _retrieved_at(path),
         "sha256": sha256_file(path),
         "record_count": len(records),
+        "instance_id": instance_id,
         "records": records,
     }
 

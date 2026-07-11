@@ -21,3 +21,10 @@ The catalog URL and capture base URL are separate inputs. Catalog discovery is
 read-only and records catalog provenance alongside the site manifest. The
 bounded ID queue is only a safety fallback when request-feed discovery is not
 available; it is never expanded automatically.
+
+For deployments whose live API is unavailable, the monthly `Alaveteli historical
+indexes` workflow queries Internet Archive CDX indexes only. Its artifacts are
+historical evidence and do not imply complete coverage or successful live
+capture. Operator-supplied Atom/JSON exports can be imported with
+`scripts/import_historical_sources.py`; the importer records input checksums,
+instance identity, and source mode.

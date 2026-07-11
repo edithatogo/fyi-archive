@@ -1,0 +1,95 @@
+name: Alaveteli historical indexes
+
+on:
+  schedule:
+    # Monthly refresh from Internet Archive only; no origin-site traffic.
+    - cron: "27 3 1 * *"
+  workflow_dispatch:
+    inputs:
+      cdx_limit:
+        description: Maximum archived request URLs per deployment
+        required: true
+        default: "1000"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alaveteli-historical-indexes
+  cancel-in-progress: false
+
+jobs:
+  index:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - { instance: uk-wdtk, host: www.whatdotheyknow.com }
+          - { instance: eu-asktheeu, host: www.asktheeu.org }
+          - { instance: cz-infoprovsechny, host: www.infoprovsechny.cz }
+          - { instance: fr-madada, host: madada.fr }
+          - { instance: nl-woo-knop, host: www.woo-knop.nl }
+          - { instance: be-transparencia, host: transparencia.be }
+          - { instance: hr-imamopravoznati, host: imamopravoznati.org }
+          - { instance: hu-kimittud, host: kimittud.hu }
+          - { instance: gr-arthro5a, host: www.arthro5a.gr }
+          - { instance: md-vreauinfo, host: www.vreauinfo.md }
+          - { instance: hk-accessinfo, host: accessinfo.hk }
+          - { instance: lr-infolib, host: infolib.org.lr }
+          - { instance: co-queremosdatos, host: www.queremosdatos.co }
+          - { instance: us-opramachine, host: opramachine.com }
+          - { instance: ro-iastatullaintrebari, host: iastatullaintrebari.ro }
+          - { instance: xk-dumedite, host: dumedite.org }
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CDX_LIMIT: ${{ inputs.cdx_limit || '1000' }}
+      INSTANCE: ${{ matrix.instance }}
+      HOST: ${{ matrix.host }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+      - name: Download Internet Archive CDX index
+        run: |
+          set -euo pipefail
+          mkdir -p ".tmp/$INSTANCE"
+          status=success
+          if ! curl --fail-with-body --location --silent --show-error \
+            --retry 1 --retry-delay 30 --max-time 180 \
+            -A "fyi-archive-historical-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
+            --get "https://web.archive.org/cdx/search/cdx" \
+            --data-urlencode "url=$HOST/request/*" \
+            --data-urlencode "output=json" \
+            --data-urlencode "filter=statuscode:200" \
+            --data-urlencode "fl=original,timestamp,digest" \
+            --data-urlencode "collapse=urlkey" \
+            --data-urlencode "limit=$CDX_LIMIT" \
+            --output ".tmp/$INSTANCE/internet_archive_cdx.json"; then
+            status=failed
+            printf '[]\n' > ".tmp/$INSTANCE/internet_archive_cdx.json"
+          fi
+          printf '{"instance_id":"%s","host":"%s","status":"%s"}\n' "$INSTANCE" "$HOST" "$status" \
+            > ".tmp/$INSTANCE/retrieval.json"
+      - name: Build provenance-preserving index
+        run: |
+          set -euo pipefail
+          uv run python scripts/import_historical_sources.py \
+            --internet-archive-cdx ".tmp/$INSTANCE/internet_archive_cdx.json" \
+            --instance-id "$INSTANCE" \
+            --output ".tmp/$INSTANCE/historical-source-index.json"
+      - name: Upload historical evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: alaveteli-historical-${{ matrix.instance }}-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          path: .tmp/${{ matrix.instance }}/

@@ -154,6 +154,12 @@ Goal: Add four verified authority-catalog exports to a sequential, overnight,
 explicitly confirmed archive workflow.
 Link: [./tracks/working_alaveteli_sites_20260711/](./tracks/working_alaveteli_sites_20260711/)
 
+### [~] Track: Alaveteli source modes
+Track ID: `alaveteli_source_modes_20260712`
+Goal: Expand coverage through fyi-cli feeds, offline exports, Internet Archive
+indexes, and future official datasets without increasing origin-site load.
+Link: [./tracks/alaveteli_source_modes_20260712/](./tracks/alaveteli_source_modes_20260712/)
+
 ---
 
 ## Companion capability tracks (in fyi-cli)
