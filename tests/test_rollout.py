@@ -46,3 +46,4 @@ def test_rollout_workflow_retains_the_catalog_it_produces() -> None:
     assert "data/au-rtk/rollout/discovered_bodies.json" in workflow
     assert "data/_state/discovered_bodies.json" not in workflow
     assert "actions: read" in workflow
+    assert "--delay-seconds" not in workflow

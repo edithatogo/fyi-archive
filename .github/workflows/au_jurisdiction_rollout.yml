@@ -23,11 +23,6 @@ on:
         required: true
         default: "30"
         type: string
-      delay_seconds:
-        description: Minimum seconds between requests; keep at or above the gentle default
-        required: true
-        default: "2.0"
-        type: string
       catalog_url:
         description: Optional AU authority catalog URL override
         required: false
@@ -68,7 +63,6 @@ jobs:
             --state data/_state/au-rollout/state.json \
             --output-dir data/au-rtk/rollout \
             --fyi-cli-version "${{ inputs.fyi_cli_version }}" \
-            --delay-seconds "${{ inputs.delay_seconds }}" \
             --dry-run
       - name: Run capped sequential AU live rollout
         if: ${{ !inputs.dry_run }}
