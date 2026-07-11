@@ -1,8 +1,7 @@
 # fyi-archive
 
-> Work in progress toward a **read-only, full-site archive** of a public FOI repository — the New
-> Zealand Official Information Act (OIA) request register (Alaveteli) — into
-> **GitHub**, **Hugging Face**, **Zenodo**, and **OSF**.
+> Work in progress toward a **read-only, full-site archive** of a configurable public
+> information repository into **GitHub**, **Hugging Face**, **Zenodo**, and **OSF**.
 
 [![CI](https://github.com/edithatogo/fyi-archive/actions/workflows/tests.yml/badge.svg)](https://github.com/edithatogo/fyi-archive/actions/workflows/tests.yml)
 [![Quality](https://github.com/edithatogo/fyi-archive/actions/workflows/code_quality.yml/badge.svg)](https://github.com/edithatogo/fyi-archive/actions/workflows/code_quality.yml)
@@ -12,7 +11,7 @@
 
 ```mermaid
 flowchart LR
-  A["foi-repository<br/>(Alaveteli, read-only)"] -->|public endpoints| B["fyi-cli<br/>enumeration + WARC/WACZ capture"]
+  A["Configured public repository<br/>(read-only)"] -->|public endpoints| B["fyi-cli<br/>enumeration + WARC/WACZ capture"]
   B -->|drives| C["fyi-archive<br/>orchestration + manifests"]
   C --> D["Hugging Face<br/>(live, revised)"]
   C --> E["Zenodo<br/>(annual DOI snapshot)"]
@@ -24,7 +23,7 @@ flowchart LR
 
 | repo | role |
 | --- | --- |
-| [`fyi-cli`](https://github.com/edithatogo/fyi-cli) | **Capture tool.** Owns all network access: full-site enumeration, faithful WARC/WACZ capture (request JSON, rendered HTML, attachments), content-addressed dedup, archival content diff, archive health. |
+| [`fyi-cli`](https://github.com/edithatogo/fyi-cli) | **Capture tool.** Owns all network access: full-site enumeration, faithful WARC/WACZ capture, content-addressed dedup, archival content diff, and archive health. |
 | **`fyi-archive`** (this repo) | **Orchestration + distribution.** Thin consumer of `fyi-cli` commands. Planned scope includes historical seed, daily sync, multi-mirror publish, mirror adapters (HF/Zenodo/OSF), metadata (Croissant/Frictionless), DuckDB export, versioning/releases, and provenance. Contains **no** fetching/archiving logic. |
 
 ## Initial phase — read-only storage
@@ -61,15 +60,15 @@ fyi-archive/
 
 | source | status | capture |
 | --- | --- | --- |
-| `foi-repository` requests | target | JSON + HTML + attachments → WARC/WACZ (via `fyi-cli`) |
-| `foi-repository` authorities (bodies) | target | bodies spreadsheet → `manifests/authorities.json` |
-| `foi-repository` search feeds | target | advanced-search Atom/JSON feeds for enumeration |
+| Configured repository requests | target | JSON + HTML + attachments → WARC/WACZ (via `fyi-cli`) |
+| Configured authority catalog | target | bodies catalog → `manifests/authorities.json` |
+| Configured search feeds | target | Atom/JSON feeds for enumeration |
 
 ## Distribution channels
 
 | channel | role | cadence |
 | --- | --- | --- |
-| **Hugging Face** (`edithatogo/fyi-archive-nz`) | live, content-revised dataset | daily sync + monthly publish |
+| **Hugging Face** (configured dataset repository) | live, content-revised dataset | daily sync + monthly publish |
 | **Zenodo** | DOI snapshot, draft-first and gated | manual/annual DOI snapshot; monthly draft verification available |
 | **OSF** | project + components mirror | optional monthly publish |
 | **GitHub Releases** | code releases via release-please with SBOM/provenance | per release |
@@ -113,9 +112,9 @@ GIT_MIRROR_SSH_PRIVATE_KEY  # if secondary mirror enabled
 ## Repository variables
 
 ```env
-HF_REPO_ID            = edithatogo/fyi-archive-nz
-FYI_ARCHIVE_BASE_URL  = <foi-repository-base-url>
-ARCHIVE_TITLE         = fyi-archive (FOI repository register)
+HF_REPO_ID            = <configured-dataset-repository>
+FYI_ARCHIVE_BASE_URL  = <configured-repository-base-url>
+ARCHIVE_TITLE         = <configured archive title>
 ARCHIVE_LICENSE       = MIT
 ```
 
@@ -151,7 +150,7 @@ Read-only capture only. Rate-limited, `robots.txt`-aware, contactable `User-Agen
 See [`docs/ethics-and-compliance.md`](docs/ethics-and-compliance.md) and
 [`NOTICE.md`](NOTICE.md).
 
-**This archive is not collected for AI training or LLM development.** It is a
+**This project is not collected for AI training or LLM development.** It is a
 non-commercial research project for preserving public information and supporting
 transparency. Each instance defaults to a deliberately slow pace (two seconds
 between requests, one concurrent) to minimise impact on source sites.
@@ -166,7 +165,4 @@ this project preserves it for research and transparency only.
 | repo | description |
 | --- | --- |
 | [`fyi-cli`](https://github.com/edithatogo/fyi-cli) | Capture tool (enumeration + WARC/WACZ) |
-| [`corpus-law-nz`](https://github.com/edithatogo/corpus-legislation-nz) | NZ legislation corpus |
-| [`corpus-nz-hansard`](https://github.com/edithatogo/corpus-nz-hansard) | NZ Hansard corpus |
-| [`hathi-nz`](https://github.com/edithatogo/hathi-nz) | HathiTrust NZ corpus |
-| [`sm-govt-nz`](https://github.com/edithatogo/sm-govt-nz) | NZ govt social-media archive |
+| Companion corpora and research repositories | Related preservation and analysis projects |
