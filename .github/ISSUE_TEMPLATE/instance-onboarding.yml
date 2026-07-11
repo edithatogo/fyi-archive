@@ -1,0 +1,60 @@
+name: New Alaveteli instance onboarding
+description: Propose an isolated, read-only, gentle onboarding pilot
+title: "Onboard instance: "
+labels:
+  - multi-jurisdiction
+  - track
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This form starts an evidence-gated pilot. It does not authorize live crawling.
+        Complete source-contact, robots, privacy, and rate-limit review before any
+        non-dry-run workflow.
+  - type: input
+    id: instance_id
+    attributes:
+      label: Instance ID
+      description: Lowercase stable ID used for paths, manifests, and limiter state.
+      placeholder: uk-wdtk
+    validations:
+      required: true
+  - type: input
+    id: base_url
+    attributes:
+      label: Capture base URL
+      placeholder: https://www.example.org
+    validations:
+      required: true
+  - type: input
+    id: catalog_url
+    attributes:
+      label: Catalog URL override
+      description: Optional exact authority catalog URL; leave blank for the instance default.
+  - type: input
+    id: locale
+    attributes:
+      label: Locale and languages
+      placeholder: en-GB; English
+    validations:
+      required: true
+  - type: textarea
+    id: source_contact
+    attributes:
+      label: Source contact and policy evidence
+      description: Provide the operator contact, robots/API/terms links, and any guidance.
+    validations:
+      required: true
+  - type: checkboxes
+    id: gates
+    attributes:
+      label: Pilot gates
+      options:
+        - label: I have reviewed robots, rate limits, and access requirements.
+          required: true
+        - label: I have documented privacy, retention, residency, and takedown considerations.
+          required: true
+        - label: I will use the gentle defaults (two seconds between requests, one worker).
+          required: true
+        - label: I will not claim full coverage from a capped or fallback run.
+          required: true
