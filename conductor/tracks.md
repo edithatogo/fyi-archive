@@ -114,7 +114,7 @@ Goal: Sequential VIC…OTHER after NSW; shared AU limiter; national AU manifest 
 Depends on: `au_nsw_historical_seed_20260709`.
 Link: [./tracks/au_jurisdiction_rollout_controller_20260709/](./tracks/au_jurisdiction_rollout_controller_20260709/)
 
-### [~] Track: Multi-instance publish
+### [x] Track: Multi-instance publish
 Track ID: `multi_instance_publish_20260709` — satisfies **R-46, R-22**
 Goal: Separate HF/Zenodo/OSF identity for `au-rtk`; draft-first; never mix into NZ dataset.
 Depends on: multi-instance + NSW seed.

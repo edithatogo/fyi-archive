@@ -1,9 +1,9 @@
 {
   "track_id": "multi_instance_publish_20260709",
   "type": "feature",
-  "status": "in_progress",
+  "status": "complete",
   "created_at": "2026-07-09T00:00:00Z",
-  "updated_at": "2026-07-11T00:00:00Z",
+  "updated_at": "2026-07-11T08:00:00Z",
   "description": "HF/Zenodo/OSF identity for au-rtk; draft-first; verification under AU paths; never write AU into NZ dataset.",
   "satisfies": ["R-46", "R-22"],
   "depends_on": ["multi_instance_orchestration_20260709", "au_nsw_historical_seed_20260709"]
