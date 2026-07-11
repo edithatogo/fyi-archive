@@ -9,8 +9,13 @@
 ## Phase 2: Verification
 
 - [x] Documentation and repository-quality evidence
-- [ ] Update track metadata status when complete
-- [ ] Close GitHub sub-issues with evidence links
+- [x] Update track metadata status when complete
+- [x] Close GitHub sub-issues with evidence links
+
+## Evidence
+
+- Locale/privacy onboarding template, configuration example, and pilot gates are present in the repository; repository-quality CI validates the documentation.
+- Live onboarding remains an operator/source-contact and jurisdictional-review gate for any future instance.
 
 ## Notes
 
