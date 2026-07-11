@@ -9,8 +9,8 @@
 ## Phase 2: Verification
 
 - [x] Unit/integration tests or dry-run evidence
-- [ ] Update track metadata status when complete
-- [ ] Close GitHub sub-issues with evidence links
+- [x] Update track metadata status when complete
+- [x] Close GitHub sub-issues with evidence links
 
 ## Notes
 

@@ -17,6 +17,11 @@ on:
         description: Optional jurisdiction scope (for example NSW)
         required: false
         type: string
+      manifest_path:
+        description: Manifest path to inspect when a local manifest is available
+        required: true
+        default: manifests/latest_manifest.json
+        type: string
 
 permissions:
   contents: read
@@ -41,13 +46,26 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev --frozen
 
+      - name: Resolve instance mirror identity
+        env:
+          INSTANCE: ${{ inputs.instance || 'nz-fyi' }}
+          HF_REPO_ID_OVERRIDE: ${{ vars.HF_REPO_ID }}
+        run: |
+          set -euo pipefail
+          repo_id="$HF_REPO_ID_OVERRIDE"
+          if [ -z "$repo_id" ]; then
+            repo_id="$(uv run python -c 'from fyi_archive.instances import get_instance; import os; print(get_instance(os.environ["INSTANCE"]).hf_repo_id)')"
+          fi
+          echo "HF_REPO_ID=$repo_id" >> "$GITHUB_ENV"
+          echo "Inspecting instance $INSTANCE mirror $repo_id"
+
       - name: Run health check
         id: health
         env:
           # Live credentials — doctor queries mirrors when these are set.
           # Do not force RECORD_COUNT=0 here; that previously hid real HF data.
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_REPO_ID: ${{ vars.HF_REPO_ID }}
+          HF_REPO_ID_OVERRIDE: ${{ vars.HF_REPO_ID }}
           ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
           ZENODO_DEPOSITION_ID: ${{ vars.ZENODO_DEPOSITION_ID }}
           OSF_TOKEN: ${{ secrets.OSF_TOKEN }}
@@ -64,10 +82,11 @@ jobs:
           DOCTOR_TOLERANCE: ${{ vars.DOCTOR_TOLERANCE || '50' }}
           DOCTOR_INSTANCE: ${{ inputs.instance || 'nz-fyi' }}
           DOCTOR_JURISDICTION: ${{ inputs.jurisdiction || '' }}
+          DOCTOR_MANIFEST_PATH: ${{ inputs.manifest_path || 'manifests/latest_manifest.json' }}
         run: |
           set -euo pipefail
           # Larger default skew while OSF may lag HF/Zenodo draft.
-          args=(--tolerance "${DOCTOR_TOLERANCE:-50}" --instance "$DOCTOR_INSTANCE")
+          args=(--tolerance "${DOCTOR_TOLERANCE:-50}" --instance "$DOCTOR_INSTANCE" --manifest-path "$DOCTOR_MANIFEST_PATH")
           if [ -n "$DOCTOR_JURISDICTION" ]; then args+=(--jurisdiction "$DOCTOR_JURISDICTION"); fi
           uv run fyi-archive doctor check "${args[@]}"
           cp conductor/archive_health.json health.json
@@ -78,5 +97,5 @@ jobs:
       - name: Upload health report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: archive-health
+          name: archive-health-${{ inputs.instance || 'nz-fyi' }}-${{ inputs.jurisdiction || 'all' }}
           path: health.json

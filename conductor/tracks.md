@@ -120,7 +120,7 @@ Goal: Separate HF/Zenodo/OSF identity for `au-rtk`; draft-first; never mix into 
 Depends on: multi-instance + NSW seed.
 Link: [./tracks/multi_instance_publish_20260709/](./tracks/multi_instance_publish_20260709/)
 
-### [~] Track: Multi-instance observability
+### [x] Track: Multi-instance observability
 Track ID: `multi_instance_observability_20260709` — satisfies **R-48**
 Goal: Doctor/coverage/horizon per instance and jurisdiction.
 Depends on: multi-instance + multi-instance publish.
