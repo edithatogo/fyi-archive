@@ -603,7 +603,30 @@ jobs:
             --osf-token "$OSF_TOKEN" \
             --report-path dist/mirror_verification.json
 
+      - name: Build deterministic dry-run verification report
+        if: env.DRY_RUN == 'true'
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload = {
+              "dry_run": True,
+              "comparison": {
+                  "fully_verified": False,
+                  "reason": "remote mirror verification is skipped in dry-run mode",
+              },
+              "remote_reads": False,
+              "remote_writes": False,
+          }
+          output = Path("dist/backfill_verification.json")
+          output.parent.mkdir(parents=True, exist_ok=True)
+          output.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+
       - name: Build backfill verification report
+        if: env.DRY_RUN != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           GITHUB_REPOSITORY: ${{ github.repository }}
