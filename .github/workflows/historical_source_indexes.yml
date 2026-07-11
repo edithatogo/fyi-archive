@@ -1,0 +1,99 @@
+name: Historical source indexes
+
+on:
+  schedule:
+    # Weekly, low-frequency refresh of third-party historical indexes.
+    - cron: "17 18 * * 0"
+  workflow_dispatch:
+    inputs:
+      cdx_limit:
+        description: Maximum distinct Internet Archive URLs to request
+        required: true
+        default: "5000"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: historical-source-indexes
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      CDX_LIMIT: ${{ inputs.cdx_limit || '5000' }}
+      MORPH_API_KEY: ${{ secrets.MORPH_API_KEY }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+      - name: Download Morph historical export
+        run: |
+          set -euo pipefail
+          if [ -z "${MORPH_API_KEY:-}" ]; then
+            echo "MORPH_API_KEY repository secret is required for the public Morph API" >&2
+            exit 1
+          fi
+          mkdir -p .tmp/historical-source-inputs
+          curl --fail-with-body --location --silent --show-error \
+            --retry 1 --retry-delay 60 --max-time 180 \
+            -A "fyi-archive-historical-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
+            "https://api.morph.io/openaustralia/right_to_know_requests/data.csv?key=${MORPH_API_KEY}&query=SELECT%20*%20FROM%20%22right_to_know_requests%22" \
+            --output .tmp/historical-source-inputs/morph.csv
+          test -s .tmp/historical-source-inputs/morph.csv
+      - name: Download Internet Archive CDX index
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/historical-source-inputs
+          curl --fail-with-body --location --silent --show-error \
+            --retry 1 --retry-delay 60 --max-time 300 \
+            -A "fyi-archive-historical-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
+            --get "https://web.archive.org/cdx/search/cdx" \
+            --data-urlencode "url=www.righttoknow.org.au/request/*" \
+            --data-urlencode "output=json" \
+            --data-urlencode "filter=statuscode:200" \
+            --data-urlencode "fl=original,timestamp,digest" \
+            --data-urlencode "collapse=urlkey" \
+            --data-urlencode "limit=${CDX_LIMIT}" \
+            --output .tmp/historical-source-inputs/internet_archive_cdx.json
+          test -s .tmp/historical-source-inputs/internet_archive_cdx.json
+      - name: Build provenance-preserving historical index
+        run: |
+          set -euo pipefail
+          uv run python scripts/import_historical_sources.py \
+            --morph-csv .tmp/historical-source-inputs/morph.csv \
+            --internet-archive-cdx .tmp/historical-source-inputs/internet_archive_cdx.json \
+            --output .tmp/historical-source-index.json
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path(".tmp/historical-source-index.json")
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          if payload.get("schema") != "historical-source-index-v1":
+              raise SystemExit("historical source schema guard failed")
+          if not payload.get("inputs") or not payload.get("records"):
+              raise SystemExit("historical source index is empty or missing provenance")
+          print(f"historical records={payload['record_count']}")
+          PY
+      - name: Retain historical source evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: historical-source-index-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          path: |
+            .tmp/historical-source-inputs/morph.csv
+            .tmp/historical-source-inputs/internet_archive_cdx.json
+            .tmp/historical-source-index.json
