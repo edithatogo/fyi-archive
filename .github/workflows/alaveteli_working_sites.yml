@@ -95,10 +95,17 @@ jobs:
         run: |
           set -euo pipefail
           test "$LIVE_CONFIRMATION" = "RUN_LIVE_ALAVETELI_CAPTURE"
-          hour="$(date -u +%H)"
+          case "$INSTANCE" in
+            se-handlingar) tz="Europe/Stockholm" ;;
+            ua-dostup) tz="Europe/Kyiv" ;;
+            uy-quesabes) tz="America/Montevideo" ;;
+            ge-askgov) tz="Asia/Tbilisi" ;;
+            *) echo "No local timezone configured for $INSTANCE"; exit 1 ;;
+          esac
+          hour="$(TZ="$tz" date +%H)"
           case "$hour" in
             21|22|23|00|01|02|03|04|05) ;;
-            *) echo "Live capture is restricted to overnight UTC hours; current hour=$hour"; exit 1 ;;
+            *) echo "Live capture is restricted to overnight hours in $tz; current local hour=$hour"; exit 1 ;;
           esac
       - name: Discover authority catalog
         if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' }}
