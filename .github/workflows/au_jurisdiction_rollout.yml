@@ -31,6 +31,11 @@ on:
         description: Optional AU capture base URL override
         required: false
         type: string
+      confirm_live:
+        description: Required only for live capture; enter RUN_LIVE_AU_CAPTURE
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -42,6 +47,7 @@ concurrency:
 jobs:
   controller:
     runs-on: ubuntu-latest
+    environment: au-live-capture
     permissions:
       contents: read
       actions: read
@@ -66,8 +72,14 @@ jobs:
             --dry-run
       - name: Run capped sequential AU live rollout
         if: ${{ !inputs.dry_run }}
+        env:
+          CONFIRM_LIVE: ${{ inputs.confirm_live }}
         run: |
           set -euo pipefail
+          if [ "$CONFIRM_LIVE" != "RUN_LIVE_AU_CAPTURE" ]; then
+            echo "Live AU capture requires confirm_live=RUN_LIVE_AU_CAPTURE" >&2
+            exit 1
+          fi
           uv run python scripts/run_au_live_rollout.py \
             --config configs/au/jurisdiction_rollout.json \
             --state data/_state/au-rollout/state.json \
