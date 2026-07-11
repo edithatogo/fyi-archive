@@ -2,13 +2,13 @@
 
 ## Phase 1: Foundations
 
-- [ ] onboarding checklist
-- [ ] rate-limit/ethics template
-- [ ] issue form template
+- [x] onboarding checklist
+- [x] rate-limit/ethics template
+- [x] issue form template
 
 ## Phase 2: Verification
 
-- [ ] Unit/integration tests or dry-run evidence
+- [x] Documentation and repository-quality evidence
 - [ ] Update track metadata status when complete
 - [ ] Close GitHub sub-issues with evidence links
 

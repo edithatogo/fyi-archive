@@ -1,9 +1,9 @@
 {
   "track_id": "english_alaveteli_archive_template_20260709",
   "type": "docs",
-  "status": "pending",
+  "status": "in_progress",
   "created_at": "2026-07-09T00:00:00Z",
-  "updated_at": "2026-07-09T00:00:00Z",
+  "updated_at": "2026-07-11T00:00:00Z",
   "description": "Reusable instance onboarding checklist post-AU; first candidate uk-wdtk.",
   "satisfies": ["R-49"],
   "depends_on": ["au_jurisdiction_rollout_controller_20260709"]
