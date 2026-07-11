@@ -2,8 +2,8 @@ name: Alaveteli working sites
 
 on:
   schedule:
-    # 01:00 UTC is overnight across SE, UA, GE, and UY.
-    - cron: "0 1 * * 0"
+    # 01:00 UTC is overnight across SE, UA, GE, and UY; five requests/site.
+    - cron: "0 1 * * *"
   workflow_dispatch:
     inputs:
       instance:
@@ -68,12 +68,12 @@ jobs:
     timeout-minutes: 45
     env:
       INSTANCE: ${{ matrix.instance }}
-      DRY_RUN: ${{ github.event_name == 'schedule' && 'true' || inputs.dry_run }}
+      DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || inputs.dry_run }}
       ID_FROM: ${{ github.event_name == 'schedule' && '1' || inputs.id_from }}
       ID_TO: ${{ github.event_name == 'schedule' && '5' || inputs.id_to }}
       MAX_REQUESTS: ${{ github.event_name == 'schedule' && '5' || inputs.max_requests }}
       MIN_INTERVAL: ${{ github.event_name == 'schedule' && '60' || inputs.min_interval }}
-      LIVE_CONFIRMATION: ${{ inputs.live_confirmation }}
+      LIVE_CONFIRMATION: ${{ github.event_name == 'schedule' && 'RUN_LIVE_ALAVETELI_CAPTURE' || inputs.live_confirmation }}
       CATALOG_URL_OVERRIDE: ${{ inputs.catalog_url }}
       CAPTURE_BASE_URL_OVERRIDE: ${{ inputs.capture_base_url }}
     steps:
