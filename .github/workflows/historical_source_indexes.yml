@@ -49,7 +49,7 @@ jobs:
           curl --fail-with-body --location --silent --show-error \
             --retry 1 --retry-delay 60 --max-time 180 \
             -A "fyi-archive-historical-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
-            "https://api.morph.io/openaustralia/right_to_know_requests/data.csv?key=${MORPH_API_KEY}&query=SELECT%20*%20FROM%20%22right_to_know_requests%22" \
+            "https://api.morph.io/openaustralia/right_to_know_requests/data.csv?key=${MORPH_API_KEY}&query=SELECT%20*%20FROM%20data" \
             --output .tmp/historical-source-inputs/morph.csv
           test -s .tmp/historical-source-inputs/morph.csv
       - name: Download Internet Archive CDX index
