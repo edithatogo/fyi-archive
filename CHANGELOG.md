@@ -5,6 +5,48 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.8.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.7.0...fyi_archive-v0.8.0) (2026-07-11)
+
+
+### Features
+
+* add provenance-preserving AU catalog fallback ([#114](https://github.com/edithatogo/fyi-archive/issues/114)) ([a5489ec](https://github.com/edithatogo/fyi-archive/commit/a5489ec303c956ca5ce37a22b38e11ef0794d184))
+* **au:** add jurisdiction rollout controller ([70da7b7](https://github.com/edithatogo/fyi-archive/commit/70da7b7e556c0077160de97e2d3488a0539ea7ea))
+* **au:** add jurisdiction rollout controller ([723659a](https://github.com/edithatogo/fyi-archive/commit/723659afca3b59088336f21f56928bff52917075))
+* **au:** add NSW historical seed workflow and test harness ([b128ebe](https://github.com/edithatogo/fyi-archive/commit/b128ebe64a6cd4a562ecc8b6107329bb5de3a3e1))
+* automate instance-scoped publication and project sync ([#116](https://github.com/edithatogo/fyi-archive/issues/116)) ([eb24516](https://github.com/edithatogo/fyi-archive/commit/eb2451687c476811a7cc625bc6ce40cdb4b0f213))
+
+
+### Bug Fixes
+
+* align AU controller dry run with CLI ([#121](https://github.com/edithatogo/fyi-archive/issues/121)) ([e954662](https://github.com/edithatogo/fyi-archive/commit/e954662930a3fa5e3b97514c0d279810fc1a4898))
+* **au:** harden body discovery and NSW CSV parsing ([8ffd3fd](https://github.com/edithatogo/fyi-archive/commit/8ffd3fdd5ebcb421ed17d7d9e140b687bdc0ceb3))
+* **au:** harden body discovery and NSW CSV parsing ([5d83629](https://github.com/edithatogo/fyi-archive/commit/5d83629fef87980531705cb0780f154786cb710d))
+* **au:** normalize NSW authority queue keys ([453d08f](https://github.com/edithatogo/fyi-archive/commit/453d08fc4fc8dc483af0c1476bc29f14408021bb))
+* **au:** normalize NSW authority queue keys ([114454b](https://github.com/edithatogo/fyi-archive/commit/114454b89bfd27a5d713bb203c71fbacc3f73e87))
+* generalize readme and retain live catalogs ([#120](https://github.com/edithatogo/fyi-archive/issues/120)) ([ff2a8b2](https://github.com/edithatogo/fyi-archive/commit/ff2a8b2346e3203896b8abed7cfa722b6734b6c3))
+* keep publication dry runs offline ([#123](https://github.com/edithatogo/fyi-archive/issues/123)) ([86bde5e](https://github.com/edithatogo/fyi-archive/commit/86bde5e5a83be7e3ea4adf96a4173da7ed8795e8))
+* make publication dry runs network independent ([#122](https://github.com/edithatogo/fyi-archive/issues/122)) ([111f1ac](https://github.com/edithatogo/fyi-archive/commit/111f1aca32266d34aaa87e7ecbc5326c3a807ca9))
+* require explicit confirmation for AU live capture ([#125](https://github.com/edithatogo/fyi-archive/issues/125)) ([ff5be8a](https://github.com/edithatogo/fyi-archive/commit/ff5be8a5307151551affe289d7e063da3e9e861a))
+* scope health monitoring by archive instance ([#118](https://github.com/edithatogo/fyi-archive/issues/118)) ([7d19522](https://github.com/edithatogo/fyi-archive/commit/7d1952283f9bac39a05489a98eb913da5d88fc22))
+* **workflow:** create NSW seed output directory ([bc48c5b](https://github.com/edithatogo/fyi-archive/commit/bc48c5b46e483288b731c5f19aaa106b1398d94b))
+* **workflow:** create NSW seed output directory ([ace4eb7](https://github.com/edithatogo/fyi-archive/commit/ace4eb7f4643d59f6652e908c5719a1f04b2d728))
+* **workflow:** match seed CLI options ([14eced1](https://github.com/edithatogo/fyi-archive/commit/14eced1dc8baf9d65589e1985b92aa2e81d8df4d))
+* **workflow:** match seed CLI options ([8163866](https://github.com/edithatogo/fyi-archive/commit/8163866b9024c9e7e9c56eac89d3b1f1ac35d29c))
+* **workflow:** use explicit NSW queue guard ([1496f60](https://github.com/edithatogo/fyi-archive/commit/1496f60a136bf1574e884061042b0160563e2d1e))
+* **workflow:** use explicit NSW queue guard ([2f3ae1a](https://github.com/edithatogo/fyi-archive/commit/2f3ae1a5c188641180fafbcd177ba586388c03c4))
+
+
+### Documentation
+
+* add safe global instance onboarding templates ([#117](https://github.com/edithatogo/fyi-archive/issues/117)) ([49a290c](https://github.com/edithatogo/fyi-archive/commit/49a290c14784998c0db6f951cd69d9251096193d))
+* **conductor:** complete AU NSW seed track ([2e2d0e7](https://github.com/edithatogo/fyi-archive/commit/2e2d0e7e591b8746cc4eec6e9a49c084d651d6eb))
+* **conductor:** complete AU NSW seed track ([f088ecc](https://github.com/edithatogo/fyi-archive/commit/f088eccec60470085dc0cf658b7b75bf5cad6aa0))
+* **conductor:** record AU rollout controller progress ([91fb5df](https://github.com/edithatogo/fyi-archive/commit/91fb5dfd5ffb096d91ca6140337a32cdaf02c5b4))
+* **conductor:** record AU rollout controller progress ([6469f0b](https://github.com/edithatogo/fyi-archive/commit/6469f0ba17d7671e634c907f8bd78532f1194945))
+* record owner branch protection exception ([#127](https://github.com/edithatogo/fyi-archive/issues/127)) ([1258bab](https://github.com/edithatogo/fyi-archive/commit/1258bab05f187cc4038cb4dc2499e6dc4c295064))
+* sync completed conductor acceptance checklists ([#119](https://github.com/edithatogo/fyi-archive/issues/119)) ([64eda80](https://github.com/edithatogo/fyi-archive/commit/64eda80386b973b1be8f5e7368ce357860a967f0))
+
 ## [0.7.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.6.0...fyi_archive-v0.7.0) (2026-07-10)
 
 
