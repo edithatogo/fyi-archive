@@ -36,3 +36,13 @@ contains no network-fetching logic of its own; all capture is delegated to
 - CodeQL and Scorecard workflows finish with the org shared
   `code-scanning-gate` action (pinned to a commit SHA on `edithatogo/.github`)
   so open **high** / **critical** code-scanning alerts fail the job.
+
+## Branch protection exception
+
+The `main-protection` repository ruleset requires one approval, CODEOWNERS
+review, resolved review threads, and passing `python-quality`,
+`repository-quality`, and `CodeQL` checks. The repository owner is the sole
+pull-request bypass actor for urgent maintenance. This deliberate exception
+means Scorecard cannot award its maximal branch-protection score; it is tracked
+as an accepted operational risk, while automated checks and non-fast-forward /
+deletion protections remain enforced.
