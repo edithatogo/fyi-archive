@@ -66,6 +66,11 @@ on:
         required: true
         default: false
         type: boolean
+      instance:
+        description: Archive instance to publish
+        required: true
+        default: nz-fyi
+        type: string
 
 permissions:
   attestations: write
@@ -94,6 +99,8 @@ jobs:
       CONSOLIDATE_BACKFILL_ARTIFACTS: ${{ inputs.consolidate_backfill_artifacts || false }}
       BACKFILL_MERGE_RUN_LIMIT: ${{ inputs.backfill_merge_run_limit || '500' }}
       ZENODO_CONFIRM: ${{ inputs.confirm || '' }}
+      INSTANCE: ${{ inputs.instance || 'nz-fyi' }}
+      HF_REPO_ID_OVERRIDE: ${{ vars.HF_REPO_ID }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -107,6 +114,20 @@ jobs:
         run: |
           set -euo pipefail
           uv sync --extra dev --frozen
+
+      - name: Resolve instance publication identity
+        run: |
+          set -euo pipefail
+          repo_id="$HF_REPO_ID_OVERRIDE"
+          if [ -z "$repo_id" ]; then
+            repo_id="$(uv run python -c 'from fyi_archive.instances import get_instance; import os; print(get_instance(os.environ["INSTANCE"]).hf_repo_id)')"
+          fi
+          if [ -z "$repo_id" ]; then
+            echo "No Hugging Face repository is configured for $INSTANCE" >&2
+            exit 1
+          fi
+          echo "HF_REPO_ID=$repo_id" >> "$GITHUB_ENV"
+          echo "Publishing instance $INSTANCE to $repo_id"
 
       - name: Build capped seed bundle
         if: env.SEED_BEFORE_PUBLISH == 'true'
@@ -130,6 +151,7 @@ jobs:
             sleep $((attempt * 20))
           done
           args=(
+            --instance "$INSTANCE"
             --max-requests "$SEED_MAX_REQUESTS"
             --max-runtime-minutes 30
             --max-disk-gb 5
@@ -150,6 +172,7 @@ jobs:
           fi
           uv run fyi-archive seed run "${args[@]}"
           uv run fyi-archive manifest build \
+            --instance "$INSTANCE" \
             --derived-dir "$manifest_derived_dir" \
             --fyi-cli-version 1.2.0
           uv run python -m json.tool manifests/latest_manifest.json > /dev/null
@@ -298,7 +321,6 @@ jobs:
       - name: Publish Hugging Face dataset
         if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
-          HF_REPO_ID: ${{ vars.HF_REPO_ID }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           set -euo pipefail
@@ -381,7 +403,6 @@ jobs:
       - name: Verify Hugging Face mirror
         if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'huggingface' || env.PUBLICATION_TARGET == 'all' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
-          HF_REPO_ID: ${{ vars.HF_REPO_ID }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           set -euo pipefail

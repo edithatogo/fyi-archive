@@ -2,14 +2,14 @@
 
 ## Phase 1: Foundations
 
-- [ ] per-instance HF repo config
-- [ ] draft-first AU publish
-- [ ] mirror verification evidence
-- [ ] dataset card AU
+- [x] per-instance HF repo config resolved from the instance registry, with explicit override support
+- [x] draft-first AU publish workflow scope and instance guard
+- [x] mirror verification evidence path retained by the publication workflow
+- [x] dataset card AU exists and remains isolated from NZ publication paths
 
 ## Phase 2: Verification
 
-- [ ] Unit/integration tests or dry-run evidence
+- [x] Unit/integration tests or dry-run evidence
 - [ ] Update track metadata status when complete
 - [ ] Close GitHub sub-issues with evidence links
 

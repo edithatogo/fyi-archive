@@ -10,6 +10,11 @@ on:
         required: true
         default: false
         type: boolean
+      instance:
+        description: Archive instance to sync
+        required: true
+        default: nz-fyi
+        type: string
 
 permissions:
   contents: read
@@ -35,15 +40,29 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev --frozen
 
+      - name: Resolve instance publication identity
+        env:
+          INSTANCE: ${{ inputs.instance || 'nz-fyi' }}
+          HF_REPO_ID_OVERRIDE: ${{ vars.HF_REPO_ID }}
+        run: |
+          set -euo pipefail
+          repo_id="$HF_REPO_ID_OVERRIDE"
+          if [ -z "$repo_id" ]; then
+            repo_id="$(uv run python -c 'from fyi_archive.instances import get_instance; import os; print(get_instance(os.environ["INSTANCE"]).hf_repo_id)')"
+          fi
+          echo "HF_REPO_ID=$repo_id" >> "$GITHUB_ENV"
+          echo "Syncing instance $INSTANCE to $repo_id"
+
       - name: Run prospective sync
         env:
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
-          HF_REPO_ID: ${{ vars.HF_REPO_ID || 'edithatogo/fyi-archive-nz' }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          INSTANCE: ${{ inputs.instance || 'nz-fyi' }}
         run: |
           set -euo pipefail
           args=(
             --hf-repo-id "$HF_REPO_ID"
+            --instance "$INSTANCE"
             --fyi-cli-version 1.2.0
             --health-path conductor/archive_health.json
           )
