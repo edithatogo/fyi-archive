@@ -108,7 +108,7 @@ Goal: NSW-only discover→seed→manifest→capped smoke; isolated paths; rate-l
 Depends on: multi-instance, taxonomy, ethics; fyi-cli live AU smoke.
 Link: [./tracks/au_nsw_historical_seed_20260709/](./tracks/au_nsw_historical_seed_20260709/)
 
-### [~] Track: AU jurisdiction rollout controller
+### [x] Track: AU jurisdiction rollout controller
 Track ID: `au_jurisdiction_rollout_controller_20260709` — satisfies **R-45, R-42**
 Goal: Sequential VIC…OTHER after NSW; shared AU limiter; national AU manifest merge.
 Depends on: `au_nsw_historical_seed_20260709`.
@@ -131,13 +131,13 @@ Track ID: `github_project_multi_jurisdiction_20260709` — satisfies **R-47**
 Goal: Parent/sub-issues for expansion tracks; labels; project + RIOPA sync.
 Link: [./tracks/github_project_multi_jurisdiction_20260709/](./tracks/github_project_multi_jurisdiction_20260709/)
 
-### [~] Track: English Alaveteli archive template
+### [x] Track: English Alaveteli archive template
 Track ID: `english_alaveteli_archive_template_20260709` — satisfies **R-49**
 Goal: Post-AU onboarding template; first candidate `uk-wdtk`.
 Depends on: AU rollout controller healthy.
 Link: [./tracks/english_alaveteli_archive_template_20260709/](./tracks/english_alaveteli_archive_template_20260709/)
 
-### [~] Track: Global Alaveteli archive template
+### [x] Track: Global Alaveteli archive template
 Track ID: `global_alaveteli_archive_template_20260709` — satisfies **R-50**
 Goal: Non-English Alaveteli onboarding template; locale/GDPR notes.
 Depends on: English template track.

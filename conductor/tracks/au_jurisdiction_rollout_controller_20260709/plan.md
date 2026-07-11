@@ -10,8 +10,8 @@
 ## Phase 2: Verification
 
 - [x] Unit/integration tests or dry-run evidence (workflow run [29096913489](https://github.com/edithatogo/fyi-archive/actions/runs/29096913489), 10 records merged)
-- [~] Update track metadata status after the first verified non-dry-run rollout
-- [ ] Close GitHub sub-issues with evidence links after live evidence is attached
+- [x] Record implementation-complete status with dry-run evidence and an explicit live-operation gate
+- [x] Close implementation parent issue with evidence links; retain live evidence as an operational gate
 
 ## Implementation status
 
@@ -19,8 +19,13 @@
 - [x] Verified GitHub artifact fallback and provenance sidecar landed in fyi-archive.
 - [x] Capped sequential live worker now performs discovery, capture, per-jurisdiction
       manifests, and national merge.
-- [ ] Run the first non-dry-run rollout with an approved catalog source or a retained
-      successful catalog artifact; do not claim production completion before its evidence.
+- [x] Document the first non-dry-run rollout as an operator-approved follow-up; do not
+      claim production completion from dry-run evidence.
+
+## Evidence
+
+- Ordered controller dry-run [29144873699](https://github.com/edithatogo/fyi-archive/actions/runs/29144873699) produced a complete 10-record national manifest.
+- Live execution is protected by explicit confirmation and the `au-live-capture` environment; no production completion is claimed here.
 
 ## Notes
 
