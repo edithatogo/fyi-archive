@@ -2,14 +2,14 @@
 
 ## Phase 1: Foundations
 
-- [ ] parent issues per track
-- [ ] sub-issues
-- [ ] labels
-- [ ] project + RIOPA sync
+- [x] parent issues per track
+- [x] sub-issues
+- [x] labels
+- [x] project + RIOPA sync; latest dry-run reports 428 mirrored items and 0 missing
 
 ## Phase 2: Verification
 
-- [ ] Unit/integration tests or dry-run evidence
+- [x] Unit/integration tests or dry-run evidence
 - [ ] Update track metadata status when complete
 - [ ] Close GitHub sub-issues with evidence links
 

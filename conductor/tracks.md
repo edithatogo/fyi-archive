@@ -114,7 +114,7 @@ Goal: Sequential VIC…OTHER after NSW; shared AU limiter; national AU manifest 
 Depends on: `au_nsw_historical_seed_20260709`.
 Link: [./tracks/au_jurisdiction_rollout_controller_20260709/](./tracks/au_jurisdiction_rollout_controller_20260709/)
 
-### [ ] Track: Multi-instance publish
+### [~] Track: Multi-instance publish
 Track ID: `multi_instance_publish_20260709` — satisfies **R-46, R-22**
 Goal: Separate HF/Zenodo/OSF identity for `au-rtk`; draft-first; never mix into NZ dataset.
 Depends on: multi-instance + NSW seed.
@@ -126,7 +126,7 @@ Goal: Doctor/coverage/horizon per instance and jurisdiction.
 Depends on: multi-instance + multi-instance publish.
 Link: [./tracks/multi_instance_observability_20260709/](./tracks/multi_instance_observability_20260709/)
 
-### [ ] Track: GitHub project multi-jurisdiction issues
+### [x] Track: GitHub project multi-jurisdiction issues
 Track ID: `github_project_multi_jurisdiction_20260709` — satisfies **R-47**
 Goal: Parent/sub-issues for expansion tracks; labels; project + RIOPA sync.
 Link: [./tracks/github_project_multi_jurisdiction_20260709/](./tracks/github_project_multi_jurisdiction_20260709/)

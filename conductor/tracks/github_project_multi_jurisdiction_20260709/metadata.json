@@ -1,9 +1,9 @@
 {
   "track_id": "github_project_multi_jurisdiction_20260709",
   "type": "infra",
-  "status": "pending",
+  "status": "complete",
   "created_at": "2026-07-09T00:00:00Z",
-  "updated_at": "2026-07-09T00:00:00Z",
+  "updated_at": "2026-07-11T00:00:00Z",
   "description": "Parent/sub-issues for multi-jurisdiction tracks; labels; project board; RIOPA sync verification.",
   "satisfies": ["R-47"]
 }
