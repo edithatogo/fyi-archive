@@ -143,6 +143,11 @@ Goal: Non-English Alaveteli onboarding template; locale/GDPR notes.
 Depends on: English template track.
 Link: [./tracks/global_alaveteli_archive_template_20260709/](./tracks/global_alaveteli_archive_template_20260709/)
 
+### [!] Track: Historical source import
+Track ID: `historical_source_import_20260711`
+Goal: Import downloaded Morph and Internet Archive index exports offline with checksums, provenance, and URL-level deduplication.
+Link: [./tracks/historical_source_import_20260711/](./tracks/historical_source_import_20260711/)
+
 ---
 
 ## Companion capability tracks (in fyi-cli)
