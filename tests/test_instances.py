@@ -34,6 +34,8 @@ def test_au_rtk_instance_catalog_entry() -> None:
     assert instance.hf_repo_id == "edithatogo/rtk-archive-au"
     assert instance.rate_limit_name == "archive-discovery-au-rtk"
     assert instance.source in known_sources()
+    assert "authority_catalog" in instance.source_modes
+    assert instance.search_feed_url().endswith("/search/all?output=json&page=1")
 
 
 def test_unknown_instance_raises() -> None:
@@ -55,6 +57,13 @@ def test_list_instances_includes_nz_and_au() -> None:
     ids = {item.id for item in list_instances()}
     assert "nz-fyi" in ids
     assert "au-rtk" in ids
+
+
+def test_historical_only_deployments_are_not_live_enabled() -> None:
+    historical = [item for item in list_instances() if item.status == "historical-only"]
+    assert len(historical) == 15
+    assert all("internet_archive" in item.source_modes for item in historical)
+    assert all("live_api" not in item.source_modes for item in historical)
 
 
 @pytest.mark.parametrize(

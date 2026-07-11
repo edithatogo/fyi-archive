@@ -84,3 +84,42 @@ def test_rejects_non_array_cdx_payload(tmp_path: Path) -> None:
     path.write_text(json.dumps({"rows": []}), encoding="utf-8")
     with pytest.raises(ValueError, match="JSON array"):
         load_historical_source(path, "internet_archive_cdx")
+
+
+def test_alaveteli_json_feed_preserves_instance_and_metadata(tmp_path: Path) -> None:
+    path = tmp_path / "feed.json"
+    path.write_text(
+        json.dumps(
+            {
+                "entries": [
+                    {
+                        "id": 42,
+                        "url": "https://example.test/request/example",
+                        "title": "A request",
+                        "public_body": {"name": "Agency"},
+                        "state": "successful",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    document = load_historical_source(path, "alaveteli_feed_json", instance_id="example")
+    assert document["records"][0]["instance_id"] == "example"
+    assert document["records"][0]["authority"] == "Agency"
+
+
+def test_alaveteli_atom_feed_is_normalized(tmp_path: Path) -> None:
+    path = tmp_path / "feed.xml"
+    path.write_text(
+        """<feed xmlns="http://www.w3.org/2005/Atom">
+          <entry><id>tag:example.test,2026:1</id><title>Request</title>
+          <updated>2026-07-12T00:00:00Z</updated>
+          <link href="https://example.test/request/one" /></entry>
+        </feed>""",
+        encoding="utf-8",
+    )
+    document = load_historical_source(path, "alaveteli_atom", instance_id="example")
+    assert document["record_count"] == 1
+    assert document["records"][0]["source"] == "alaveteli_atom"
+    assert document["records"][0]["instance_id"] == "example"
