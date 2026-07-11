@@ -1,4 +1,5 @@
 # Sensitive surfaces that should be reviewed deliberately.
+* @edithatogo
 /.github/CODEOWNERS @edithatogo
 /.github/workflows/ @edithatogo
 /scripts/ @edithatogo
