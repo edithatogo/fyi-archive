@@ -3,6 +3,6 @@
   "type": "feature",
   "status": "in_progress",
   "created_at": "2026-07-12T00:00:00+10:00",
-  "updated_at": "2026-07-12T00:18:00+10:00",
+  "updated_at": "2026-07-12T00:45:00+10:00",
   "description": "Add feed, catalog, Internet Archive, and future official-export source modes for Alaveteli coverage."
 }
