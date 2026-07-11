@@ -57,6 +57,51 @@ def test_list_instances_includes_nz_and_au() -> None:
     assert "au-rtk" in ids
 
 
+@pytest.mark.parametrize(
+    ("instance_id", "base_url", "catalog_url", "country", "locale"),
+    [
+        (
+            "se-handlingar",
+            "https://handlingar.se",
+            "https://handlingar.se/body/all-authorities.csv",
+            "SE",
+            "sv-SE",
+        ),
+        (
+            "ua-dostup",
+            "https://dostup.org.ua",
+            "https://dostup.org.ua/body/all-authorities.csv",
+            "UA",
+            "uk-UA",
+        ),
+        (
+            "uy-quesabes",
+            "https://quesabes.org",
+            "https://quesabes.org/body/all-authorities.csv",
+            "UY",
+            "es-UY",
+        ),
+        (
+            "ge-askgov",
+            "https://askgov.ge",
+            "https://askgov.ge/body/all-authorities.csv",
+            "GE",
+            "ka-GE",
+        ),
+    ],
+)
+def test_working_alaveteli_instance_catalog_entries(
+    instance_id: str, base_url: str, catalog_url: str, country: str, locale: str
+) -> None:
+    instance = get_instance(instance_id)
+    assert instance.capture_base_url() == base_url
+    assert instance.catalog_url == catalog_url
+    assert instance.country == country
+    assert instance.locale == locale
+    assert instance.status == "experimental"
+    assert instance.source in known_sources()
+
+
 def test_build_manifest_au_with_jurisdiction() -> None:
     records = [
         {

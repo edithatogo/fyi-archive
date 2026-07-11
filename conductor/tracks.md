@@ -148,6 +148,12 @@ Track ID: `historical_source_import_20260711`
 Goal: Import downloaded Morph and Internet Archive index exports offline with checksums, provenance, and URL-level deduplication.
 Link: [./tracks/historical_source_import_20260711/](./tracks/historical_source_import_20260711/)
 
+### [~] Track: Working Alaveteli sites
+Track ID: `working_alaveteli_sites_20260711`
+Goal: Add four verified authority-catalog exports to a sequential, overnight,
+explicitly confirmed archive workflow.
+Link: [./tracks/working_alaveteli_sites_20260711/](./tracks/working_alaveteli_sites_20260711/)
+
 ---
 
 ## Companion capability tracks (in fyi-cli)

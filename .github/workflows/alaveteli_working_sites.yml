@@ -1,0 +1,188 @@
+name: Alaveteli working sites
+
+on:
+  schedule:
+    # 01:00 UTC is overnight across SE, UA, GE, and UY.
+    - cron: "0 1 * * 0"
+  workflow_dispatch:
+    inputs:
+      instance:
+        description: Site to process, or all four sites
+        required: true
+        default: all
+        type: choice
+        options: [all, se-handlingar, ua-dostup, uy-quesabes, ge-askgov]
+      dry_run:
+        description: Deterministic no-network run
+        required: true
+        default: true
+        type: boolean
+      live_confirmation:
+        description: Required only when dry_run is false
+        required: false
+        type: string
+      catalog_url:
+        description: Optional exact authority catalog URL override
+        required: false
+        type: string
+      capture_base_url:
+        description: Optional independent request capture base URL override
+        required: false
+        type: string
+      id_from:
+        description: First request ID for the bounded fallback queue
+        required: true
+        default: "1"
+        type: string
+      id_to:
+        description: Last request ID for the bounded fallback queue
+        required: true
+        default: "5"
+        type: string
+      max_requests:
+        description: Maximum captures per site
+        required: true
+        default: "5"
+        type: string
+      min_interval:
+        description: Minimum seconds between requests to the host
+        required: true
+        default: "60"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: alaveteli-working-sites
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        instance: [se-handlingar, ua-dostup, uy-quesabes, ge-askgov]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      INSTANCE: ${{ matrix.instance }}
+      DRY_RUN: ${{ github.event_name == 'schedule' && 'true' || inputs.dry_run }}
+      ID_FROM: ${{ github.event_name == 'schedule' && '1' || inputs.id_from }}
+      ID_TO: ${{ github.event_name == 'schedule' && '5' || inputs.id_to }}
+      MAX_REQUESTS: ${{ github.event_name == 'schedule' && '5' || inputs.max_requests }}
+      MIN_INTERVAL: ${{ github.event_name == 'schedule' && '60' || inputs.min_interval }}
+      LIVE_CONFIRMATION: ${{ inputs.live_confirmation }}
+      CATALOG_URL_OVERRIDE: ${{ inputs.catalog_url }}
+      CAPTURE_BASE_URL_OVERRIDE: ${{ inputs.capture_base_url }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
+        run: uv sync --extra dev --frozen
+      - name: Enforce live safety gates
+        if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' }}
+        run: |
+          set -euo pipefail
+          test "$LIVE_CONFIRMATION" = "RUN_LIVE_ALAVETELI_CAPTURE"
+          hour="$(date -u +%H)"
+          case "$hour" in
+            21|22|23|00|01|02|03|04|05) ;;
+            *) echo "Live capture is restricted to overnight UTC hours; current hour=$hour"; exit 1 ;;
+          esac
+      - name: Discover authority catalog
+        if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "data/$INSTANCE/_state"
+          catalog_url="$CATALOG_URL_OVERRIDE"
+          if [ -z "$catalog_url" ]; then
+            catalog_url="$(uv run python -c 'from fyi_archive.instances import get_instance; print(get_instance("'"$INSTANCE"'").catalog_url or "")')"
+          fi
+          test -n "$catalog_url"
+          uv run fyi-archive discover bodies \
+            --instance "$INSTANCE" \
+            --catalog-url "$catalog_url" \
+            --delay-seconds "$MIN_INTERVAL" \
+            --output "data/$INSTANCE/_state/discovered_bodies.json" \
+            --provenance "data/$INSTANCE/_state/discovered_bodies.provenance.json" \
+            --shared-rate-limit-db "data/$INSTANCE/_state/fyi-cli.db"
+      - name: Discover request queue or use bounded fallback IDs
+        if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "data/$INSTANCE/_state"
+          capture_base_url="$CAPTURE_BASE_URL_OVERRIDE"
+          if [ -z "$capture_base_url" ]; then
+            capture_base_url="$(uv run python -c 'from fyi_archive.instances import get_instance; print(get_instance("'"$INSTANCE"'").capture_base_url())')"
+          fi
+          if uv run fyi discover --base-url "$capture_base_url" \
+            --backfill-ids --id-from "$ID_FROM" --id-to "$ID_TO" \
+            --delay-seconds "$MIN_INTERVAL" --db "data/$INSTANCE/_state/fyi-cli.db" \
+            --output "data/$INSTANCE/_state/discovered_requests.jsonl"; then
+            echo "discovery=live" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "discovery=bounded-id-fallback" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Run gentle seed
+        if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
+        run: |
+          set -euo pipefail
+          root="data/$INSTANCE"
+          capture_base_url="$CAPTURE_BASE_URL_OVERRIDE"
+          if [ -z "$capture_base_url" ]; then
+            capture_base_url="$(uv run python -c 'from fyi_archive.instances import get_instance; print(get_instance("'"$INSTANCE"'").capture_base_url())')"
+          fi
+          args=(
+            --instance "$INSTANCE"
+            --base-url "$capture_base_url"
+            --ledger-path "$root/_state/ledger.jsonl"
+            --data-dir "$root"
+            --derived-dir "$root/derived/requests"
+            --dist-dir "$root/dist"
+            --max-requests "$MAX_REQUESTS"
+            --max-runtime-minutes 30
+            --max-disk-gb 5
+            --min-interval "$MIN_INTERVAL"
+            --concurrency 1
+            --continue-on-error
+          )
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          elif [ -f "$root/_state/discovered_requests.jsonl" ]; then
+            args+=(--requests-file "$root/_state/discovered_requests.jsonl")
+          else
+            args+=(--id-from "$ID_FROM" --id-to "$ID_TO" --allow-undiscovered)
+          fi
+          uv run fyi-archive seed run "${args[@]}"
+      - name: Build manifest
+        if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
+        run: |
+          set -euo pipefail
+          root="data/$INSTANCE"
+          derived="$root/derived/requests"
+          uv run fyi-archive manifest build \
+            --instance "$INSTANCE" \
+            --derived-dir "$derived" \
+            --manifest-path "$root/manifest.json" \
+            --parquet-path "$root/manifest.parquet" \
+            --authorities-path "$root/authorities.json" \
+            --fyi-cli-version 1.2.0
+      - name: Upload site archive evidence
+        if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: alaveteli-${{ matrix.instance }}-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          path: data/${{ matrix.instance }}/
