@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.10.2](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.10.1...fyi_archive-v0.10.2) (2026-07-12)
+
+
+### Documentation
+
+* close feed assessment with bounded evidence ([03c1aeb](https://github.com/edithatogo/fyi-archive/commit/03c1aebc3972ce38e07517bc7ee9cc070f0fc1ae))
+
 ## [0.10.1](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.10.0...fyi_archive-v0.10.1) (2026-07-12)
 
 
