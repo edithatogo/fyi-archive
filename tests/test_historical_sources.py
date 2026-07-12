@@ -123,3 +123,83 @@ def test_alaveteli_atom_feed_is_normalized(tmp_path: Path) -> None:
     assert document["record_count"] == 1
     assert document["records"][0]["source"] == "alaveteli_atom"
     assert document["records"][0]["instance_id"] == "example"
+
+
+@pytest.mark.parametrize("source_kind", ["official_dataset", "operator_export"])
+def test_structured_exports_support_json_and_preserve_source_kind(
+    tmp_path: Path, source_kind: str
+) -> None:
+    path = tmp_path / f"{source_kind}.json"
+    path.write_text(
+        json.dumps(
+            {
+                "results": [
+                    {
+                        "request_id": "42",
+                        "request_url": "https://example.test/request/42",
+                        "subject": "A request",
+                        "public_body_name": "Agency",
+                        "status": "successful",
+                    },
+                    {"subject": "No public URL"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    document = load_historical_source(path, source_kind, instance_id="example")
+    assert document["record_count"] == 1
+    assert document["records"][0]["source"] == source_kind
+    assert document["records"][0]["authority"] == "Agency"
+
+
+def test_structured_csv_supports_tabular_operator_export(tmp_path: Path) -> None:
+    path = tmp_path / "export.csv"
+    path.write_text(
+        "id,url,title,authority\n42,https://example.test/request/42,Request,Agency\n",
+        encoding="utf-8",
+    )
+    document = load_historical_source(path, "operator_export")
+    assert document["record_count"] == 1
+    assert document["records"][0]["source_record_id"] == "42"
+
+
+def test_structured_exports_support_nested_records_and_authority_dict(tmp_path: Path) -> None:
+    path = tmp_path / "nested.json"
+    path.write_text(
+        json.dumps(
+            {
+                "data": {
+                    "records": [
+                        {
+                            "id": 7,
+                            "url": "https://example.test/request/7",
+                            "authority": {"url_name": "agency"},
+                            "name": "Nested request",
+                        }
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    document = load_historical_source(path, "official_dataset")
+    assert document["record_count"] == 1
+    assert document["records"][0]["authority"] == "agency"
+
+
+def test_structured_exports_reject_scalar_json(tmp_path: Path) -> None:
+    path = tmp_path / "scalar.json"
+    path.write_text("42", encoding="utf-8")
+    with pytest.raises(ValueError, match="object or array"):
+        load_historical_source(path, "official_dataset")
+
+
+def test_structured_tsv_uses_tab_delimiter(tmp_path: Path) -> None:
+    path = tmp_path / "export.tsv"
+    path.write_text(
+        "id\trequest_url\ttitle\n42\thttps://example.test/request/42\tRequest\n",
+        encoding="utf-8",
+    )
+    document = load_historical_source(path, "operator_export")
+    assert document["record_count"] == 1

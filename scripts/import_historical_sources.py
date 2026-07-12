@@ -15,6 +15,8 @@ def main() -> int:
     parser.add_argument("--internet-archive-cdx", type=Path)
     parser.add_argument("--alaveteli-feed-json", type=Path)
     parser.add_argument("--alaveteli-atom", type=Path)
+    parser.add_argument("--official-dataset", type=Path)
+    parser.add_argument("--operator-export", type=Path)
     parser.add_argument("--instance-id")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -36,6 +38,22 @@ def main() -> int:
             load_historical_source(
                 args.alaveteli_atom,
                 "alaveteli_atom",
+                instance_id=args.instance_id,
+            )
+        )
+    if args.official_dataset:
+        inputs.append(
+            load_historical_source(
+                args.official_dataset,
+                "official_dataset",
+                instance_id=args.instance_id,
+            )
+        )
+    if args.operator_export:
+        inputs.append(
+            load_historical_source(
+                args.operator_export,
+                "operator_export",
                 instance_id=args.instance_id,
             )
         )
