@@ -9,12 +9,19 @@
       four manifests, two deterministic records each).
 - [x] Run one explicitly confirmed capped live smoke per site, if permitted by
       the deployment's robots and response behavior. Evidence:
-      [Sweden run 29192823057](https://github.com/edithatogo/fyi-archive/actions/runs/29192823057)
-      failed closed with HTTP 403 and no capture;
+      [Sweden run 29193015589](https://github.com/edithatogo/fyi-archive/actions/runs/29193015589)
+      failed closed with an explicit ledger `status=failed` and HTTP 403;
       [Ukraine run 29192878464](https://github.com/edithatogo/fyi-archive/actions/runs/29192878464)
       captured one request and produced one manifest record;
-      [Georgia run 29192826001](https://github.com/edithatogo/fyi-archive/actions/runs/29192826001)
+      [Georgia run 29192971469](https://github.com/edithatogo/fyi-archive/actions/runs/29192971469)
       captured one request and produced one manifest record; and
-      [Uruguay run 29192484464](https://github.com/edithatogo/fyi-archive/actions/runs/29192484464)
-      captured one request and produced one manifest record with two WARC
-      record IDs.
+      [Uruguay run 29192938680](https://github.com/edithatogo/fyi-archive/actions/runs/29192938680)
+      captured one request and produced one manifest record. The explicit-smoke
+      verifier now fails the job when the ledger is not completed or the
+      manifest is empty.
+
+## Residual source limitation
+
+`handlingar.se` exposes a readable authority catalog, but the selected public
+request endpoint returned `403 Forbidden` during the capped smoke. The artifact
+is retained as evidence; no successful Swedish request capture is claimed.
