@@ -143,7 +143,7 @@ Goal: Non-English Alaveteli onboarding template; locale/GDPR notes.
 Depends on: English template track.
 Link: [./tracks/global_alaveteli_archive_template_20260709/](./tracks/global_alaveteli_archive_template_20260709/)
 
-### [!] Track: Historical source import
+### [x] Track: Historical source import
 Track ID: `historical_source_import_20260711`
 Goal: Import downloaded Morph and Internet Archive index exports offline with checksums, provenance, and URL-level deduplication.
 Link: [./tracks/historical_source_import_20260711/](./tracks/historical_source_import_20260711/)
@@ -154,7 +154,7 @@ Goal: Add four verified authority-catalog exports to a sequential, overnight,
 explicitly confirmed archive workflow.
 Link: [./tracks/working_alaveteli_sites_20260711/](./tracks/working_alaveteli_sites_20260711/)
 
-### [~] Track: Alaveteli source modes
+### [x] Track: Alaveteli source modes
 Track ID: `alaveteli_source_modes_20260712`
 Goal: Expand coverage through fyi-cli feeds, offline exports, Internet Archive
 indexes, and future official datasets without increasing origin-site load.
