@@ -5,6 +5,35 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.9.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.8.0...fyi_archive-v0.9.0) (2026-07-12)
+
+
+### Features
+
+* add gentle archives for working Alaveteli sites ([#132](https://github.com/edithatogo/fyi-archive/issues/132)) ([dd76cf7](https://github.com/edithatogo/fyi-archive/commit/dd76cf7557990b2e841de2e4d11593d1ba178fb8))
+* add historical Alaveteli source modes ([#136](https://github.com/edithatogo/fyi-archive/issues/136)) ([d58c51c](https://github.com/edithatogo/fyi-archive/commit/d58c51c49bfb1c54af7b34044aa56b8c1fa277ad))
+* add structured historical source adapters ([5bbbe08](https://github.com/edithatogo/fyi-archive/commit/5bbbe089b02649e33092b1d7d39803e1e7ebf20b))
+* automate Alaveteli feed compatibility probes ([2069e30](https://github.com/edithatogo/fyi-archive/commit/2069e30f5008afd884c50f5b3a02270e6bd685b6))
+* automate historical source indexes ([#129](https://github.com/edithatogo/fyi-archive/issues/129)) ([b2c32fd](https://github.com/edithatogo/fyi-archive/commit/b2c32fd4b2b87048f317b29b183e601d8b857408))
+* enrich historical Alaveteli core data ([#138](https://github.com/edithatogo/fyi-archive/issues/138)) ([f50b748](https://github.com/edithatogo/fyi-archive/commit/f50b748d4ecd9e05feb5a868cc2cd7c75d32d5ab))
+* schedule bounded overnight live smokes ([#135](https://github.com/edithatogo/fyi-archive/issues/135)) ([c29e972](https://github.com/edithatogo/fyi-archive/commit/c29e9720360afb2c5ce91d5763318cc6fdce77e8))
+
+
+### Bug Fixes
+
+* bound historical replay enrichment time ([#140](https://github.com/edithatogo/fyi-archive/issues/140)) ([a1d6116](https://github.com/edithatogo/fyi-archive/commit/a1d611675edc89ccb470c6e81566ddf12599bb96))
+* enforce local overnight capture windows ([#134](https://github.com/edithatogo/fyi-archive/issues/134)) ([ed2b2de](https://github.com/edithatogo/fyi-archive/commit/ed2b2de563da9680ab049fe45a31b6577f3c5fda))
+* record delayed live smoke windows ([#141](https://github.com/edithatogo/fyi-archive/issues/141)) ([730df70](https://github.com/edithatogo/fyi-archive/commit/730df705f236b62a53e8b9ee824cab7bf4629455))
+* use Morph data table in index query ([#131](https://github.com/edithatogo/fyi-archive/issues/131)) ([3c3c7a7](https://github.com/edithatogo/fyi-archive/commit/3c3c7a7f316137e2a04ccabe0526a3b70fbf1592))
+
+
+### Documentation
+
+* record full historical core enrichment ([#142](https://github.com/edithatogo/fyi-archive/issues/142)) ([6bde467](https://github.com/edithatogo/fyi-archive/commit/6bde4672f84ef7642e6fbeb103bfbb3d09f02481))
+* record historical core-data smoke ([#139](https://github.com/edithatogo/fyi-archive/issues/139)) ([52dc9a8](https://github.com/edithatogo/fyi-archive/commit/52dc9a8e77472dd611eccd1b48ac5c6837da0e0a))
+* record historical index evidence ([#137](https://github.com/edithatogo/fyi-archive/issues/137)) ([9f44ff0](https://github.com/edithatogo/fyi-archive/commit/9f44ff0dd4d7a5184c53f5831e44b79d58705b9e))
+* record working Alaveteli dry-run evidence ([#133](https://github.com/edithatogo/fyi-archive/issues/133)) ([185673e](https://github.com/edithatogo/fyi-archive/commit/185673e959871560bab2a6fe5b902efac1e608c6))
+
 ## [0.8.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.7.0...fyi_archive-v0.8.0) (2026-07-11)
 
 
