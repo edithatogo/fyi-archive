@@ -11,7 +11,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from backfill_state import state_dispatch_next_id
+from backfill_state import state_dispatch_next_id  # ty: ignore[unresolved-import]
 
 
 def plan_dispatches(

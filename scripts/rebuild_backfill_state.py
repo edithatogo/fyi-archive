@@ -14,7 +14,7 @@ from typing import Any, cast
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from backfill_state import refresh_summary
+from backfill_state import refresh_summary  # ty: ignore[unresolved-import]
 
 
 def run_gh(args: list[str]) -> str:
