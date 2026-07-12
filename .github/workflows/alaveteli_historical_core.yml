@@ -28,7 +28,7 @@ jobs:
   enrich:
     strategy:
       fail-fast: false
-      max-parallel: 1
+      max-parallel: 2
       matrix:
         include:
           - { instance: uk-wdtk, host: www.whatdotheyknow.com }
@@ -94,6 +94,7 @@ jobs:
             --instance-id "$INSTANCE" \
             --limit "$PAGE_LIMIT" \
             --delay-seconds "$DELAY_SECONDS" \
+            --timeout-seconds 15 \
             --user-agent "fyi-archive-historical-core/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
             --output ".tmp/$INSTANCE/historical-core-index.json"
       - name: Upload core-data evidence
