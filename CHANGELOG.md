@@ -5,6 +5,26 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.10.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.9.0...fyi_archive-v0.10.0) (2026-07-12)
+
+
+### Features
+
+* support explicit request references ([c6c89b8](https://github.com/edithatogo/fyi-archive/commit/c6c89b8be8d761b055bb5dfdfcc69cca3bce4818))
+* support explicit request references ([af90073](https://github.com/edithatogo/fyi-archive/commit/af900733b8ac733b6c32b170f3b8a811a006af18))
+
+
+### Bug Fixes
+
+* assemble live manifests from captured requests ([996ca2d](https://github.com/edithatogo/fyi-archive/commit/996ca2dc5d42541aa8b2a4af9571c050bda6b769))
+* assemble live manifests from captured requests ([ea8d620](https://github.com/edithatogo/fyi-archive/commit/ea8d6209ffe2e75898cad42787f9603189c74f67))
+* enforce seed interval outside fyi-cli ([b9095ad](https://github.com/edithatogo/fyi-archive/commit/b9095adc18c93340736cd7f351883ed68011546f))
+* fall back when request discovery is empty ([a8f94f0](https://github.com/edithatogo/fyi-archive/commit/a8f94f02e59917ebad182599b845afd715c43d65))
+* **workflow:** allow explicit live smoke outside window ([54f2896](https://github.com/edithatogo/fyi-archive/commit/54f28969cce6cdcfc4b9831096ed3a96104a7b22))
+* **workflow:** allow explicit live smoke outside window ([8c15437](https://github.com/edithatogo/fyi-archive/commit/8c15437fb3d3c928b55b4773881a05feda5b8a26))
+* **workflow:** enable catalog fallback for live sites ([19af11d](https://github.com/edithatogo/fyi-archive/commit/19af11d0cedaa444870a5e04db00f99336904c63))
+* **workflow:** enable catalog fallback for live sites ([62f7f71](https://github.com/edithatogo/fyi-archive/commit/62f7f713b6e11fe1242827149c1df58f7d32c98f))
+
 ## [0.9.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.8.0...fyi_archive-v0.9.0) (2026-07-12)
 
 
