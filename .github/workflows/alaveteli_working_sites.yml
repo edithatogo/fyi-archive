@@ -243,6 +243,39 @@ jobs:
             --parquet-path "$root/manifest.parquet" \
             --authorities-path "$root/authorities.json" \
             --fyi-cli-version 1.2.0
+      - name: Verify explicit live capture
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.request_ref != '' && inputs.dry_run == false && inputs.instance == matrix.instance && steps.window.outputs.eligible == 'true' }}
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("data") / os.environ["INSTANCE"]
+          ledger_path = root / "_state" / "ledger.jsonl"
+          entries = [
+              json.loads(line)
+              for line in ledger_path.read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          matches = [
+              entry for entry in entries if str(entry.get("request_id")) == os.environ["REQUEST_REF"]
+          ]
+          if not matches:
+              raise SystemExit(f"explicit request {os.environ['REQUEST_REF']} is absent from the ledger")
+          entry = matches[-1]
+          if entry.get("status") != "completed":
+              raise SystemExit(
+                  f"explicit request {os.environ['REQUEST_REF']} did not complete: "
+                  f"{entry.get('status')} {entry.get('error', '')}".strip()
+              )
+          manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+          record_count = int(manifest.get("meta", {}).get("record_count") or 0)
+          if record_count < 1:
+              raise SystemExit(f"explicit request {os.environ['REQUEST_REF']} produced an empty manifest")
+          print(f"Verified explicit live capture: {os.environ['REQUEST_REF']} ({record_count} record(s))")
+          PY
       - name: Upload site archive evidence
         if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
