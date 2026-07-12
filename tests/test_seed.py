@@ -96,6 +96,17 @@ def test_requests_from_jsonl_loads_discovered_rows(tmp_path: Path) -> None:
     assert rows == [SeedRequest(20000, "request-20000", "Title", "agency")]
 
 
+def test_requests_from_jsonl_preserves_slug_request_reference(tmp_path: Path) -> None:
+    requests_path = tmp_path / "slug.jsonl"
+    requests_path.write_text(
+        '{"request_id": "solicitud_de_informacion_sobre_r", "url_title": "solicitud_de_informacion_sobre_r"}\n',
+        encoding="utf-8",
+    )
+    assert requests_from_jsonl(requests_path) == [
+        SeedRequest("solicitud_de_informacion_sobre_r", "solicitud_de_informacion_sobre_r")
+    ]
+
+
 def test_requests_from_id_range_builds_fallback_queue() -> None:
     rows = requests_from_id_range(20000, 20002)
 
