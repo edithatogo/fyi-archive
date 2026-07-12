@@ -14,6 +14,7 @@
       (run [29188459178](https://github.com/edithatogo/fyi-archive/actions/runs/29188459178):
       306 pages processed, 174 extracted, 16 artifacts, 0 failures).
 - [x] Add offline official-dataset and operator-export adapters; require public request URLs and retain file checksums.
-- [ ] Use fyi-cli feed discovery for candidates whose feed endpoint becomes reachable
-      (2026-07-12 bounded smoke against `quesabes.org` failed closed because the
-      response was not JSON; no records were written).
+- [x] Assess fyi-cli feed discovery for candidates whose feed endpoint becomes
+      reachable. The 2026-07-12 probe against `quesabes.org` failed closed on
+      non-JSON responses, so no feed promotion was made; the automated probe
+      remains available for a future compatible endpoint.
