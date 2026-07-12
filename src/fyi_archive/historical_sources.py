@@ -194,6 +194,74 @@ def _atom_rows(path: Path, *, instance_id: str | None) -> list[dict[str, Any]]:
     return output
 
 
+def _structured_rows(path: Path, *, instance_id: str | None, source: str) -> list[dict[str, Any]]:
+    """Normalize a downloaded official dataset or operator export.
+
+    The importer deliberately accepts only local files.  It supports common
+    CSV and JSON shapes while requiring a public request URL in each row; this
+    avoids turning statistics-only datasets into request records.
+    """
+    if path.suffix.lower() in {".csv", ".tsv"}:
+        with path.open(newline="", encoding="utf-8-sig") as stream:
+            raw_entries: list[dict[str, Any]] = list(
+                csv.DictReader(
+                    stream, dialect="excel-tab" if path.suffix.lower() == ".tsv" else "excel"
+                )
+            )
+    else:
+        payload = json.loads(path.read_text(encoding="utf-8-sig"))
+        if isinstance(payload, list):
+            raw_entries = payload
+        elif isinstance(payload, dict):
+            raw_entries = []
+            for key in ("records", "requests", "entries", "items", "results", "data"):
+                value = payload.get(key)
+                if isinstance(value, list):
+                    raw_entries = value
+                    break
+                if isinstance(value, dict) and isinstance(value.get("records"), list):
+                    raw_entries = value["records"]
+                    break
+        else:
+            raise ValueError("structured historical export must be a JSON object or array")
+    output = []
+    for entry in raw_entries:
+        if not isinstance(entry, dict):
+            continue
+        source_url = _url(
+            entry.get("source_url")
+            or entry.get("request_url")
+            or entry.get("url")
+            or entry.get("html_url")
+            or entry.get("link")
+        )
+        if not source_url:
+            continue
+        authority = (
+            entry.get("authority")
+            or entry.get("public_body")
+            or entry.get("public_body_name")
+            or ""
+        )
+        if isinstance(authority, dict):
+            authority = authority.get("name") or authority.get("url_name") or ""
+        output.append(
+            _feed_record(
+                source_url=source_url,
+                source_record_id=str(entry.get("id") or entry.get("request_id") or source_url),
+                title=str(entry.get("title") or entry.get("subject") or entry.get("name") or ""),
+                authority=str(authority),
+                state=str(entry.get("state") or entry.get("status") or ""),
+                observed_at=str(
+                    entry.get("updated") or entry.get("updated_at") or entry.get("created_at") or ""
+                ),
+                instance_id=instance_id,
+                source=source,
+            ),
+        )
+    return output
+
+
 def load_historical_source(
     path: Path, source_kind: str, *, instance_id: str | None = None
 ) -> dict[str, Any]:
@@ -206,6 +274,8 @@ def load_historical_source(
         records = _feed_rows(path, instance_id=instance_id, source=source_kind)
     elif source_kind == "alaveteli_atom":
         records = _atom_rows(path, instance_id=instance_id)
+    elif source_kind in {"official_dataset", "operator_export"}:
+        records = _structured_rows(path, instance_id=instance_id, source=source_kind)
     else:
         raise ValueError(f"unsupported historical source kind: {source_kind}")
     return {

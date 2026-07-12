@@ -14,8 +14,10 @@ traffic to origin sites.
 - `atom_feed`: fyi-cli search-feed discovery or an operator-supplied Atom export.
 - `authority_catalog`: public authority CSV catalog.
 - `internet_archive`: CDX/WARC-derived historical evidence.
-- `official_dataset`: future regulator/open-data imports.
-- `operator_export`: future operator-provided dump with checksum validation.
+- `official_dataset`: local regulator/open-data CSV, TSV, or JSON imports;
+  request URLs are required and file checksums are recorded.
+- `operator_export`: local operator-provided CSV, TSV, or JSON export with the
+  same request-URL and checksum requirements.
 
 ## Safety
 

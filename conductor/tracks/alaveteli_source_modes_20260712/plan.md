@@ -13,5 +13,7 @@
 - [x] Run the configured 25-page enrichment across all deployments
       (run [29188459178](https://github.com/edithatogo/fyi-archive/actions/runs/29188459178):
       306 pages processed, 174 extracted, 16 artifacts, 0 failures).
-- [ ] Add official-dataset and operator-export adapters as sources are identified.
-- [ ] Use fyi-cli feed discovery for candidates whose feed endpoint becomes reachable.
+- [x] Add offline official-dataset and operator-export adapters; require public request URLs and retain file checksums.
+- [ ] Use fyi-cli feed discovery for candidates whose feed endpoint becomes reachable
+      (2026-07-12 bounded smoke against `quesabes.org` failed closed because the
+      response was not JSON; no records were written).
