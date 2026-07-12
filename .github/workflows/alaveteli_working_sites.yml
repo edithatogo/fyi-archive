@@ -63,6 +63,9 @@ concurrency:
 
 jobs:
   archive:
+    permissions:
+      contents: read
+      actions: read
     strategy:
       fail-fast: false
       max-parallel: 1
@@ -155,7 +158,10 @@ jobs:
             --delay-seconds "$MIN_INTERVAL" \
             --output "data/$INSTANCE/_state/discovered_bodies.json" \
             --provenance "data/$INSTANCE/_state/discovered_bodies.provenance.json" \
-            --shared-rate-limit-db "data/$INSTANCE/_state/fyi-cli.db"
+            --shared-rate-limit-db "data/$INSTANCE/_state/fyi-cli.db" \
+            --fallback \
+            --repository "${{ github.repository }}" \
+            --workflow "alaveteli_working_sites.yml"
       - name: Discover request queue or use bounded fallback IDs
         if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' && steps.window.outputs.eligible == 'true' }}
         run: |
