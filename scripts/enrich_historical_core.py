@@ -25,6 +25,7 @@ def enrich(
     limit: int,
     delay_seconds: float,
     user_agent: str,
+    timeout_seconds: float,
 ) -> dict[str, Any]:
     """Fetch a bounded number of replay pages and extract core metadata."""
     records = list(index.get("records") or [])[: max(0, limit)]
@@ -50,7 +51,7 @@ def enrich(
             request = urllib.request.Request(  # noqa: S310
                 replay_url, headers={"User-Agent": user_agent}
             )
-            with urllib.request.urlopen(request, timeout=45) as response:  # noqa: S310
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
                 html = response.read(2 * 1024 * 1024).decode("utf-8", errors="replace")
             enriched.append(
                 parse_archived_request(
@@ -95,6 +96,7 @@ def main() -> int:
     parser.add_argument("--instance-id", required=True)
     parser.add_argument("--limit", type=int, default=25)
     parser.add_argument("--delay-seconds", type=float, default=3.0)
+    parser.add_argument("--timeout-seconds", type=float, default=15.0)
     parser.add_argument("--user-agent", default="fyi-archive-historical-core/1.0")
     args = parser.parse_args()
     index = json.loads(args.historical_index.read_text(encoding="utf-8"))
@@ -104,6 +106,7 @@ def main() -> int:
         limit=args.limit,
         delay_seconds=args.delay_seconds,
         user_agent=args.user_agent,
+        timeout_seconds=args.timeout_seconds,
     )
     output["input_sha256"] = sha256_file(args.historical_index)
     args.output.parent.mkdir(parents=True, exist_ok=True)
