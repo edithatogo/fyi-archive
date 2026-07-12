@@ -16,3 +16,11 @@ No verified request-level export URL was found for the 15 historical-only
 Alaveteli deployments in this pass. Operators can import a downloaded source
 with `scripts/import_historical_sources.py`; the adapter records the local
 file path, modification-time retrieval value, SHA-256, and normalized records.
+
+The bounded live probes against `quesabes.org` on 2026-07-12 returned
+non-JSON responses: HTTP 200 HTML for `output=json` and `output=atom` in the
+first check, followed by HTTP 500 with a one-byte non-JSON body in the second
+check. It is not currently compatible with fyi-cli's JSON feed contract.
+`scripts/probe_alaveteli_feeds.py` now automates this one-request-per-instance
+assessment with a 10-second default delay and records response status,
+checksum, and content type.
