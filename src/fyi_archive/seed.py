@@ -284,6 +284,7 @@ def run_seed(
     date_from: str | None = None,
     date_to: str | None = None,
     fyi_cli_args: Sequence[str] = (),
+    min_interval_seconds: float = 0.0,
     continue_on_error: bool = False,
 ) -> dict[str, int | str | None]:
     """Run a resumable historical seed over request records."""
@@ -295,6 +296,7 @@ def run_seed(
     skipped = 0
     bytes_written = 0
     stop_reason: str | None = None
+    last_capture_at: float | None = None
 
     for request in requests:
         if request.request_id in completed:
@@ -313,6 +315,10 @@ def run_seed(
         if dry_run:
             output_path = dry_run_capture(request, derived_dir)
         else:
+            if last_capture_at is not None:
+                remaining = max(0.0, min_interval_seconds - (time.monotonic() - last_capture_at))
+                if remaining:
+                    time.sleep(remaining)
             try:
                 capture_summary = capture_with_retry(
                     request,
@@ -321,7 +327,9 @@ def run_seed(
                     caps,
                     fyi_cli_args,
                 )
+                last_capture_at = time.monotonic()
             except CaptureError as error:
+                last_capture_at = time.monotonic()
                 failed += 1
                 append_ledger(
                     ledger_path,
