@@ -15,3 +15,10 @@ def test_live_manifest_reads_fyi_cli_raw_request_tree() -> None:
     manifest = WORKFLOW[WORKFLOW.index("Build manifest") :]
     assert 'if [ "$DRY_RUN" != "true" ]; then' in manifest
     assert 'derived="$root/raw/requests"' in manifest
+
+
+def test_explicit_live_capture_fails_when_ledger_or_manifest_is_empty() -> None:
+    verification = WORKFLOW[WORKFLOW.index("Verify explicit live capture") :]
+    assert 'entry.get("status") != "completed"' in verification
+    assert "record_count < 1" in verification
+    assert "inputs.request_ref != ''" in verification
