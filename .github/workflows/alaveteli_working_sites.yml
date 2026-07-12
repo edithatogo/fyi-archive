@@ -91,6 +91,7 @@ jobs:
         if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
         run: uv sync --extra dev --frozen
       - name: Enforce live safety gates
+        id: window
         if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' }}
         run: |
           set -euo pipefail
@@ -104,11 +105,37 @@ jobs:
           esac
           hour="$(TZ="$tz" date +%H)"
           case "$hour" in
-            21|22|23|00|01|02|03|04|05) ;;
-            *) echo "Live capture is restricted to overnight hours in $tz; current local hour=$hour"; exit 1 ;;
+            20|21|22|23|00|01|02|03|04|05|06|07|08|09)
+              eligible=true
+              ;;
+            *)
+              eligible=false
+              ;;
           esac
+          echo "eligible=$eligible" >> "$GITHUB_OUTPUT"
+          echo "timezone=$tz" >> "$GITHUB_OUTPUT"
+          echo "local_hour=$hour" >> "$GITHUB_OUTPUT"
+          echo "Live window: eligible=$eligible timezone=$tz local_hour=$hour"
+      - name: Record run window
+        if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
+        env:
+          WINDOW_ELIGIBLE: ${{ steps.window.outputs.eligible }}
+          WINDOW_TIMEZONE: ${{ steps.window.outputs.timezone }}
+          WINDOW_LOCAL_HOUR: ${{ steps.window.outputs.local_hour }}
+        run: |
+          set -euo pipefail
+          mkdir -p "data/$INSTANCE/_state"
+          mode="live-skipped-outside-window"
+          if [ "$DRY_RUN" = "true" ]; then
+            mode="dry-run"
+          elif [ "$WINDOW_ELIGIBLE" = "true" ]; then
+            mode="live-eligible"
+          fi
+          printf '{"instance_id":"%s","mode":"%s","timezone":"%s","local_hour":"%s"}\n' \
+            "$INSTANCE" "$mode" "$WINDOW_TIMEZONE" "$WINDOW_LOCAL_HOUR" \
+            > "data/$INSTANCE/_state/run-window.json"
       - name: Discover authority catalog
-        if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' }}
+        if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' && steps.window.outputs.eligible == 'true' }}
         run: |
           set -euo pipefail
           mkdir -p "data/$INSTANCE/_state"
@@ -125,7 +152,7 @@ jobs:
             --provenance "data/$INSTANCE/_state/discovered_bodies.provenance.json" \
             --shared-rate-limit-db "data/$INSTANCE/_state/fyi-cli.db"
       - name: Discover request queue or use bounded fallback IDs
-        if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' }}
+        if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' && steps.window.outputs.eligible == 'true' }}
         run: |
           set -euo pipefail
           mkdir -p "data/$INSTANCE/_state"
@@ -142,7 +169,7 @@ jobs:
             echo "discovery=bounded-id-fallback" >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Run gentle seed
-        if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
+        if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && (env.DRY_RUN == 'true' || steps.window.outputs.eligible == 'true') }}
         run: |
           set -euo pipefail
           root="data/$INSTANCE"
@@ -173,7 +200,7 @@ jobs:
           fi
           uv run fyi-archive seed run "${args[@]}"
       - name: Build manifest
-        if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
+        if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && (env.DRY_RUN == 'true' || steps.window.outputs.eligible == 'true') }}
         run: |
           set -euo pipefail
           root="data/$INSTANCE"
