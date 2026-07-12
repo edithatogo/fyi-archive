@@ -163,9 +163,12 @@ jobs:
           if uv run fyi discover --base-url "$capture_base_url" \
             --backfill-ids --id-from "$ID_FROM" --id-to "$ID_TO" \
             --delay-seconds "$MIN_INTERVAL" --db "data/$INSTANCE/_state/fyi-cli.db" \
-            --output "data/$INSTANCE/_state/discovered_requests.jsonl"; then
+            --output "data/$INSTANCE/_state/discovered_requests.jsonl" \
+            && test -s "data/$INSTANCE/_state/discovered_requests.jsonl" \
+            && grep -q '[^[:space:]]' "data/$INSTANCE/_state/discovered_requests.jsonl"; then
             echo "discovery=live" >> "$GITHUB_STEP_SUMMARY"
           else
+            rm -f "data/$INSTANCE/_state/discovered_requests.jsonl"
             echo "discovery=bounded-id-fallback" >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Run gentle seed
