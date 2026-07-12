@@ -10,5 +10,8 @@
 - [x] Run the bounded core-data smoke across all 16 historical-only deployments
       (run [29156598360](https://github.com/edithatogo/fyi-archive/actions/runs/29156598360):
       26 pages processed and extracted; 3 deployments had no replay pages).
+- [x] Run the configured 25-page enrichment across all deployments
+      (run [29188459178](https://github.com/edithatogo/fyi-archive/actions/runs/29188459178):
+      306 pages processed, 174 extracted, 16 artifacts, 0 failures).
 - [ ] Add official-dataset and operator-export adapters as sources are identified.
 - [ ] Use fyi-cli feed discovery for candidates whose feed endpoint becomes reachable.
