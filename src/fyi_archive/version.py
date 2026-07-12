@@ -6,4 +6,4 @@ Mirrors ``VERSION`` and ``pyproject.toml`` ``[project].version``; kept in sync b
 
 from __future__ import annotations
 
-__version__ = "0.8.0"
+__version__ = "0.9.0"
