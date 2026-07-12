@@ -159,6 +159,34 @@ def test_run_seed_non_dry_run_records_capture_summary(tmp_path: Path, monkeypatc
     assert load_ledger(tmp_path / "ledger.jsonl") == {20000}
 
 
+def test_run_seed_enforces_interval_between_live_captures(tmp_path: Path, monkeypatch) -> None:
+    captured = []
+    sleeps = []
+
+    def fake_capture(request, *args, **kwargs):  # noqa: ANN001, ANN002, ANN003
+        captured.append(request.request_id)
+        return {"derived_path": str(tmp_path / f"derived-{request.request_id}")}
+
+    clock = iter([0.0, 0.0, 1.0, 1.0, 2.0])
+    monkeypatch.setattr("fyi_archive.seed.capture_with_fyi_cli", fake_capture)
+    monkeypatch.setattr("fyi_archive.seed.time.monotonic", lambda: next(clock))
+    monkeypatch.setattr("fyi_archive.seed.time.sleep", sleeps.append)
+
+    summary = run_seed(
+        requests=[SeedRequest(1, "one"), SeedRequest(2, "two")],
+        ledger_path=tmp_path / "ledger.jsonl",
+        data_dir=tmp_path / "data",
+        derived_dir=tmp_path / "derived",
+        caps=SeedCaps(max_requests=2),
+        dry_run=False,
+        min_interval_seconds=30,
+    )
+
+    assert summary["processed"] == 2
+    assert captured == [1, 2]
+    assert sleeps == [29.0]
+
+
 def test_run_seed_can_continue_after_capture_failure(tmp_path: Path, monkeypatch) -> None:
     def fake_capture(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
         raise CaptureError(

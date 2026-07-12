@@ -78,9 +78,11 @@ def run(
             help="Max concurrent in-flight requests to the site.",
             envvar="FYI_ARCHIVE_CONCURRENCY",
         ),
-    ] = 2,
+    ] = 1,
 ) -> None:
     """Run historical seed orchestration."""
+    if concurrency < 1:
+        raise typer.BadParameter("--concurrency must be positive")
     if requests_file is not None:
         requests = requests_from_jsonl(requests_file)
     elif allow_undiscovered and id_from is not None and id_to is not None:
@@ -102,10 +104,6 @@ def run(
     fyi_cli_args = [
         "--base-url",
         archive_instance.capture_base_url(),
-        "--min-interval",
-        str(min_interval),
-        "--concurrency",
-        str(concurrency),
     ]
 
     summary = run_seed(
@@ -124,6 +122,7 @@ def run(
         date_from=date_from,
         date_to=date_to,
         fyi_cli_args=fyi_cli_args,
+        min_interval_seconds=min_interval,
         continue_on_error=continue_on_error,
     )
     summary["instance_id"] = archive_instance.id
