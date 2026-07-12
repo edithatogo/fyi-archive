@@ -24,3 +24,11 @@ check. It is not currently compatible with fyi-cli's JSON feed contract.
 `scripts/probe_alaveteli_feeds.py` now automates this one-request-per-instance
 assessment with a 10-second default delay and records response status,
 checksum, and content type.
+
+The first verified live slug smoke completed in Uruguay in run
+[29192484464](https://github.com/edithatogo/fyi-archive/actions/runs/29192484464):
+the catalog contained 188 authorities, the request slug was captured with
+`html_captured: true`, and the manifest contained one record and two WARC
+record IDs. The run was explicitly marked `reason:
+explicit-request-reference`; this manual override does not affect scheduled
+overnight gating.
