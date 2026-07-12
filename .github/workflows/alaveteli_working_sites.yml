@@ -39,6 +39,10 @@ on:
         required: true
         default: "5"
         type: string
+      request_ref:
+        description: Optional explicit public request ID or slug for a capped smoke
+        required: false
+        type: string
       max_requests:
         description: Maximum captures per site
         required: true
@@ -71,6 +75,7 @@ jobs:
       DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || inputs.dry_run }}
       ID_FROM: ${{ github.event_name == 'schedule' && '1' || inputs.id_from }}
       ID_TO: ${{ github.event_name == 'schedule' && '5' || inputs.id_to }}
+      REQUEST_REF: ${{ github.event_name == 'schedule' && '' || inputs.request_ref }}
       MAX_REQUESTS: ${{ github.event_name == 'schedule' && '5' || inputs.max_requests }}
       MIN_INTERVAL: ${{ github.event_name == 'schedule' && '60' || inputs.min_interval }}
       LIVE_CONFIRMATION: ${{ github.event_name == 'schedule' && 'RUN_LIVE_ALAVETELI_CAPTURE' || inputs.live_confirmation }}
@@ -194,8 +199,13 @@ jobs:
             --concurrency 1
             --continue-on-error
           )
+          if [ -n "$REQUEST_REF" ]; then
+            args+=(--request-ref "$REQUEST_REF")
+          fi
           if [ "$DRY_RUN" = "true" ]; then
             args+=(--dry-run)
+          elif [ -n "$REQUEST_REF" ]; then
+            : # explicit request reference already added above
           elif [ -f "$root/_state/discovered_requests.jsonl" ]; then
             args+=(--requests-file "$root/_state/discovered_requests.jsonl")
           else

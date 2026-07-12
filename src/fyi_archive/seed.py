@@ -48,7 +48,7 @@ class SeedCaps:
 class SeedRequest:
     """Request queued for capture."""
 
-    request_id: int
+    request_id: int | str
     url_title: str
     title: str = ""
     authority: str = ""
@@ -60,7 +60,7 @@ class CaptureError(RuntimeError):
     def __init__(
         self,
         *,
-        request_id: int,
+        request_id: int | str,
         command: Sequence[str],
         returncode: int,
         stdout: str,
@@ -85,18 +85,19 @@ def utc_now() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def load_ledger(ledger_path: Path) -> set[int]:
+def load_ledger(ledger_path: Path) -> set[int | str]:
     """Read completed request IDs from a JSONL ledger."""
     if not ledger_path.exists():
         return set()
 
-    completed: set[int] = set()
+    completed: set[int | str] = set()
     for line in ledger_path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
         entry = json.loads(line)
         if entry.get("status") == "completed":
-            completed.add(int(entry["request_id"]))
+            value = entry["request_id"]
+            completed.add(int(value) if str(value).isdigit() else str(value))
     return completed
 
 
@@ -121,7 +122,8 @@ def requests_from_jsonl(path: Path) -> list[SeedRequest]:
         if not line.strip():
             continue
         data = json.loads(line)
-        request_id = int(data["request_id"])
+        raw_request_id = data["request_id"]
+        request_id = int(raw_request_id) if str(raw_request_id).isdigit() else str(raw_request_id)
         requests.append(
             SeedRequest(
                 request_id=request_id,

@@ -11,6 +11,7 @@ import typer
 from fyi_archive.instances import DEFAULT_INSTANCE_ID, resolve_instance
 from fyi_archive.seed import (
     SeedCaps,
+    SeedRequest,
     requests_from_id_range,
     requests_from_jsonl,
     run_seed,
@@ -37,6 +38,9 @@ def run(
     ] = None,
     id_to: Annotated[
         int | None, typer.Option(help="Last FYI request ID for fallback queueing.")
+    ] = None,
+    request_ref: Annotated[
+        str | None, typer.Option(help="One explicit fyi-cli request reference (ID or slug).")
     ] = None,
     allow_undiscovered: Annotated[
         bool,
@@ -83,7 +87,11 @@ def run(
     """Run historical seed orchestration."""
     if concurrency < 1:
         raise typer.BadParameter("--concurrency must be positive")
-    if requests_file is not None:
+    if request_ref is not None and requests_file is not None:
+        raise typer.BadParameter("use either --request-ref or --requests-file, not both")
+    if request_ref is not None:
+        requests = [SeedRequest(request_id=request_ref, url_title=request_ref)]
+    elif requests_file is not None:
         requests = requests_from_jsonl(requests_file)
     elif allow_undiscovered and id_from is not None and id_to is not None:
         requests = requests_from_id_range(id_from, id_to)
