@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.10.1](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.10.0...fyi_archive-v0.10.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* verify explicit live capture evidence ([fca0fc7](https://github.com/edithatogo/fyi-archive/commit/fca0fc709f2f79d76acc5f792e9e35f6f2f85bfa))
+
+
+### Documentation
+
+* record all working-site smoke outcomes ([841e7f4](https://github.com/edithatogo/fyi-archive/commit/841e7f41b9b697404b810b1bb851469d48239a55))
+* record verified Uruguay live smoke ([acf317f](https://github.com/edithatogo/fyi-archive/commit/acf317fbae683f31f93e1363b8a46e78b9c22f55))
+
 ## [0.10.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.9.0...fyi_archive-v0.10.0) (2026-07-12)
 
 
