@@ -81,8 +81,8 @@ def run(
     ] = 1,
 ) -> None:
     """Run historical seed orchestration."""
-    if concurrency != 1:
-        raise typer.BadParameter("capture orchestration is sequential; set --concurrency 1")
+    if concurrency < 1:
+        raise typer.BadParameter("--concurrency must be positive")
     if requests_file is not None:
         requests = requests_from_jsonl(requests_file)
     elif allow_undiscovered and id_from is not None and id_to is not None:
