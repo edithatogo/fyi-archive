@@ -2,8 +2,9 @@
 
 Tracks the project's climb from pre-alpha to a SOTA, evidence-backed archive.
 
-Status refreshed 2026-07-09 against track plans, GHA smoke evidence, and
-`conductor/archive_health.json`.
+Status refreshed 2026-07-13 against track plans and retained GitHub Actions
+evidence. `conductor/archive_health.json` remains a workflow artifact, not a
+committed source of truth.
 
 ## Phase 0 — Bootstrap (this repo's `repo_bootstrap`)
 - [x] Standalone git repo + remote
@@ -21,14 +22,16 @@ Status refreshed 2026-07-09 against track plans, GHA smoke evidence, and
       (GHA 28378940339 empty-diff proof; `hf_sync.yml`)
 - [x] HF live dataset populated (smoke corpus; full-site growth ongoing)
 - [x] Zenodo annual DOI snapshot (draft-first, gated; draft path verified on smoke)
-- [x] OSF project + components mirror (artifact path verified on smoke)
+- [x] OSF project + components mirror (9 artifacts verified in GHA run
+      29245786272)
 - [x] Croissant + Frictionless metadata emitted + validated
 - [x] DuckDB read-only export + CycloneDX SBOM + provenance
 - [x] release-please dynamic versioning/releases
 
 ### Phase 1 operational follow-through (not track blockers)
 - [ ] Grow corpus beyond smoke seed toward coverage target (60% in `archive_health.json`)
-- [ ] Keep committed `conductor/archive_health.json` fresh after each successful sync/publish
+- [ ] Keep the workflow-produced archive-health evidence fresh after each
+      successful sync/publish (latest successful monitor: GHA 29246621588)
 - [ ] Production Zenodo DOI publish (explicit confirmation string + protected environment)
 
 ## Phase 2 — Hardening (future)
