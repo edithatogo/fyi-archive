@@ -14,15 +14,18 @@ items into a concrete track when ready to act.
 
 ## Operational (active)
 
-Snapshot: [`operations_status.json`](./operations_status.json) (2026-07-09).
+Snapshot: [`operations_status.json`](./operations_status.json). Historical notes
+below are retained for audit context and are not the current controller state.
 
-- [~] Full-site historical backfill toward coverage target — **dispatch complete,
-      merge drain required**. Issue #9: ~33 244 captured records, `next_id` 142 501,
-      `dispatch_next_id` 250 001, ~195 pending merges. Procedure:
+- [x] Full-site historical backfill dispatch and merge drain — controller state
+      now reports `complete: true`, `next_id: 250001`, and `pending_batches: 0`.
+      Procedure and historical incidents remain documented in:
       [`docs/backfill-ops-runbook.md`](../docs/backfill-ops-runbook.md).
-- [ ] Populate HF/OSF/Zenodo mirrors so health-monitor counts leave 0 (Phase B of
-      ops runbook; latest monitor run 28989825250 still all zeros).
+- [~] Maintain mirror publication parity. HF and Zenodo have verified non-zero
+      snapshots; OSF remains a separately retryable publication target after a
+      documented 502 response.
 - [ ] `conductor/archive_health.json` is **gitignored** — treat GHA artifacts +
       doctor output as source of truth; do not commit local zeros as status.
-- [ ] Optional hardening: controller should re-queue merges for `pending` batches
-      when `planned_count == 0` but `pending_batches > 0` (today it no-ops).
+- [~] Controller re-queues pending batches when dispatch is complete and no worker
+      slots are active. This is being implemented in the maintenance-hardening
+      track with bounded serial retries.

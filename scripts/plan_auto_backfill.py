@@ -11,7 +11,10 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from backfill_state import state_dispatch_next_id  # ty: ignore[unresolved-import]
+from backfill_state import (  # ty: ignore[unresolved-import]
+    pending_batches_for_requeue,
+    state_dispatch_next_id,
+)
 
 
 def plan_dispatches(
@@ -57,6 +60,19 @@ def plan_dispatches(
         "complete": current > id_to,
         "next_id": min(current, id_to + 1),
         "planned_count": len(batches),
+    }
+
+
+def plan_pending_requeues(*, state: dict[str, Any] | None, max_batches: int) -> dict[str, Any]:
+    """Build a bounded retry plan for pending batches after initial dispatch drains."""
+    batches = pending_batches_for_requeue(state, max_batches=max_batches)
+    return {
+        "batches": batches,
+        "blocked_by_pending": bool(batches),
+        "complete": not batches,
+        "next_id": state_dispatch_next_id(state, 1),
+        "planned_count": len(batches),
+        "requeue_only": True,
     }
 
 

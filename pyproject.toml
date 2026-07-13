@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "fyi_archive"
 version = "0.10.3"
-description = "Orchestration scaffold for a read-only full-site archive of fyi.org.nz (NZ OIA request register, Alaveteli)."
+description = "Orchestration scaffold for gentle, read-only archival of configurable public information services."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
@@ -104,8 +104,8 @@ versioning = "semver"
 logging = "loguru"
 
 [tool.uv.sources]
-# fyi-cli is locked from GitHub so CI does not depend on a sibling checkout.
-fyi-cli = { git = "https://github.com/edithatogo/fyi-cli", branch = "master" }
+# Pin the capture tool to a published release; upgrades are deliberate and lockfile-backed.
+fyi-cli = { git = "https://github.com/edithatogo/fyi-cli", tag = "v1.2.0" }
 
 # --------------------------------------------------------------------------- #
 # Ruff — mirror the family rule set (corpus-cases-medilegal-nz)

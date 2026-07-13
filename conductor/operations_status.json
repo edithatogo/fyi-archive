@@ -1,9 +1,10 @@
 {
-  "generated_at": "2026-07-09T10:05:00Z",
+  "generated_at": "2026-07-13T00:00:00Z",
+  "evidence_as_of": "2026-07-09T10:37:56Z",
   "phase": "storage_operations",
   "pr": {
-    "url": "https://github.com/edithatogo/fyi-archive/pull/34",
-    "note": "CI includes live health + verification fixes. Auto-merge enabled; still needs non-author approval. Review threads resolved."
+    "url": "https://github.com/edithatogo/fyi-archive/commit/74c5d081438ea9b9e8156e1d0dea739589fcec79",
+    "note": "Release 0.10.3 is merged; no implementation PR is open."
   },
   "backfill": {
     "state_issue": 9,
@@ -33,9 +34,8 @@
     "default_tolerance": 50
   },
   "next_ops": [
-    "Human approve/merge PR #34",
-    "After merge: re-run Archive Health Monitor to confirm live HF count ~33217",
+    "Re-run Archive Health Monitor to refresh live mirror evidence",
     "Retry OSF publish when files.au-1.osf.io is healthy",
-    "Sigstore remains gated"
+    "Keep Sigstore gated until production release attachment paths have passed several clean cycles"
   ]
 }

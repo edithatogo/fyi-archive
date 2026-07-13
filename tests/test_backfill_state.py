@@ -42,6 +42,29 @@ def test_state_dispatch_next_id_tracks_highest_dispatched_batch() -> None:
     assert backfill_state.state_dispatch_next_id(state, 1) == 1001
 
 
+def test_pending_batches_for_requeue_is_bounded_and_stable() -> None:
+    state = {
+        "batches": [
+            {"id_from": "101", "id_to": "150", "label": "101-150", "status": "pending"},
+            {"id_from": "1", "id_to": "50", "label": "1-50", "status": "pending"},
+            {"id_from": "51", "id_to": "100", "label": "51-100", "status": "merged"},
+        ]
+    }
+
+    batches = backfill_state.pending_batches_for_requeue(state, max_batches=1)
+
+    assert [batch["label"] for batch in batches] == ["1-50"]
+
+
+def test_pending_batches_for_requeue_rejects_zero_limit() -> None:
+    try:
+        backfill_state.pending_batches_for_requeue({}, max_batches=0)
+    except ValueError as exc:
+        assert str(exc) == "max_batches must be positive"
+    else:
+        raise AssertionError("zero requeue limit should fail")
+
+
 def test_controller_labels_from_chunk_labels_collapses_worker_chunks() -> None:
     labels = ["351-400", "1-50", "301-350", "51-100", "451-500", "101-150"]
 
