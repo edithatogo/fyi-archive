@@ -29,3 +29,6 @@ below are retained for audit context and are not the current controller state.
       doctor output as source of truth; do not commit local zeros as status.
 - [x] Controller re-queues pending batches when dispatch is complete and no
       worker slots are active, with bounded serial retries.
+- [x] Health-monitor summaries expose measurable coverage progress without
+      additional source requests (`target_records`, `remaining_to_target`, and
+      `target_met`).

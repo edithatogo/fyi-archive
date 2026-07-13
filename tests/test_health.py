@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from typer.testing import CliRunner
 
 from fyi_archive.cli import app
+from fyi_archive.commands.doctor import get_coverage_info
 from fyi_archive.health import live_mirror_counts, manifest_count, parity_report
 
 
@@ -24,6 +25,26 @@ def test_manifest_count_reads_meta_record_count(tmp_path: Path) -> None:
 
 def test_manifest_count_missing_file(tmp_path: Path) -> None:
     assert manifest_count(tmp_path / "nope.json") == (0, None)
+
+
+def test_coverage_info_reports_target_progress(monkeypatch) -> None:
+    monkeypatch.setenv("COVERAGE_ID_HORIZON", "250000")
+    monkeypatch.setenv("COVERAGE_TARGET_PERCENT", "60")
+
+    coverage = get_coverage_info(33_244)
+
+    assert coverage["target_records"] == 150_000
+    assert coverage["remaining_to_target"] == 116_756
+    assert coverage["target_met"] is False
+
+
+def test_coverage_info_marks_zero_horizon_as_met(monkeypatch) -> None:
+    monkeypatch.setenv("COVERAGE_ID_HORIZON", "0")
+    coverage = get_coverage_info(0)
+
+    assert coverage["target_records"] == 0
+    assert coverage["remaining_to_target"] == 0
+    assert coverage["target_met"] is True
 
 
 def test_parity_report_flags_drift() -> None:

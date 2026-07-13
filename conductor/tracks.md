@@ -181,6 +181,12 @@ Goal: Expand coverage through fyi-cli feeds, offline exports, Internet Archive
 indexes, and future official datasets without increasing origin-site load.
 Link: [./tracks/alaveteli_source_modes_20260712/](./tracks/alaveteli_source_modes_20260712/)
 
+### [x] Track: Coverage progress observability
+Track ID: `coverage_progress_observability_20260713`
+Goal: Make the deliberately slow historical backfill measurable in health reports
+without increasing source traffic or changing its off-peak schedule.
+Link: [./tracks/coverage_progress_observability_20260713/](./tracks/coverage_progress_observability_20260713/)
+
 ---
 
 ## Companion capability tracks (in fyi-cli)

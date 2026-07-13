@@ -802,7 +802,7 @@ wheels = [
 
 [[package]]
 name = "fyi-archive"
-version = "0.10.5"
+version = "0.10.6"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
