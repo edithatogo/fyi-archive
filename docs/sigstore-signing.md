@@ -1,32 +1,37 @@
 # Sigstore Signing Opt-In
 
-Release artifacts are already covered by GitHub build-provenance attestations. Keyless
-Sigstore signing with `cosign` is intentionally **off by default** until the archive
-publication path is stable and the release process has been reviewed.
+Release artifacts are already covered by GitHub build-provenance attestations. An
+additional keyless Sigstore path is available through
+`.github/workflows/sign_release_artifacts.yml`, but remains **off by default**.
 
 ## When to enable
 
-Enable keyless signing only after:
+The opt-in workflow requires:
 
-- `publish_archives.yml` exists and produces the final archive artifacts.
-- The Zenodo production publish gate has been tested with a sandbox deposition.
-- Maintainers agree that signed artifacts are part of the public release contract.
+- an existing release tag;
+- the `sigstore-production` protected environment;
+- the exact confirmation string `sign-release-artifacts`; and
+- `WORKFLOW_PAT` with permission to attach the generated bundles.
 
-## Proposed workflow shape
+It currently signs and verifies the release's `provenance.json` and
+`sbom.cdx.json` assets, then attaches the Sigstore bundles. Archive payload
+signing remains a future extension once payloads are consistently attached to
+GitHub releases.
+
+## Workflow shape
 
 The release job would need:
 
-- `permissions: id-token: write` for OIDC.
-- `cosign sign-blob --yes <artifact>` for each release artifact.
-- Signature and certificate files uploaded beside each artifact.
+- `permissions: id-token: write` for OIDC, scoped to the signing job.
+- `cosign sign-blob --yes --bundle <artifact>.sigstore.json <artifact>`.
+- Bundles uploaded beside each signed release evidence asset.
 - Verification instructions in `README.md` and release notes.
 
 Example command shape:
 
 ```bash
 cosign sign-blob --yes \
-  --output-signature dist/fyi_archive.duckdb.sig \
-  --output-certificate dist/fyi_archive.duckdb.pem \
+  --bundle dist/fyi_archive.duckdb.sigstore.json \
   dist/fyi_archive.duckdb
 ```
 
@@ -34,11 +39,10 @@ Consumers would verify with:
 
 ```bash
 cosign verify-blob \
-  --certificate dist/fyi_archive.duckdb.pem \
-  --signature dist/fyi_archive.duckdb.sig \
+  --bundle dist/fyi_archive.duckdb.sigstore.json \
   --certificate-identity-regexp "https://github.com/edithatogo/fyi-archive/.github/workflows/.*" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   dist/fyi_archive.duckdb
 ```
 
-This remains an improvement backlog item rather than active release behavior.
+The workflow remains opt-in rather than active release behavior.
