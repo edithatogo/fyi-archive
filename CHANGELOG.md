@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.10.4](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.10.3...fyi_archive-v0.10.4) (2026-07-13)
+
+
+### Documentation
+
+* record OSF verification outcome ([eca9b00](https://github.com/edithatogo/fyi-archive/commit/eca9b00ba3f9421f041a8900b4b9e0ff4f23749e))
+
 ## [0.10.3](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.10.2...fyi_archive-v0.10.3) (2026-07-12)
 
 
