@@ -23,6 +23,6 @@ date-released: 2026-06-27
 version: 0.1.0
 repository-code: "https://github.com/edithatogo/fyi-archive"
 # repository-artifact: <Hugging Face dataset once published>
-url: "https://doi.org/10.5281/zenodo.21278350"
+url: "https://doi.org/10.5281/zenodo.21338285"
 authors:
   - name: "Dylan Mordaunt"
