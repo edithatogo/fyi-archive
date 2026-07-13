@@ -565,6 +565,13 @@ def test_targeted_publish_verification_ignores_stale_other_mirror_failure(
     assert [item["mirror"] for item in latest["mirrors"]] == ["osf"]
 
 
+def test_osf_workflow_step_clears_inherited_hf_target() -> None:
+    workflow = Path(".github/workflows/publish_archives.yml").read_text(encoding="utf-8")
+    osf_step = workflow[workflow.index("- name: Verify OSF mirror") :]
+    osf_step = osf_step[: osf_step.index("- name: Build deterministic dry-run verification report")]
+    assert 'HF_REPO_ID: ""' in osf_step
+
+
 @pytest.mark.edge
 def test_manifest_command_rejects_empty_merge_and_build_errors(monkeypatch) -> None:
     from fyi_archive.commands import manifest as manifest_command
