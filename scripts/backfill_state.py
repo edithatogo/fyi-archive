@@ -44,6 +44,22 @@ def has_pending_batches(state: dict[str, Any] | None) -> bool:
     return any(str(batch.get("status") or "pending") != "merged" for batch in state_batches(state))
 
 
+def pending_batches_for_requeue(
+    state: dict[str, Any] | None, *, max_batches: int
+) -> list[dict[str, Any]]:
+    """Return a bounded, stable list of pending batches suitable for retry."""
+    if max_batches < 1:
+        msg = "max_batches must be positive"
+        raise ValueError(msg)
+    pending = [
+        deepcopy(batch)
+        for batch in state_batches(state)
+        if str(batch.get("status") or "pending") == "pending"
+    ]
+    pending.sort(key=_batch_key)
+    return pending[:max_batches]
+
+
 def state_dispatch_next_id(state: dict[str, Any] | None, fallback: int) -> int:
     """Return the next request ID after the highest dispatched batch."""
     if not state:

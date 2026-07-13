@@ -7,7 +7,9 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from typer import BadParameter
 
+import fyi_archive.commands.discover as discover_command
 from fyi_archive.body_discovery import discover_bodies_with_fallback, discover_bodies_with_fyi_cli
 
 
@@ -132,3 +134,37 @@ def test_live_success_writes_verified_provenance(monkeypatch, tmp_path: Path) ->
     assert payload["bodies"] == [{"name": "live"}]
     assert json.loads(output.read_text(encoding="utf-8"))["bodies"] == [{"name": "live"}]
     assert json.loads(provenance.read_text(encoding="utf-8"))["mode"] == "live"
+
+
+def test_discover_command_writes_provenance_for_live_payload(monkeypatch, tmp_path: Path) -> None:
+    output = tmp_path / "bodies.json"
+    provenance = tmp_path / "provenance.json"
+
+    class _Instance:
+        id = "test-instance"
+
+        @staticmethod
+        def capture_base_url() -> str:
+            return "https://capture.example"
+
+    monkeypatch.setattr(discover_command, "resolve_instance", lambda **_: _Instance())
+    monkeypatch.setattr(
+        discover_command,
+        "discover_bodies_with_fyi_cli",
+        lambda **_: {"bodies": [{"name": "live"}], "provenance": {"mode": "default"}},
+    )
+    written: dict[str, object] = {}
+    monkeypatch.setattr(
+        discover_command,
+        "write_catalog_provenance",
+        lambda path, payload: written.update(path=path, payload=payload),
+    )
+
+    discover_command.bodies(output=output, provenance=provenance)
+
+    assert written == {"path": provenance, "payload": {"mode": "default"}}
+
+
+def test_discover_command_rejects_fallback_without_repository(tmp_path: Path) -> None:
+    with pytest.raises(BadParameter, match="--repository is required"):
+        discover_command.bodies(output=tmp_path / "bodies.json", fallback=True)

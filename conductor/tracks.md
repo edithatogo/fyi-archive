@@ -11,6 +11,14 @@ Registry of all tracks for the project. Each track has its own folder with `spec
 - `[x]` — complete / evidence-backed
 - `[!]` — blocked
 
+---
+
+## [~] Track: Maintenance hardening
+Track ID: `maintenance_hardening_20260713`
+Goal: Keep documentation, operational state, dependency resolution, and quality
+gates trustworthy as the archive grows.
+Link: [./tracks/maintenance_hardening_20260713/](./tracks/maintenance_hardening_20260713/)
+
 ## Dependency legend
 
 - `fyi-cli: <track>` — a capability track in the companion `fyi-cli` repo that must

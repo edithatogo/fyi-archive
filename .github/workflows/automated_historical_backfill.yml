@@ -291,6 +291,26 @@ jobs:
             --max-batches "$AVAILABLE_BATCHES" \
             --state .tmp/backfill-state.json \
             --output .tmp/backfill-plan.json
+          if [ "$(jq '.planned_count' .tmp/backfill-plan.json)" = "0" ] \
+            && [ "$(jq '.complete' .tmp/backfill-plan.json)" = "true" ] \
+            && [ "$(jq '.summary.pending_batches // 0' .tmp/backfill-state.json)" -gt 0 ]; then
+            python - <<'PY'
+          import json
+          import os
+          import sys
+          from pathlib import Path
+
+          sys.path.insert(0, str(Path("scripts")))
+          from plan_auto_backfill import plan_pending_requeues
+
+          state = json.loads(Path(".tmp/backfill-state.json").read_text(encoding="utf-8"))
+          plan = plan_pending_requeues(state=state, max_batches=int(os.environ["AVAILABLE_BATCHES"]))
+          Path(".tmp/backfill-plan.json").write_text(
+              json.dumps(plan, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+            echo "Planning bounded retries for pending batches"
+          fi
           cat .tmp/backfill-plan.json
 
       - name: Dispatch worker workflows
@@ -343,6 +363,10 @@ jobs:
             exit 0
           fi
           issue_number="$(cat "$ISSUE_NUMBER_PATH")"
+          if [ "$(jq '.requeue_only // false' .tmp/backfill-plan.json)" = "true" ]; then
+            echo "Re-queued existing pending batches; merge completion will update controller state"
+            exit 0
+          fi
           python - <<'PY'
           import json
           import os

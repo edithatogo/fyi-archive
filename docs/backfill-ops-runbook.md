@@ -35,25 +35,29 @@ over a local zeroed copy.
 
 ---
 
-## Investigation snapshot (2026-07-09)
+## Historical investigation snapshot (2026-07-09)
+
+The following snapshot records the merge-stall incident and its remediation
+context. It is not a current status assertion; use issue #9 and workflow
+artifacts for live state.
 
 | Signal | Observation |
 | --- | --- |
 | Controller | Succeeds on schedule; plan is `{ complete: true, planned_count: 0, next_id: 250001 }` |
 | Dispatch range | `id_to=250000` fully planned (`dispatch_next_id=250001`) |
-| Cursor | `next_id ≈ 142501` (merge cursor) |
-| Pending | **~195** batches still `status: pending` from ~`142501` upward |
+| Cursor | `next_id ≈ 142501` (merge cursor at investigation time) |
+| Pending | **~195** batches were `status: pending` from ~`142501` upward |
 | Workers | No new `Historical Backfill Batch` runs since **2026-07-07** |
 | Merges | Last successful merge **2026-07-07**; same day many merges **cancelled** in a burst |
 | Captured (state) | ~**33 244** `captured_records` across batches |
 | Mirrors | Health monitor still **HF/OSF/Zenodo = 0** (run 28989825250) |
 | Artifacts | Recent worker artifacts still present; expiry ~**2026-10-05** |
 
-### Root cause (merge stall)
+### Root cause (merge stall; remediated)
 
-1. **Dispatch is done, merge is not.** The controller only plans *new* ID windows.
-   When `dispatch_next_id > id_to`, it logs `No worker batches to dispatch` and does
-   **not** re-drive merges for leftover `pending` rows.
+1. **Dispatch was done.** The controller only planned *new* ID windows. The
+   maintenance-hardening change now re-drives bounded pending windows when no
+   workers are active.
 2. **Cancellation storm (2026-07-07).** Many concurrent `Merge Backfill Artifacts`
    runs were cancelled within seconds of each other (pre–serialize fixes in
    PRs #31 / #32). Cancelled merges never called `mark_merged_batches`, so issue #9

@@ -129,14 +129,21 @@ uv run pytest -q --cov=fyi_archive --cov-report=term-missing
 make quality                 # ruff + ty + typos + taplo + actionlint + zizmor
 ```
 
+`make quality` is deliberately fail-closed for blocking checks. Install the
+repository-quality executables (`typos`, `taplo`, and `actionlint`) locally
+before using it; CI installs pinned versions of these tools through dedicated
+actions. Run `make quality-advisory` separately for the current non-blocking
+security, dependency, and dead-code scans while their existing findings are
+being retired.
+
 The test harness enforces a 90% branch-aware coverage floor and exposes focused
 profiles for unit, integration, end-to-end, system/smoke, property, edge,
 security/regression, performance, compatibility, usability, and sanity tests.
 Use `make test-all` for the strict local gate and `make mutation` from WSL for
 the full mutmut run; scheduled Linux mutation reports are published by CI.
 
-> `fyi-cli` is referenced as a local path dependency (`../fyi-cli`); clone it
-> alongside this repo inside the `legal-nz` workspace.
+> `fyi-cli` is resolved from the pinned upstream release in `pyproject.toml` and
+> `uv.lock`; a sibling checkout is optional for upstream development only.
 
 ## Maintenance checklist
 

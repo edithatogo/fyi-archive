@@ -1,5 +1,6 @@
 .PHONY: help install sync lock lint format format-fix typecheck test test-cov \
         quality spell toml-check workflow-audit workflow-syntax security-audit \
+        quality-advisory \
         sbom dead-code dependency-check clean test-all test-unit test-integration \
         test-e2e test-smoke test-property test-edge test-security test-performance \
         test-compatibility mutation
@@ -71,31 +72,33 @@ test-compatibility: ## Run supported-runtime compatibility tests
 mutation: ## Run mutmut mutation testing (explicit, intentionally expensive)
 	uv run mutmut run --paths-to-mutate src/fyi_archive --tests-dir tests
 
-quality: lint format typecheck spell toml-check workflow-audit workflow-syntax ## Full quality gate
+quality: lint format typecheck spell toml-check workflow-syntax ## Full blocking quality gate
+
+quality-advisory: workflow-audit security-audit dead-code dependency-check ## Non-blocking hygiene scans
 
 spell: ## typos spelling check
 	uv run typos src tests scripts docs README.md
 
 toml-check: ## taplo TOML check
-	taplo check --config=.taplo.toml pyproject.toml || true
+	taplo check --config=.taplo.toml pyproject.toml
 
 workflow-audit: ## zizmor GHA security audit
-	zizmor --min-severity medium .github/workflows || true
+	zizmor --min-severity medium .github/workflows
 
 workflow-syntax: ## actionlint workflow syntax
-	actionlint || true
+	actionlint
 
 security-audit: ## pip-audit over the installed env
-	uv run --extra dev pip-audit || true
+	uv run --extra dev pip-audit
 
 sbom: ## Generate CycloneDX SBOM
 	uv run cyclonedx-py environment --output-format json --output-file dist/sbom.cdx.json
 
 dead-code: ## vulture dead-code scan
-	uv run vulture src || true
+	uv run vulture src
 
 dependency-check: ## deptry dependency hygiene
-	uv run deptry src || true
+	uv run deptry src
 
 clean: ## Remove caches and build artefacts
 	rm -rf .pytest_cache .ruff_cache .ty_cache .mypy_cache .coverage coverage.xml htmlcov

@@ -94,3 +94,30 @@ def test_plan_dispatches_advances_past_pending_batches() -> None:
     assert plan["blocked_by_pending"] is False
     assert plan["next_id"] == 101
     assert plan["complete"] is False
+
+
+def test_plan_pending_requeues_only_pending_batches() -> None:
+    plan = plan_auto_backfill.plan_pending_requeues(
+        state={
+            "next_id": 101,
+            "batches": [
+                {"id_from": "51", "id_to": "100", "label": "51-100", "status": "merged"},
+                {"id_from": "101", "id_to": "150", "label": "101-150", "status": "pending"},
+            ],
+        },
+        max_batches=1,
+    )
+
+    assert plan["batches"] == [
+        {"id_from": "101", "id_to": "150", "label": "101-150", "status": "pending"}
+    ]
+    assert plan["requeue_only"] is True
+    assert plan["blocked_by_pending"] is True
+
+
+def test_plan_pending_requeues_is_complete_without_pending_batches() -> None:
+    plan = plan_auto_backfill.plan_pending_requeues(state={"batches": []}, max_batches=1)
+
+    assert plan["batches"] == []
+    assert plan["complete"] is True
+    assert plan["requeue_only"] is True
