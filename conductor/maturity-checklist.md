@@ -30,8 +30,9 @@ committed source of truth.
 
 ### Phase 1 operational follow-through (not track blockers)
 - [~] Grow corpus beyond smoke seed toward coverage target (60% in `archive_health.json`); health output now reports target records, remaining records, and whether the target is met. Remaining work is the deliberately slow historical backfill.
-- [ ] Keep the workflow-produced archive-health evidence fresh after each
-      successful sync/publish (latest successful monitor: GHA 29246621588)
+- [x] Keep the workflow-produced archive-health evidence fresh after each
+      successful sync/publish (latest successful monitor: GHA 29250400404;
+      healthy parity and coverage evidence uploaded).
 - [x] Production Zenodo DOI publish completed through the protected environment after explicit confirmation: `10.5281/zenodo.21338285` (record `21338285`).
 
 ## Phase 2 — Hardening (future)
