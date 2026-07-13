@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 from datetime import UTC, datetime
 from pathlib import Path
@@ -90,12 +91,20 @@ def get_coverage_info(
         )
     )
     percent = 0 if id_horizon <= 0 else min(100, round(100 * manifest_records / id_horizon))
+    target_records = (
+        0
+        if id_horizon <= 0 or target_percent <= 0
+        else math.ceil(id_horizon * target_percent / 100)
+    )
     return {
         "percent_covered": percent,
         "target": target_percent,
         "id_horizon": id_horizon,
         "instance_id": instance_id,
         "records": manifest_records,
+        "target_records": target_records,
+        "remaining_to_target": max(0, target_records - manifest_records),
+        "target_met": manifest_records >= target_records,
     }
 
 

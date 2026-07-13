@@ -99,3 +99,22 @@ jobs:
         with:
           name: archive-health-${{ inputs.instance || 'nz-fyi' }}-${{ inputs.jurisdiction || 'all' }}
           path: health.json
+
+      - name: Publish coverage progress summary
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          health = json.loads(Path("health.json").read_text(encoding="utf-8"))
+          coverage = health["coverage"]
+          status = "met" if coverage["target_met"] else "in progress"
+          print("## Archive coverage progress")
+          print()
+          print(f"- Scope: `{coverage['instance_id']}`")
+          print(f"- Records: **{coverage['records']:,}**")
+          print(f"- Coverage: **{coverage['percent_covered']}%** of `{coverage['id_horizon']:,}`")
+          print(f"- Target: **{coverage['target']}%** ({coverage['target_records']:,} records; {status})")
+          print(f"- Remaining to target: **{coverage['remaining_to_target']:,}**")
+          PY
