@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-07-13T00:00:00Z",
+  "generated_at": "2026-07-13T02:03:16Z",
   "evidence_as_of": "2026-07-09T10:37:56Z",
   "phase": "storage_operations",
   "pr": {
@@ -18,14 +18,14 @@
     "huggingface_record_count": 33217,
     "zenodo_draft_deposition_id": 21277151,
     "zenodo_draft_record_count": 33217,
-    "successful_hf_zenodo_run": 29009402562,
+    "successful_hf_zenodo_run": 29218389994,
     "captured_minus_merged_gap": 27,
     "gap_handling": "backfill report fully_verified now allows small capture/manifest skew (max(25, merged//1000)) when both sides non-zero",
     "osf": {
-      "attempt_run": 29009938498,
-      "status": "failed",
-      "error": "OSF files API 502 Bad Gateway uploading latest_manifest.json to au-1.osf.io",
-      "note": "Consolidate+build succeeded; transient OSF infrastructure error. Retry publication_target=osf with consolidate_backfill_artifacts=true."
+      "attempt_run": 29218513465,
+      "status": "uploaded_unverified",
+      "error": "OSF upload step completed, but the workflow Verify OSF mirror step failed.",
+      "note": "Do not claim OSF parity until a later verification run succeeds; Sigstore remains gated."
     }
   },
   "health_monitor_fix": {
@@ -35,7 +35,7 @@
   },
   "next_ops": [
     "Re-run Archive Health Monitor to refresh live mirror evidence",
-    "Retry OSF publish when files.au-1.osf.io is healthy",
+    "Investigate and retry OSF verification after the upload/verification mismatch",
     "Keep Sigstore gated until production release attachment paths have passed several clean cycles"
   ]
 }
