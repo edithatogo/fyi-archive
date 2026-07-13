@@ -19,6 +19,13 @@ Goal: Keep documentation, operational state, dependency resolution, and quality
 gates trustworthy as the archive grows.
 Link: [./tracks/maintenance_hardening_20260713/](./tracks/maintenance_hardening_20260713/)
 
+## [~] Track: Targeted mirror verification
+Track ID: `targeted_mirror_verification_20260713`
+Goal: Ensure a targeted mirror retry is evaluated independently of stale
+verification evidence for other mirrors while retaining the aggregate audit
+report.
+Link: [./tracks/targeted_mirror_verification_20260713/](./tracks/targeted_mirror_verification_20260713/)
+
 ## Dependency legend
 
 - `fyi-cli: <track>` — a capability track in the companion `fyi-cli` repo that must

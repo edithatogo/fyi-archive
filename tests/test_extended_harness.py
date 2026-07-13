@@ -529,6 +529,42 @@ def test_publish_verify_command_handles_targets_and_validation_errors(
     )
 
 
+@pytest.mark.integration
+def test_targeted_publish_verification_ignores_stale_other_mirror_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text('{"meta": {"record_count": 1}, "requests": []}', encoding="utf-8")
+    artifact = tmp_path / "artifact.bin"
+    artifact.write_bytes(b"x")
+    report_path = tmp_path / "report.json"
+    report_path.write_text(
+        '[{"mirror": "huggingface", "verified": false, "record_count": 1, '
+        '"artifacts": [], "details": {}}]\n',
+        encoding="utf-8",
+    )
+    current = MirrorVerification(mirror="osf", verified=True, record_count=1)
+    monkeypatch.setattr(publish_command, "verify_osf_node", lambda **_: current)
+
+    publish_command.verify(
+        root=tmp_path,
+        manifest_path=manifest,
+        artifact=[artifact],
+        osf_node_id="node",
+        osf_token="token",
+        report_path=report_path,
+        output_dir=tmp_path / "versions",
+    )
+
+    aggregate = json.loads(report_path.read_text(encoding="utf-8"))
+    assert {item["mirror"] for item in aggregate} == {"huggingface", "osf"}
+    latest = json.loads(
+        (tmp_path / "versions" / "latest_mirror_verification.json").read_text(encoding="utf-8")
+    )
+    assert latest["verified"] is True
+    assert [item["mirror"] for item in latest["mirrors"]] == ["osf"]
+
+
 @pytest.mark.edge
 def test_manifest_command_rejects_empty_merge_and_build_errors(monkeypatch) -> None:
     from fyi_archive.commands import manifest as manifest_command
