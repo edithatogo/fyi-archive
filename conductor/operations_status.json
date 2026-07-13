@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-07-13T02:03:16Z",
-  "evidence_as_of": "2026-07-09T10:37:56Z",
+  "generated_at": "2026-07-13T11:27:27Z",
+  "evidence_as_of": "2026-07-13T11:27:27Z",
   "phase": "storage_operations",
   "pr": {
-    "url": "https://github.com/edithatogo/fyi-archive/commit/74c5d081438ea9b9e8156e1d0dea739589fcec79",
-    "note": "Release 0.10.3 is merged; no implementation PR is open."
+    "url": "https://github.com/edithatogo/fyi-archive/commit/38b338833f50d1590ca1907d864af40b4669d158",
+    "note": "Release 0.10.5 is merged; no implementation PR is open."
   },
   "backfill": {
     "state_issue": 9,
@@ -22,10 +22,12 @@
     "captured_minus_merged_gap": 27,
     "gap_handling": "backfill report fully_verified now allows small capture/manifest skew (max(25, merged//1000)) when both sides non-zero",
     "osf": {
-      "attempt_run": 29218513465,
-      "status": "uploaded_unverified",
-      "error": "OSF upload step completed, but the workflow Verify OSF mirror step failed.",
-      "note": "Do not claim OSF parity until a later verification run succeeds; Sigstore remains gated."
+      "attempt_run": 29245786272,
+      "status": "verified",
+      "record_count": 33217,
+      "artifact_count": 9,
+      "verification": "All 9 OSF artifacts matched expected checksums and sizes; targeted versioned bundle verified true.",
+      "note": "OSF-only retry passed after isolating inherited HF verification and adding bounded eventual-consistency retries."
     }
   },
   "health_monitor_fix": {
@@ -35,7 +37,6 @@
   },
   "next_ops": [
     "Re-run Archive Health Monitor to refresh live mirror evidence",
-    "Investigate and retry OSF verification after the upload/verification mismatch",
     "Keep Sigstore gated until production release attachment paths have passed several clean cycles"
   ]
 }
