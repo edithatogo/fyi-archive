@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.11.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.10.6...fyi_archive-v0.11.0) (2026-07-13)
+
+
+### Features
+
+* expose coverage progress in health reports ([#179](https://github.com/edithatogo/fyi-archive/issues/179)) ([5cfa640](https://github.com/edithatogo/fyi-archive/commit/5cfa6407789bc48ce4ee632a0dcedf66cd7717f3))
+
 ## [0.10.6](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.10.5...fyi_archive-v0.10.6) (2026-07-13)
 
 
