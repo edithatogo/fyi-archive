@@ -329,7 +329,9 @@ jobs:
         run: |
           set -euo pipefail
           uv run python - <<'PY'
+          import json
           import os
+          from time import sleep
           import shutil
           from pathlib import Path
           from fyi_archive.publish.hf_publish import publish_folder_to_hf, sha256_file, verify_remote_manifest
@@ -561,10 +563,19 @@ jobs:
           for path in artifact_paths:
               if path.exists():
                   upload_file(token=token, upload_url=upload_url, path=path)
-          artifact_results = compare_artifacts(
-              local_artifacts=build_local_artifacts(artifact_paths),
-              remote_artifacts=list_files(token=token, node_id=component_id),
-          )
+          local_artifacts = build_local_artifacts(artifact_paths)
+          artifact_results = []
+          for attempt in range(4):
+              artifact_results = compare_artifacts(
+                  local_artifacts=local_artifacts,
+                  remote_artifacts=list_files(token=token, node_id=component_id),
+              )
+              if mirror_verified(artifact_results):
+                  break
+              if attempt < 3:
+                  delay = 15 * (attempt + 1)
+                  print(f"OSF listing is not yet consistent; retrying in {delay}s")
+                  sleep(delay)
           append_verification_report(
               Path("dist/mirror_verification.json"),
               MirrorVerification(
@@ -576,6 +587,7 @@ jobs:
               ),
           )
           if not mirror_verified(artifact_results):
+              print(json.dumps([result.__dict__ for result in artifact_results], indent=2, sort_keys=True))
               raise SystemExit("OSF artifact verification failed")
           PY
 
