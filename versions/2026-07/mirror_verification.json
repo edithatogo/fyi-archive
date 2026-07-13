@@ -1,21 +1,21 @@
 {
-  "archive_publication_version": "0.10.3+archive.2026.07",
-  "generated_at": "2026-07-13T01:58:02.386854+00:00",
+  "archive_publication_version": "0.10.4+archive.2026.07",
+  "generated_at": "2026-07-13T11:23:26.593017+00:00",
   "manifest": {
     "path": "/home/runner/work/fyi-archive/fyi-archive/manifests/latest_manifest.json",
     "record_count": 33217,
-    "sha256": "23cab9ee0ac6986326d67c91a91e415456a1d0589c90ec1c1628556e0d0d6e1e"
+    "sha256": "23c4000527d71a7b7961259197209cb047554f9cc2aedf587b9a96b92c9894da"
   },
   "mirrors": [
     {
       "artifacts": [
         {
           "checksum_matches": true,
-          "local_sha256": "23cab9ee0ac6986326d67c91a91e415456a1d0589c90ec1c1628556e0d0d6e1e",
+          "local_sha256": "23c4000527d71a7b7961259197209cb047554f9cc2aedf587b9a96b92c9894da",
           "name": "latest_manifest.json",
           "present": true,
-          "remote_checksum": "sha256:23cab9ee0ac6986326d67c91a91e415456a1d0589c90ec1c1628556e0d0d6e1e",
-          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/manifests/latest_manifest.json",
+          "remote_checksum": "sha256:23c4000527d71a7b7961259197209cb047554f9cc2aedf587b9a96b92c9894da",
+          "remote_url": "https://osf.io/download/6a427ca8c40845ba423fedff/",
           "size_matches": true
         },
         {
@@ -24,7 +24,7 @@
           "name": "latest_manifest.parquet",
           "present": true,
           "remote_checksum": "sha256:fd5f54be6b94390dce93b4662fc393c855d87569ff70eaf5411c365d0cbca678",
-          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/manifests/latest_manifest.parquet",
+          "remote_url": "https://osf.io/download/6a427cab72fcf8c6d7d0d42e/",
           "size_matches": true
         },
         {
@@ -33,7 +33,7 @@
           "name": "authorities.json",
           "present": true,
           "remote_checksum": "sha256:ad0fe68bd83cf8b75779bc634d4d542de311baaa1e1d2bd37f559a784741e165",
-          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/manifests/authorities.json",
+          "remote_url": "https://osf.io/download/6a427cae736ab0257dd0d37e/",
           "size_matches": true
         },
         {
@@ -42,7 +42,7 @@
           "name": "croissant.jsonld",
           "present": true,
           "remote_checksum": "sha256:55aa1e1df859fa4d29bb76589d404d9cf0ea05688c3f1055083617180664404f",
-          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/metadata/croissant.jsonld",
+          "remote_url": "https://osf.io/download/6a4f768f8565c63b775b91f5/",
           "size_matches": true
         },
         {
@@ -51,56 +51,56 @@
           "name": "frictionless.json",
           "present": true,
           "remote_checksum": "sha256:4ff3dc8f66fc4bef9cc2ac74e740bc4c8aa2fd11d9f2276c6011cb9c0886051d",
-          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/metadata/frictionless.json",
+          "remote_url": "https://osf.io/download/6a4f7692eca436d4c77afaee/",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "be893b305a4408332df2dfbabce0f96238bf98d28b649383dd7746a161f90a63",
+          "local_sha256": "f8b86ebfd228e13698b67c4de71f76383e748524021a4063b06626d5ae23b49d",
           "name": "schema.org.jsonld",
           "present": true,
-          "remote_checksum": "sha256:be893b305a4408332df2dfbabce0f96238bf98d28b649383dd7746a161f90a63",
-          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/metadata/schema.org.jsonld",
+          "remote_checksum": "sha256:f8b86ebfd228e13698b67c4de71f76383e748524021a4063b06626d5ae23b49d",
+          "remote_url": "https://osf.io/download/6a4f769645a884ce4b3b2f5e/",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "d5a6770684f13932ace59db22e00bcdb8dd92ea9164a9750946b0bd79b18b017",
+          "local_sha256": "42b61bbdd2a063166c9725a0985a7c4fce3d07f2066be971490d570ac14ff473",
           "name": "fyi_archive.duckdb",
           "present": true,
-          "remote_checksum": "sha256:d5a6770684f13932ace59db22e00bcdb8dd92ea9164a9750946b0bd79b18b017",
-          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/dist/fyi_archive.duckdb",
+          "remote_checksum": "sha256:42b61bbdd2a063166c9725a0985a7c4fce3d07f2066be971490d570ac14ff473",
+          "remote_url": "https://osf.io/download/6a427cb152f5ff038a3fee79/",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "8e8da2f1b3fb962b7c7e02682bc137f620e6a80115b83944b57fd5fb86a11877",
+          "local_sha256": "0c846334fa574ded32f207156cca23c662dbb565d2ceda03c304d50e92fe22cf",
           "name": "sbom.cdx.json",
           "present": true,
-          "remote_checksum": "sha256:8e8da2f1b3fb962b7c7e02682bc137f620e6a80115b83944b57fd5fb86a11877",
-          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/dist/sbom.cdx.json",
+          "remote_checksum": "sha256:0c846334fa574ded32f207156cca23c662dbb565d2ceda03c304d50e92fe22cf",
+          "remote_url": "https://osf.io/download/6a427cb57d84e628e2d0d1f1/",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "8521a2b87c6d5d4621d870f2e5969c0383e3e08c1290f0506e0455c0212b4c4a",
+          "local_sha256": "ec7a4756765fbcb19ca2256ee91d91cb0f949c0cacbf04bf2c174071edc7ac4f",
           "name": "provenance.json",
           "present": true,
-          "remote_checksum": "sha256:8521a2b87c6d5d4621d870f2e5969c0383e3e08c1290f0506e0455c0212b4c4a",
-          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/dist/provenance.json",
+          "remote_checksum": "sha256:ec7a4756765fbcb19ca2256ee91d91cb0f949c0cacbf04bf2c174071edc7ac4f",
+          "remote_url": "https://osf.io/download/6a427cb84eb6fa0561932eb8/",
           "size_matches": true
         }
       ],
       "details": {
-        "repo_id": "edithatogo/fyi-archive-nz",
-        "revision": null
+        "api_url": "https://api.osf.io/v2",
+        "node_id": "emqzt"
       },
-      "mirror": "huggingface",
+      "mirror": "osf",
       "record_count": 33217,
       "verified": true
     }
   ],
-  "package_version": "0.10.3",
+  "package_version": "0.10.4",
   "publication_month": "2026-07",
   "verified": true
 }

@@ -1,5 +1,5 @@
 {
-  "archive_publication_version": "0.10.3+archive.2026.07",
+  "archive_publication_version": "0.10.4+archive.2026.07",
   "comparison": {
     "capture_tolerance": 33,
     "captured_covers_merged": true,
@@ -59,7 +59,7 @@
     ]
   },
   "dry_run": false,
-  "generated_at": "2026-07-13T01:58:04.642903+00:00",
+  "generated_at": "2026-07-13T11:23:28.740432+00:00",
   "github_actions": {
     "captured_records": 33244,
     "dispatched_batches": 3074,
@@ -97,7 +97,7 @@
   },
   "published": {
     "huggingface": {
-      "manifest_path": "/tmp/tmpz3_nhp2c/datasets--edithatogo--fyi-archive-nz/snapshots/fc27bfa471c598a31d975cfa2b603b1a11408e55/manifests/latest_manifest.json",
+      "manifest_path": "/tmp/tmpu2tw8gse/datasets--edithatogo--fyi-archive-nz/snapshots/fc27bfa471c598a31d975cfa2b603b1a11408e55/manifests/latest_manifest.json",
       "manifest_sha256": "23cab9ee0ac6986326d67c91a91e415456a1d0589c90ec1c1628556e0d0d6e1e",
       "record_count": 33217,
       "repo_id": "edithatogo/fyi-archive-nz",
