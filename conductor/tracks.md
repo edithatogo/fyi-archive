@@ -13,7 +13,7 @@ Registry of all tracks for the project. Each track has its own folder with `spec
 
 ---
 
-## [~] Track: Maintenance hardening
+## [x] Track: Maintenance hardening
 Track ID: `maintenance_hardening_20260713`
 Goal: Keep documentation, operational state, dependency resolution, and quality
 gates trustworthy as the archive grows.
