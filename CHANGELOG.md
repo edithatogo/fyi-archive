@@ -5,6 +5,18 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.10.5](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.10.4...fyi_archive-v0.10.5) (2026-07-13)
+
+
+### Bug Fixes
+
+* isolate OSF workflow verification target ([ccab5d8](https://github.com/edithatogo/fyi-archive/commit/ccab5d89c6e18fa87de14b000013360ce0b323cf))
+* isolate OSF workflow verification target ([536a049](https://github.com/edithatogo/fyi-archive/commit/536a04969c4ed2b5a51545b2385a752e6bafc49e))
+* isolate targeted mirror verification ([8fa44ec](https://github.com/edithatogo/fyi-archive/commit/8fa44eccdfb05de3bfb63c3be956e60ffd790af8))
+* isolate targeted mirror verification ([db60baa](https://github.com/edithatogo/fyi-archive/commit/db60baadad4b6707ab8a02ccc61ec103fe078fe3))
+* retry eventual OSF listing consistency ([ce8f639](https://github.com/edithatogo/fyi-archive/commit/ce8f639c689cbdb3591d92967fb6b3898f4321d6))
+* retry eventual OSF listing consistency ([1161c4d](https://github.com/edithatogo/fyi-archive/commit/1161c4d2bff2b7b5a1d6d742ddd551964f230e49))
+
 ## [0.10.4](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.10.3...fyi_archive-v0.10.4) (2026-07-13)
 
 
