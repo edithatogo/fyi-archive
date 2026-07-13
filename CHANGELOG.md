@@ -5,6 +5,14 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.10.6](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.10.5...fyi_archive-v0.10.6) (2026-07-13)
+
+
+### Documentation
+
+* refresh operational evidence status ([d11d429](https://github.com/edithatogo/fyi-archive/commit/d11d429ee7b9358ba33ae42ccfd6ce99ff3fccf6))
+* refresh operational evidence status ([c94f686](https://github.com/edithatogo/fyi-archive/commit/c94f68636aab132fa06ca2d197c636eb3e66536e))
+
 ## [0.10.5](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.10.4...fyi_archive-v0.10.5) (2026-07-13)
 
 
