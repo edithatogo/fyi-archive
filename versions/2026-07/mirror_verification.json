@@ -1,20 +1,20 @@
 {
-  "archive_publication_version": "0.5.2+archive.2026.07",
-  "generated_at": "2026-07-09T11:12:14.206552+00:00",
+  "archive_publication_version": "0.10.3+archive.2026.07",
+  "generated_at": "2026-07-13T01:58:02.386854+00:00",
   "manifest": {
     "path": "/home/runner/work/fyi-archive/fyi-archive/manifests/latest_manifest.json",
     "record_count": 33217,
-    "sha256": "2dd907f5c4e9df6490d3870a7cb65a74a1f3aec9f56d5dfac2b6cae7cba91d9f"
+    "sha256": "23cab9ee0ac6986326d67c91a91e415456a1d0589c90ec1c1628556e0d0d6e1e"
   },
   "mirrors": [
     {
       "artifacts": [
         {
           "checksum_matches": true,
-          "local_sha256": "2dd907f5c4e9df6490d3870a7cb65a74a1f3aec9f56d5dfac2b6cae7cba91d9f",
+          "local_sha256": "23cab9ee0ac6986326d67c91a91e415456a1d0589c90ec1c1628556e0d0d6e1e",
           "name": "latest_manifest.json",
           "present": true,
-          "remote_checksum": "sha256:2dd907f5c4e9df6490d3870a7cb65a74a1f3aec9f56d5dfac2b6cae7cba91d9f",
+          "remote_checksum": "sha256:23cab9ee0ac6986326d67c91a91e415456a1d0589c90ec1c1628556e0d0d6e1e",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/manifests/latest_manifest.json",
           "size_matches": true
         },
@@ -56,37 +56,37 @@
         },
         {
           "checksum_matches": true,
-          "local_sha256": "c856b45569db103f68761c462733cde684c37377b88f7836a4882357f81de239",
+          "local_sha256": "be893b305a4408332df2dfbabce0f96238bf98d28b649383dd7746a161f90a63",
           "name": "schema.org.jsonld",
           "present": true,
-          "remote_checksum": "sha256:c856b45569db103f68761c462733cde684c37377b88f7836a4882357f81de239",
+          "remote_checksum": "sha256:be893b305a4408332df2dfbabce0f96238bf98d28b649383dd7746a161f90a63",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/metadata/schema.org.jsonld",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "3a27497137ce9dad0cd59eb21de564830c983abfd550ecd90459b8f9c7f39c49",
+          "local_sha256": "d5a6770684f13932ace59db22e00bcdb8dd92ea9164a9750946b0bd79b18b017",
           "name": "fyi_archive.duckdb",
           "present": true,
-          "remote_checksum": "sha256:3a27497137ce9dad0cd59eb21de564830c983abfd550ecd90459b8f9c7f39c49",
+          "remote_checksum": "sha256:d5a6770684f13932ace59db22e00bcdb8dd92ea9164a9750946b0bd79b18b017",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/dist/fyi_archive.duckdb",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "36216833d49b8e462e44e691d2de368b2acf3b8da2f001e71d5d023792d523a0",
+          "local_sha256": "8e8da2f1b3fb962b7c7e02682bc137f620e6a80115b83944b57fd5fb86a11877",
           "name": "sbom.cdx.json",
           "present": true,
-          "remote_checksum": "sha256:36216833d49b8e462e44e691d2de368b2acf3b8da2f001e71d5d023792d523a0",
+          "remote_checksum": "sha256:8e8da2f1b3fb962b7c7e02682bc137f620e6a80115b83944b57fd5fb86a11877",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/dist/sbom.cdx.json",
           "size_matches": true
         },
         {
           "checksum_matches": true,
-          "local_sha256": "602903be6fe308f0e14bbd84dcbb1fc604e37b183d9d604f547fd3af500d65fc",
+          "local_sha256": "8521a2b87c6d5d4621d870f2e5969c0383e3e08c1290f0506e0455c0212b4c4a",
           "name": "provenance.json",
           "present": true,
-          "remote_checksum": "sha256:602903be6fe308f0e14bbd84dcbb1fc604e37b183d9d604f547fd3af500d65fc",
+          "remote_checksum": "sha256:8521a2b87c6d5d4621d870f2e5969c0383e3e08c1290f0506e0455c0212b4c4a",
           "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/dist/provenance.json",
           "size_matches": true
         }
@@ -98,194 +98,9 @@
       "mirror": "huggingface",
       "record_count": 33217,
       "verified": true
-    },
-    {
-      "artifacts": [
-        {
-          "checksum_matches": null,
-          "local_sha256": "2dd907f5c4e9df6490d3870a7cb65a74a1f3aec9f56d5dfac2b6cae7cba91d9f",
-          "name": "latest_manifest.json",
-          "present": true,
-          "remote_checksum": "ade8147088c9843f99980406a51e4a02",
-          "remote_url": "https://zenodo.org/api/records/21278470/draft/files/latest_manifest.json/content",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": null,
-          "local_sha256": "fd5f54be6b94390dce93b4662fc393c855d87569ff70eaf5411c365d0cbca678",
-          "name": "latest_manifest.parquet",
-          "present": true,
-          "remote_checksum": "c713047a710cfb21d3c9442bf4e84e73",
-          "remote_url": "https://zenodo.org/api/records/21278470/draft/files/latest_manifest.parquet/content",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": null,
-          "local_sha256": "ad0fe68bd83cf8b75779bc634d4d542de311baaa1e1d2bd37f559a784741e165",
-          "name": "authorities.json",
-          "present": true,
-          "remote_checksum": "6b049082d0e5aa6a00c30e94c211ce53",
-          "remote_url": "https://zenodo.org/api/records/21278470/draft/files/authorities.json/content",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": null,
-          "local_sha256": "55aa1e1df859fa4d29bb76589d404d9cf0ea05688c3f1055083617180664404f",
-          "name": "croissant.jsonld",
-          "present": true,
-          "remote_checksum": "398adcde7f56a018a5ae28bb59f7d276",
-          "remote_url": "https://zenodo.org/api/records/21278470/draft/files/croissant.jsonld/content",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": null,
-          "local_sha256": "4ff3dc8f66fc4bef9cc2ac74e740bc4c8aa2fd11d9f2276c6011cb9c0886051d",
-          "name": "frictionless.json",
-          "present": true,
-          "remote_checksum": "a95b3d46cb243b35b22389105737d5e0",
-          "remote_url": "https://zenodo.org/api/records/21278470/draft/files/frictionless.json/content",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": null,
-          "local_sha256": "c856b45569db103f68761c462733cde684c37377b88f7836a4882357f81de239",
-          "name": "schema.org.jsonld",
-          "present": true,
-          "remote_checksum": "b8e7391e86d3c0c21031029b30db5a87",
-          "remote_url": "https://zenodo.org/api/records/21278470/draft/files/schema.org.jsonld/content",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": null,
-          "local_sha256": "3a27497137ce9dad0cd59eb21de564830c983abfd550ecd90459b8f9c7f39c49",
-          "name": "fyi_archive.duckdb",
-          "present": true,
-          "remote_checksum": "bfbba4e23f1f1a0e2a8397ac66831828",
-          "remote_url": "https://zenodo.org/api/records/21278470/draft/files/fyi_archive.duckdb/content",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": null,
-          "local_sha256": "36216833d49b8e462e44e691d2de368b2acf3b8da2f001e71d5d023792d523a0",
-          "name": "sbom.cdx.json",
-          "present": true,
-          "remote_checksum": "da2a864b769fa4aabf8dd6793cb190fc",
-          "remote_url": "https://zenodo.org/api/records/21278470/draft/files/sbom.cdx.json/content",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": null,
-          "local_sha256": "602903be6fe308f0e14bbd84dcbb1fc604e37b183d9d604f547fd3af500d65fc",
-          "name": "provenance.json",
-          "present": true,
-          "remote_checksum": "e85dc2b1792eb83f97288fe74a279dbe",
-          "remote_url": "https://zenodo.org/api/records/21278470/draft/files/provenance.json/content",
-          "size_matches": true
-        }
-      ],
-      "details": {
-        "api_url": "https://zenodo.org/api",
-        "deposition_id": 21278470,
-        "doi": null
-      },
-      "mirror": "zenodo",
-      "record_count": 33217,
-      "verified": true
-    },
-    {
-      "artifacts": [
-        {
-          "checksum_matches": true,
-          "local_sha256": "2dd907f5c4e9df6490d3870a7cb65a74a1f3aec9f56d5dfac2b6cae7cba91d9f",
-          "name": "latest_manifest.json",
-          "present": true,
-          "remote_checksum": "sha256:2dd907f5c4e9df6490d3870a7cb65a74a1f3aec9f56d5dfac2b6cae7cba91d9f",
-          "remote_url": "https://osf.io/download/6a427ca8c40845ba423fedff/",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": true,
-          "local_sha256": "fd5f54be6b94390dce93b4662fc393c855d87569ff70eaf5411c365d0cbca678",
-          "name": "latest_manifest.parquet",
-          "present": true,
-          "remote_checksum": "sha256:fd5f54be6b94390dce93b4662fc393c855d87569ff70eaf5411c365d0cbca678",
-          "remote_url": "https://osf.io/download/6a427cab72fcf8c6d7d0d42e/",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": true,
-          "local_sha256": "ad0fe68bd83cf8b75779bc634d4d542de311baaa1e1d2bd37f559a784741e165",
-          "name": "authorities.json",
-          "present": true,
-          "remote_checksum": "sha256:ad0fe68bd83cf8b75779bc634d4d542de311baaa1e1d2bd37f559a784741e165",
-          "remote_url": "https://osf.io/download/6a427cae736ab0257dd0d37e/",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": true,
-          "local_sha256": "55aa1e1df859fa4d29bb76589d404d9cf0ea05688c3f1055083617180664404f",
-          "name": "croissant.jsonld",
-          "present": true,
-          "remote_checksum": "sha256:55aa1e1df859fa4d29bb76589d404d9cf0ea05688c3f1055083617180664404f",
-          "remote_url": "https://osf.io/download/6a4f768f8565c63b775b91f5/",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": true,
-          "local_sha256": "4ff3dc8f66fc4bef9cc2ac74e740bc4c8aa2fd11d9f2276c6011cb9c0886051d",
-          "name": "frictionless.json",
-          "present": true,
-          "remote_checksum": "sha256:4ff3dc8f66fc4bef9cc2ac74e740bc4c8aa2fd11d9f2276c6011cb9c0886051d",
-          "remote_url": "https://osf.io/download/6a4f7692eca436d4c77afaee/",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": true,
-          "local_sha256": "c856b45569db103f68761c462733cde684c37377b88f7836a4882357f81de239",
-          "name": "schema.org.jsonld",
-          "present": true,
-          "remote_checksum": "sha256:c856b45569db103f68761c462733cde684c37377b88f7836a4882357f81de239",
-          "remote_url": "https://osf.io/download/6a4f769645a884ce4b3b2f5e/",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": true,
-          "local_sha256": "3a27497137ce9dad0cd59eb21de564830c983abfd550ecd90459b8f9c7f39c49",
-          "name": "fyi_archive.duckdb",
-          "present": true,
-          "remote_checksum": "sha256:3a27497137ce9dad0cd59eb21de564830c983abfd550ecd90459b8f9c7f39c49",
-          "remote_url": "https://osf.io/download/6a427cb152f5ff038a3fee79/",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": true,
-          "local_sha256": "36216833d49b8e462e44e691d2de368b2acf3b8da2f001e71d5d023792d523a0",
-          "name": "sbom.cdx.json",
-          "present": true,
-          "remote_checksum": "sha256:36216833d49b8e462e44e691d2de368b2acf3b8da2f001e71d5d023792d523a0",
-          "remote_url": "https://osf.io/download/6a427cb57d84e628e2d0d1f1/",
-          "size_matches": true
-        },
-        {
-          "checksum_matches": true,
-          "local_sha256": "602903be6fe308f0e14bbd84dcbb1fc604e37b183d9d604f547fd3af500d65fc",
-          "name": "provenance.json",
-          "present": true,
-          "remote_checksum": "sha256:602903be6fe308f0e14bbd84dcbb1fc604e37b183d9d604f547fd3af500d65fc",
-          "remote_url": "https://osf.io/download/6a427cb84eb6fa0561932eb8/",
-          "size_matches": true
-        }
-      ],
-      "details": {
-        "api_url": "https://api.osf.io/v2",
-        "node_id": "emqzt"
-      },
-      "mirror": "osf",
-      "record_count": 33217,
-      "verified": true
     }
   ],
-  "package_version": "0.5.2",
+  "package_version": "0.10.3",
   "publication_month": "2026-07",
   "verified": true
 }
