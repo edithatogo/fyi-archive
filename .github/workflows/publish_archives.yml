@@ -582,6 +582,9 @@ jobs:
       - name: Verify OSF mirror
         if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf')
         env:
+          # The job resolves HF_REPO_ID for publication identity. Clear it so
+          # the CLI's envvar-backed option cannot add a stale HF check here.
+          HF_REPO_ID: ""
           OSF_TOKEN: ${{ secrets.OSF_TOKEN }}
         run: |
           set -euo pipefail
