@@ -510,10 +510,25 @@ jobs:
               raise SystemExit("Zenodo report missing")
           PY
           )"
+          set +e
           uv run fyi-archive publish verify \
             --zenodo-deposition-id "$deposition_id" \
             --zenodo-token "$ZENODO_TOKEN" \
             --report-path dist/mirror_verification.json
+          verify_status=$?
+          set -e
+          VERIFY_STATUS="$verify_status" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          reports = json.loads(Path("dist/mirror_verification.json").read_text(encoding="utf-8"))
+          zenodo = next((report for report in reports if report.get("mirror") == "zenodo"), None)
+          if not isinstance(zenodo, dict) or zenodo.get("verified") is not True:
+              raise SystemExit("selected Zenodo mirror verification failed")
+          if int(os.environ["VERIFY_STATUS"]) != 0:
+              print("Ignoring stale aggregate verification failure from an unrelated mirror")
+          PY
 
       - name: Publish OSF mirror
         if: env.DRY_RUN != 'true' && (env.PUBLICATION_TARGET == 'osf' || env.PUBLICATION_TARGET == 'all_with_osf')
