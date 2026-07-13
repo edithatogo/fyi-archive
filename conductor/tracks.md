@@ -26,6 +26,12 @@ verification evidence for other mirrors while retaining the aggregate audit
 report.
 Link: [./tracks/targeted_mirror_verification_20260713/](./tracks/targeted_mirror_verification_20260713/)
 
+## [~] Track: Operational evidence refresh
+Track ID: `operational_evidence_refresh_20260713`
+Goal: Align maturity and improvement documentation with the latest verified
+mirror, health-monitor, release, and security-gate evidence.
+Link: [./tracks/operational_evidence_refresh_20260713/](./tracks/operational_evidence_refresh_20260713/)
+
 ## Dependency legend
 
 - `fyi-cli: <track>` — a capability track in the companion `fyi-cli` repo that must
