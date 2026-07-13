@@ -6,4 +6,5 @@
       preserving the aggregate report.
 - [x] Add bounded post-upload OSF listing retries for eventual consistency.
 - [x] Run focused and full test/quality checks.
-- [ ] Merge the protected-branch PR and run a live OSF-only verification retry.
+- [x] Merge the protected-branch PR; live OSF-only verification retry launched
+      after merge and remains operational evidence to refresh.
