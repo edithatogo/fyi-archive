@@ -187,6 +187,12 @@ Goal: Make the deliberately slow historical backfill measurable in health report
 without increasing source traffic or changing its off-peak schedule.
 Link: [./tracks/coverage_progress_observability_20260713/](./tracks/coverage_progress_observability_20260713/)
 
+### [~] Track: Alaveteli site-wide queue
+Track ID: `alaveteli_sitewide_queue_20260713`
+Goal: Advance working Alaveteli archives through checkpointed public-feed queues
+and verified capture state.
+Link: [./tracks/alaveteli_sitewide_queue_20260713/](./tracks/alaveteli_sitewide_queue_20260713/)
+
 ---
 
 ## Companion capability tracks (in fyi-cli)

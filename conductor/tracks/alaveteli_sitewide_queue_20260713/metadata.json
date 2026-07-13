@@ -1,0 +1,8 @@
+{
+  "track_id": "alaveteli_sitewide_queue_20260713",
+  "type": "feature",
+  "status": "in_progress",
+  "created_at": "2026-07-13T00:00:00+10:00",
+  "updated_at": "2026-07-13T00:00:00+10:00",
+  "description": "Implement resumable feed-backed site-wide queues for working Alaveteli archives; completion remains evidence-gated per site."
+}
