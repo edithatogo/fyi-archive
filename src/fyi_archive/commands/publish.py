@@ -99,8 +99,12 @@ def verify(
     resolved_output = output_dir if output_dir.is_absolute() else root / output_dir
     merged_reports = merge_reports(resolved_report, reports)
     write_verification_report(resolved_report, merged_reports)
+    # The versioned bundle describes the mirrors checked by this invocation.
+    # Keep the aggregate report above for cross-run audit history, but do not
+    # let a stale failure from another mirror make a targeted verification
+    # fail (for example, an OSF retry after an earlier HF mismatch).
     bundle = write_versioned_verification_bundle(
-        reports=merged_reports,
+        reports=reports,
         manifest_path=resolved_manifest,
         output_dir=resolved_output,
     )
