@@ -33,10 +33,10 @@
   "health_monitor_fix": {
     "change": "doctor queries live HF/Zenodo/OSF; monitor no longer forces RECORD_COUNT=0",
     "zenodo_deposition_var": "ZENODO_DEPOSITION_ID=21277151 set on repo",
-    "default_tolerance": 50
+    "default_tolerance": 50,
+    "last_successful_run": 29246621588
   },
   "next_ops": [
-    "Re-run Archive Health Monitor to refresh live mirror evidence",
     "Keep Sigstore gated until production release attachment paths have passed several clean cycles"
   ]
 }
