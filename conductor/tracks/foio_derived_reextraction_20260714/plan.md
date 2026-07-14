@@ -1,5 +1,9 @@
 # Plan: FOI-O derived re-extraction publication
 
+Consumer gate: `tests/test_foio_extraction_contract.py` validates the pinned
+FOI-O extraction-contract shape. The test is a structural gate; publication
+still requires real source and Hugging Face digests.
+
 ## Phase 1: Contract and storage boundary
 
 - [ ] Pin the source `fyi-archive-nz` revision and FOI-O extraction contract.
