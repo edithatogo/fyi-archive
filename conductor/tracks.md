@@ -37,6 +37,13 @@ Link: [./tracks/operational_evidence_refresh_20260713/](./tracks/operational_evi
 - `fyi-cli: <track>` — a capability track in the companion `fyi-cli` repo that must
   land before this track's orchestration can function.
 
+## [ ] Track: FOI-O derived re-extraction publication
+Track ID: `foio_derived_reextraction_20260714`
+Goal: Publish ontology-pinned candidate annotations as a separately versioned
+derived layer while preserving immutable archive records.
+Depends on: `foi-o` V2 extraction contract and `nlp-policy-nz` FOI-O adapter.
+Link: [./tracks/foio_derived_reextraction_20260714/](./tracks/foio_derived_reextraction_20260714/)
+
 ---
 
 ## Foundation tracks
