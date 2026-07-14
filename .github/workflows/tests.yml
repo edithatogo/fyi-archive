@@ -32,7 +32,7 @@ jobs:
       - name: Ruff format
         run: |
           set -euo pipefail
-          uv run ruff format --check .
+          uv run ruff format --preview --check .
       - name: Run tests with coverage
         run: |
           set -euo pipefail

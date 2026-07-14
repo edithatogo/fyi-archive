@@ -30,7 +30,7 @@ jobs:
       - name: Ruff format
         run: |
           set -euo pipefail
-          uv run ruff format --check .
+          uv run ruff format --preview --check .
       - name: basedpyright strict type-check baseline
         continue-on-error: true
         run: |
