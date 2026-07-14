@@ -30,7 +30,12 @@ jobs:
       - name: Ruff format
         run: |
           set -euo pipefail
-          uv run ruff format --check .
+          uv run ruff format --preview --check .
+      - name: basedpyright strict type-check baseline
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          uv run basedpyright
       - name: ty strict type check
         run: |
           set -euo pipefail
@@ -78,3 +83,21 @@ jobs:
           advanced-security: false
           online-audits: false
           inputs: .github/workflows
+
+  ruff-preview:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+      - name: Ruff preview lint
+        run: uv run ruff check --preview .
+      - name: Ruff preview format
+        run: uv run ruff format --preview --check .

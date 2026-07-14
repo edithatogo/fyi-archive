@@ -73,6 +73,7 @@ dev = [
   "hypothesis>=6.130.0",
   "respx>=0.22.0",
   "ruff>=0.12.0",
+  "basedpyright>=1.39.9",
   "ty>=0.0.1a",
   "pre-commit>=4.0.0",
   "frictionless>=5.18.0",
@@ -168,6 +169,15 @@ select = [
   "TRY",
 ]
 ignore = [
+  # Ruff preview-only complexity/style rules are tracked separately while
+  # the stable gate remains strict; revisit these as preview rules mature.
+  "B903",
+  "PLC1901",
+  "PLR6301",
+  "PLR0914",
+  "PLR0917",
+  "PLW0717",
+  "RUF056",
   "PLR0913", # Too many arguments (acceptable for CLI)
   "E501",    # Line length handled by formatter
   "D107",    # Missing docstring in __init__

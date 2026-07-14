@@ -18,7 +18,7 @@ def test_discover_bodies_delegates_to_fyi_cli(monkeypatch, tmp_path: Path) -> No
     limiter = tmp_path / "state" / "fyi-cli.db"
 
     def fake_run(command, *, check, capture_output, text):
-        assert command[0].endswith("python.exe") or command[0].endswith("python")
+        assert Path(command[0]).name in {"python", "python3", "python.exe"}
         assert command[1:4] == ["-m", "fyi_system.cli", "discover-bodies"]
         assert "--base-url" in command
         assert "--db" in command
@@ -72,12 +72,10 @@ def test_fallback_preserves_last_good_until_verified_restore(monkeypatch, tmp_pa
 
     def restore(**kwargs):
         kwargs["output_path"].write_text(
-            json.dumps(
-                {
-                    "bodies": [{"name": "verified"}],
-                    "provenance": {"payload_sha256": "abc"},
-                }
-            ),
+            json.dumps({
+                "bodies": [{"name": "verified"}],
+                "provenance": {"payload_sha256": "abc"},
+            }),
             encoding="utf-8",
         )
         kwargs["provenance_path"].write_text(
@@ -107,12 +105,10 @@ def test_live_success_writes_verified_provenance(monkeypatch, tmp_path: Path) ->
 
     def live(**kwargs):
         kwargs["output_path"].write_text(
-            json.dumps(
-                {
-                    "bodies": [{"name": "live"}],
-                    "provenance": {"payload_sha256": "abc"},
-                }
-            ),
+            json.dumps({
+                "bodies": [{"name": "live"}],
+                "provenance": {"payload_sha256": "abc"},
+            }),
             encoding="utf-8",
         )
         return {"bodies": [{"name": "live"}], "provenance": {"payload_sha256": "abc"}}
