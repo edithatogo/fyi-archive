@@ -169,6 +169,15 @@ select = [
   "TRY",
 ]
 ignore = [
+  # Ruff preview-only complexity/style rules are tracked separately while
+  # the stable gate remains strict; revisit these as preview rules mature.
+  "B903",
+  "PLC1901",
+  "PLR6301",
+  "PLR0914",
+  "PLR0917",
+  "PLW0717",
+  "RUF056",
   "PLR0913", # Too many arguments (acceptable for CLI)
   "E501",    # Line length handled by formatter
   "D107",    # Missing docstring in __init__
