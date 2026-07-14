@@ -1,0 +1,1 @@
+Track maximal_quality_profile_20260714 implementation: locked freshness register, Python canaries, Ruff preview lane, strict basedpyright baseline, workflow semantics, and regression coverage. Verified 202 passed / 1 skipped; basedpyright remains non-blocking at 974 findings.
