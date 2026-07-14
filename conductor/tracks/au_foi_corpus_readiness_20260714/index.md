@@ -2,5 +2,7 @@
 
 - [GitHub issue #188](https://github.com/edithatogo/fyi-archive/issues/188)
 - [Specification](./spec.md)
+- [MoSCoW requirements](./requirements.md)
+- [Design](./design.md)
 - [Implementation Plan](./plan.md)
 - [Metadata](./metadata.json)
