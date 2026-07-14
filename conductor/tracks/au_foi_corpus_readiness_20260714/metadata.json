@@ -1,0 +1,14 @@
+{
+  "track_id": "au_foi_corpus_readiness_20260714",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-07-14T00:00:00+10:00",
+  "updated_at": "2026-07-14T00:00:00+10:00",
+  "description": "Create pinned, rights-aware Australian FOI example corpora for jurisdiction-profile validation, beginning with Commonwealth and NSW.",
+  "depends_on": [
+    "multi_instance_orchestration_20260709",
+    "au_jurisdiction_rollout_controller_20260709",
+    "multi_instance_publish_20260709"
+  ],
+  "github_issue": "https://github.com/edithatogo/fyi-archive/issues/188"
+}

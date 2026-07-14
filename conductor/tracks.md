@@ -44,6 +44,13 @@ derived layer while preserving immutable archive records.
 Depends on: `foi-o` V2 extraction contract and `nlp-policy-nz` FOI-O adapter.
 Link: [./tracks/foio_derived_reextraction_20260714/](./tracks/foio_derived_reextraction_20260714/)
 
+## [ ] Track: Australian FOI corpus readiness
+Track ID: `au_foi_corpus_readiness_20260714`
+Goal: Produce pinned, rights-aware, jurisdiction-stratified public examples for
+FOI-O validation, beginning with Commonwealth and NSW.
+Depends on: existing AU multi-instance, rollout, and publication tracks.
+Link: [./tracks/au_foi_corpus_readiness_20260714/](./tracks/au_foi_corpus_readiness_20260714/)
+
 ---
 
 ## Foundation tracks
