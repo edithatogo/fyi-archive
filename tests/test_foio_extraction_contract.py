@@ -1,7 +1,6 @@
 import json
 from pathlib import Path
 
-
 CONTRACT = Path("tests/fixtures/foi_o_extraction_contract_nz.json")
 
 

@@ -44,7 +44,7 @@ derived layer while preserving immutable archive records.
 Depends on: `foi-o` V2 extraction contract and `nlp-policy-nz` FOI-O adapter.
 Link: [./tracks/foio_derived_reextraction_20260714/](./tracks/foio_derived_reextraction_20260714/)
 
-## [ ] Track: Maximal quality profile
+## [~] Track: Maximal quality profile
 Track ID: `maximal_quality_profile_20260714`
 Link: [./tracks/maximal_quality_profile_20260714/](./tracks/maximal_quality_profile_20260714/)
 

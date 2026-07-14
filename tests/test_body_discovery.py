@@ -18,7 +18,7 @@ def test_discover_bodies_delegates_to_fyi_cli(monkeypatch, tmp_path: Path) -> No
     limiter = tmp_path / "state" / "fyi-cli.db"
 
     def fake_run(command, *, check, capture_output, text):
-        assert command[0].endswith("python.exe") or command[0].endswith("python")
+        assert Path(command[0]).name in {"python", "python3", "python.exe"}
         assert command[1:4] == ["-m", "fyi_system.cli", "discover-bodies"]
         assert "--base-url" in command
         assert "--db" in command

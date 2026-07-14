@@ -73,6 +73,7 @@ dev = [
   "hypothesis>=6.130.0",
   "respx>=0.22.0",
   "ruff>=0.12.0",
+  "basedpyright>=1.39.9",
   "ty>=0.0.1a",
   "pre-commit>=4.0.0",
   "frictionless>=5.18.0",
