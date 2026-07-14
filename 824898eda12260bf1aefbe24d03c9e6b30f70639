@@ -1,0 +1,6 @@
+Task: Create and link cross-repository FOI-O re-extraction track
+Summary: docs(conductor): plan FOI-O derived re-extraction publication
+
+Commit notes: Add the issue-linked track for a separately versioned derived NLP publication layer.
+Verification: metadata parse, registry/link inspection, git diff --check, and GitHub Project membership passed.
+Remaining risks: implementation, dataset publication, push, and pull request remain pending and separately gated.
