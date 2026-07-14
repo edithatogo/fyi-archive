@@ -13,6 +13,7 @@ def test_quality_profile_declares_locked_canary_and_type_lanes() -> None:
     assert (ROOT / "uv.lock").is_file()
     assert (ROOT / "docs/quality-profile.md").is_file()
     assert (ROOT / ".github/workflows/python-canary.yml").is_file()
+    assert (ROOT / ".github/workflows/dependency-freshness.yml").is_file()
 
 
 def test_quality_profile_keeps_llm_orchestration_out_of_runtime_dependencies() -> None:
