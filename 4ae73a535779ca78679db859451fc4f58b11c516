@@ -1,0 +1,1 @@
+Conductor review fix: added scheduled/manual dependency freshness workflow with uv lock --check and read-only uv tree --outdated; acceptance now has an executable non-mutating freshness report.
