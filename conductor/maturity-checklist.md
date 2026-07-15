@@ -40,4 +40,5 @@ committed source of truth.
 - [ ] Mirror-parity CI gate
 - [ ] Full-site crawl complete and reconciled
 - [ ] Annual provenance review
-- [ ] Optional Sigstore/cosign keyless signing (see `improvement-backlog.md`)
+- [~] Optional Sigstore/cosign keyless signing: gated workflow implemented;
+      production signing remains opt-in and not yet exercised.
