@@ -17,8 +17,12 @@ def test_merge_queue_removes_only_completed_requests(tmp_path: Path) -> None:
     incoming = tmp_path / "incoming.jsonl"
     output = tmp_path / "out.jsonl"
     write_jsonl(queue, [{"request_id": 1, "url_title": "one"}])
-    write_jsonl(ledger, [{"request_id": 1, "status": "completed"}, {"request_id": 2, "status": "failed"}])
-    write_jsonl(incoming, [{"request_id": 2, "url_title": "two"}, {"request_id": 3, "url_title": "three"}])
+    write_jsonl(
+        ledger, [{"request_id": 1, "status": "completed"}, {"request_id": 2, "status": "failed"}]
+    )
+    write_jsonl(
+        incoming, [{"request_id": 2, "url_title": "two"}, {"request_id": 3, "url_title": "three"}]
+    )
 
     result = merge_queue(queue=queue, ledger=ledger, incoming=incoming, output=output)
 

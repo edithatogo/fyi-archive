@@ -34,7 +34,9 @@ def _completed_ids(path: Path) -> set[str]:
     }
 
 
-def merge_queue(*, queue: Path, ledger: Path, incoming: Path | None, output: Path) -> dict[str, int | bool]:
+def merge_queue(
+    *, queue: Path, ledger: Path, incoming: Path | None, output: Path
+) -> dict[str, int | bool]:
     """Merge new discovery rows and remove only ledger-verified completions."""
     merged: dict[str, dict[str, Any]] = {}
     for row in _load_jsonl(queue) + (_load_jsonl(incoming) if incoming else []):
