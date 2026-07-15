@@ -8,7 +8,7 @@ def test_request_discovery_uses_checkpointed_feed_before_bounded_fallback() -> N
     assert "Prepare resumable request queue" in WORKFLOW
     assert "steps.queue.outputs.pending == '0'" in discovery
     assert "--checkpoint" in discovery
-    assert "--max-pages \"$DISCOVERY_MAX_PAGES\"" in discovery
+    assert '--max-pages "$DISCOVERY_MAX_PAGES"' in discovery
     assert "--backfill-ids" in discovery
     assert "manage_alaveteli_queue.py" in discovery
 

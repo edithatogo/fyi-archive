@@ -22,7 +22,7 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def _request_key(value: Any) -> str:
+def _request_key(value: object) -> str:
     return str(value)
 
 
@@ -34,7 +34,9 @@ def _completed_ids(path: Path) -> set[str]:
     }
 
 
-def merge_queue(*, queue: Path, ledger: Path, incoming: Path | None, output: Path) -> dict[str, int | bool]:
+def merge_queue(
+    *, queue: Path, ledger: Path, incoming: Path | None, output: Path
+) -> dict[str, int | bool]:
     """Merge new discovery rows and remove only ledger-verified completions."""
     merged: dict[str, dict[str, Any]] = {}
     for row in _load_jsonl(queue) + (_load_jsonl(incoming) if incoming else []):
