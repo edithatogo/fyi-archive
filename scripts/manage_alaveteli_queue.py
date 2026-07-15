@@ -22,7 +22,7 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def _request_key(value: Any) -> str:
+def _request_key(value: object) -> str:
     return str(value)
 
 
