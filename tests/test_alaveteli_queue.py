@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).parents[1]))
 from scripts.manage_alaveteli_queue import merge_queue
 
 
-def write_jsonl(path: Path, rows: list[dict]) -> None:
+def write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
     path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
 
 
