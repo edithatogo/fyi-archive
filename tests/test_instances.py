@@ -175,14 +175,12 @@ def test_assemble_manifest_instance_id(tmp_path: Path) -> None:
     derived = tmp_path / "derived"
     derived.mkdir()
     (derived / "1.json").write_text(
-        json.dumps(
-            {
-                "request_id": 1,
-                "url_title": "request-1",
-                "title": "t",
-                "authority": "A",
-            }
-        ),
+        json.dumps({
+            "request_id": 1,
+            "url_title": "request-1",
+            "title": "t",
+            "authority": "A",
+        }),
         encoding="utf-8",
     )
     manifest = assemble_manifest(

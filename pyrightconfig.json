@@ -1,0 +1,8 @@
+{
+  "include": ["src", "tests", "scripts"],
+  "exclude": [".venv", ".pixi", "build", "dist", "generated"],
+  "typeCheckingMode": "strict",
+  "pythonVersion": "3.12",
+  "useLibraryCodeForTypes": true,
+  "reportMissingTypeStubs": false
+}

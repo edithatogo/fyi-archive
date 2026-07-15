@@ -201,9 +201,9 @@ def write_manifest_outputs(
     if instance_id == "au-rtk":
         authorities_document = authority_manifest_for_au(requests)
     else:
-        authorities = sorted(
-            {record.get("authority", "") for record in requests if record.get("authority")}
-        )
+        authorities = sorted({
+            record.get("authority", "") for record in requests if record.get("authority")
+        })
         authorities_document = {"authorities": authorities}
     authorities_path.write_text(
         json.dumps(authorities_document, indent=2, sort_keys=True) + "\n",

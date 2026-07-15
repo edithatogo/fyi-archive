@@ -103,19 +103,17 @@ def list_or_empty(value: object) -> list[object]:
 
 
 def load_project_items(*, owner: str, number: int) -> list[dict[str, object]]:
-    payload = run_gh(
-        [
-            "project",
-            "item-list",
-            str(number),
-            "--owner",
-            owner,
-            "--limit",
-            "1000",
-            "--format",
-            "json",
-        ]
-    )
+    payload = run_gh([
+        "project",
+        "item-list",
+        str(number),
+        "--owner",
+        owner,
+        "--limit",
+        "1000",
+        "--format",
+        "json",
+    ])
     data = json.loads(payload)
     return list(data.get("items", []))
 
@@ -199,39 +197,35 @@ def load_project_fields(*, owner: str, number: int) -> list[dict[str, object]]:
 
 
 def load_repo_issue_urls(*, repo: str) -> list[str]:
-    payload = run_gh(
-        [
-            "issue",
-            "list",
-            "-R",
-            repo,
-            "--state",
-            "all",
-            "--limit",
-            "1000",
-            "--json",
-            "url",
-        ]
-    )
+    payload = run_gh([
+        "issue",
+        "list",
+        "-R",
+        repo,
+        "--state",
+        "all",
+        "--limit",
+        "1000",
+        "--json",
+        "url",
+    ])
     data = json.loads(payload)
     return [str(item["url"]) for item in data if item.get("url")]
 
 
 def load_repo_pull_request_urls(*, repo: str) -> list[str]:
-    payload = run_gh(
-        [
-            "pr",
-            "list",
-            "-R",
-            repo,
-            "--state",
-            "all",
-            "--limit",
-            "1000",
-            "--json",
-            "url",
-        ]
-    )
+    payload = run_gh([
+        "pr",
+        "list",
+        "-R",
+        repo,
+        "--state",
+        "all",
+        "--limit",
+        "1000",
+        "--json",
+        "url",
+    ])
     data = json.loads(payload)
     return [str(item["url"]) for item in data if item.get("url")]
 
@@ -259,21 +253,19 @@ def ensure_single_select_field(
             }
             return str(field["id"]), option_map
 
-    run_gh(
-        [
-            "project",
-            "field-create",
-            str(project),
-            "--owner",
-            owner,
-            "--name",
-            field_name,
-            "--data-type",
-            "SINGLE_SELECT",
-            "--single-select-options",
-            ",".join(options),
-        ]
-    )
+    run_gh([
+        "project",
+        "field-create",
+        str(project),
+        "--owner",
+        owner,
+        "--name",
+        field_name,
+        "--data-type",
+        "SINGLE_SELECT",
+        "--single-select-options",
+        ",".join(options),
+    ])
     fields = load_project_fields(owner=owner, number=project)
     for field in fields:
         if field.get("name") == field_name:
@@ -425,22 +417,20 @@ def project_model_report(*, owner: str, project_numbers: Iterable[int]) -> list[
             for item in list_or_empty(fields_data.get("nodes"))
             if isinstance(item, dict) and item.get("name")
         ]
-        report.append(
-            {
-                "project_number": project_number,
-                "project_id": snapshot.get("id"),
-                "title": snapshot.get("title"),
-                "short_description": snapshot.get("shortDescription"),
-                "views": views,
-                "view_count": views_data.get("totalCount", len(views)),
-                "workflows": workflows,
-                "workflow_count": workflows_data.get("totalCount", len(workflows)),
-                "fields": fields,
-                "field_count": len(fields),
-                "status_updates": status_updates_data.get("totalCount", 0),
-                "has_expected_workflows": all(name in workflows for name in EXPECTED_WORKFLOWS),
-            }
-        )
+        report.append({
+            "project_number": project_number,
+            "project_id": snapshot.get("id"),
+            "title": snapshot.get("title"),
+            "short_description": snapshot.get("shortDescription"),
+            "views": views,
+            "view_count": views_data.get("totalCount", len(views)),
+            "workflows": workflows,
+            "workflow_count": workflows_data.get("totalCount", len(workflows)),
+            "fields": fields,
+            "field_count": len(fields),
+            "status_updates": status_updates_data.get("totalCount", 0),
+            "has_expected_workflows": all(name in workflows for name in EXPECTED_WORKFLOWS),
+        })
     return report
 
 

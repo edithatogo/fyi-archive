@@ -31,6 +31,10 @@ and mirrored to OSF, with dynamic versioning, releases, SBOM, and provenance.
    manifests are derived.
 4. **Automated + bleeding-edge.** Fully CI/CD driven; current best-in-class tooling.
 
+After the storage-first phase, ontology-pinned NLP results may be published as a
+separately versioned derived layer. Derived candidates never replace raw archive
+records and extraction logic remains in `nlp-policy-nz`.
+
 ## Target users
 
 - NLP / legal-tech researchers training models on NZ government text.

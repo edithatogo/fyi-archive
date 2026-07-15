@@ -1,4 +1,4 @@
-.PHONY: help install sync lock lint format format-fix typecheck test test-cov \
+.PHONY: help install sync lock lint lint-preview format format-fix typecheck typecheck-strict test test-cov \
         quality spell toml-check workflow-audit workflow-syntax security-audit \
         quality-advisory \
         sbom dead-code dependency-check clean test-all test-unit test-integration \
@@ -23,6 +23,9 @@ lock: ## Regenerate the lockfile
 lint: ## Ruff lint
 	uv run ruff check src tests scripts
 
+lint-preview: ## Advisory Ruff preview lint
+	uv run ruff check --preview src tests scripts
+
 format: ## Check formatting
 	uv run ruff format --check src tests scripts
 
@@ -32,6 +35,9 @@ format-fix: ## Apply formatting + lint fixes
 
 typecheck: ## ty type check
 	uv run ty check src
+
+typecheck-strict: ## basedpyright strict type-check baseline
+	uv run basedpyright
 
 test: ## Run the test suite
 	uv run pytest -q
