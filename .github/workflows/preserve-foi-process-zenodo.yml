@@ -1,0 +1,46 @@
+name: Preserve foi-process release in Zenodo
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: foi-process GitHub release tag to preserve
+        required: true
+        default: v0.1.0
+
+permissions:
+  contents: read
+
+jobs:
+  preserve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out fyi-archive
+        uses: actions/checkout@v4
+
+      - name: Check out foi-process release tooling
+        uses: actions/checkout@v4
+        with:
+          repository: edithatogo/foi-process
+          ref: main
+          path: foi-process
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Preserve and publish release
+        env:
+          ZENODO_TOKEN: ${{ secrets.ZENODO_TOKEN }}
+        run: |
+          python foi-process/scripts/preserve_zenodo_release.py \
+            --release-tag "${{ inputs.release_tag }}" \
+            --output zenodo-evidence.json
+
+      - name: Upload DOI evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: foi-process-zenodo-evidence-${{ inputs.release_tag }}
+          path: zenodo-evidence.json
+          if-no-files-found: error
