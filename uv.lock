@@ -867,7 +867,7 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.1.0" },
     { name = "feedparser", specifier = ">=6.0.11" },
     { name = "frictionless", marker = "extra == 'dev'", specifier = ">=5.18.0" },
-    { name = "fyi-cli", git = "https://github.com/edithatogo/fyi-cli?tag=v1.2.0" },
+    { name = "fyi-cli", git = "https://github.com/edithatogo/fyi-cli?rev=0930487" },
     { name = "httpx", extras = ["http2"], specifier = ">=0.28.0" },
     { name = "httpx-limiter", specifier = ">=0.6.0" },
     { name = "huggingface-hub", extras = ["hf-xet"], specifier = ">=0.27.0" },
@@ -898,8 +898,8 @@ provides-extras = ["dev"]
 
 [[package]]
 name = "fyi-cli"
-version = "1.2.0"
-source = { git = "https://github.com/edithatogo/fyi-cli?tag=v1.2.0#86fcbd8914037735b6f27e5a329d5f3013033efd" }
+version = "1.2.1"
+source = { git = "https://github.com/edithatogo/fyi-cli?rev=0930487#09304875624b31862d5a921f5d9dde17a550cb4e" }
 dependencies = [
     { name = "cryptography" },
     { name = "fastmcp" },
