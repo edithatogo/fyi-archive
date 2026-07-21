@@ -225,6 +225,33 @@ jobs:
             --fetch-end "$DATE_TO" \
             --fetch-label historical-seed
 
+      - name: Export process events
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          CAPTURED_AT: ${{ github.run_started_at }}
+        run: |
+          set -euo pipefail
+          derived_dir=data/raw/requests
+          if [ "$DRY_RUN" = "true" ]; then
+            derived_dir=data/derived/requests
+          fi
+          mkdir -p dist/process-events
+          uv run fyi export-process-events \
+            --derived-dir "$derived_dir" \
+            --output dist/process-events/events.jsonl \
+            --captured-at "$CAPTURED_AT"
+
+      - name: Build and verify process projection
+        run: |
+          set -euo pipefail
+          uv run fyi-archive process project \
+            --events dist/process-events/events.jsonl \
+            --manifest manifests/latest_manifest.json \
+            --output-dir dist/process-events/projection \
+            --snapshot-revision "${GITHUB_SHA}"
+          uv run fyi-archive process verify \
+            --output-dir dist/process-events/projection
+
       - name: Upload seed artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -238,3 +265,4 @@ jobs:
             manifests/latest_manifest.parquet
             manifests/authorities.json
             dist/provenance.json
+            dist/process-events/**
