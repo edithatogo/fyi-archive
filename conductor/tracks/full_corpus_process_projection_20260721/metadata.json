@@ -1,0 +1,9 @@
+{
+  "track_id": "full_corpus_process_projection_20260721",
+  "title": "Full-corpus process projection and continuation",
+  "status": "in_progress",
+  "description": "Consume the pinned fyi-cli process-event contract and emit deterministic public-safe Dataset Viewer resources.",
+  "issue": "https://github.com/edithatogo/fyi-archive/issues/196",
+  "upstream_issue": "https://github.com/edithatogo/fyi-cli/issues/231",
+  "parent_issue": "https://github.com/edithatogo/foi-process/issues/36"
+}
