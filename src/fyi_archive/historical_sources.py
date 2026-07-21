@@ -49,15 +49,17 @@ def _morph_rows(path: Path) -> list[dict[str, Any]]:
             source_url = _url(row.get("request_url") or row.get("url"))
             if not source_url:
                 continue
-            output.append({
-                "source": "morph_io",
-                "source_url": source_url,
-                "source_record_id": str(row.get("request_url") or ""),
-                "title": str(row.get("title") or ""),
-                "authority": str(row.get("public_body_name") or ""),
-                "state": str(row.get("described_state") or row.get("display_status") or ""),
-                "observed_at": str(row.get("created_at") or ""),
-            })
+            output.append(
+                {
+                    "source": "morph_io",
+                    "source_url": source_url,
+                    "source_record_id": str(row.get("request_url") or ""),
+                    "title": str(row.get("title") or ""),
+                    "authority": str(row.get("public_body_name") or ""),
+                    "state": str(row.get("described_state") or row.get("display_status") or ""),
+                    "observed_at": str(row.get("created_at") or ""),
+                }
+            )
         return output
 
 
@@ -79,16 +81,18 @@ def _cdx_rows(path: Path) -> list[dict[str, Any]]:
         else:
             continue
         if source_url:
-            output.append({
-                "source": "internet_archive_cdx",
-                "source_url": source_url,
-                "source_record_id": digest,
-                "title": "",
-                "authority": "",
-                "state": "",
-                "observed_at": timestamp,
-                "archive_digest": digest,
-            })
+            output.append(
+                {
+                    "source": "internet_archive_cdx",
+                    "source_url": source_url,
+                    "source_record_id": digest,
+                    "title": "",
+                    "authority": "",
+                    "state": "",
+                    "observed_at": timestamp,
+                    "archive_digest": digest,
+                }
+            )
     return output
 
 

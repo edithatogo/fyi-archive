@@ -48,20 +48,22 @@ def load_state_by_issue_number(*, repo: str, issue_number: int) -> dict[str, Any
 def successful_merge_runs(*, repo: str, limit: int = 500) -> list[dict[str, Any]]:
     runs = cast(
         "list[dict[str, Any]]",
-        gh_json([
-            "run",
-            "list",
-            "--repo",
-            repo,
-            "--workflow",
-            "merge_backfill_artifacts.yml",
-            "--status",
-            "success",
-            "--limit",
-            str(limit),
-            "--json",
-            "databaseId,createdAt,updatedAt",
-        ]),
+        gh_json(
+            [
+                "run",
+                "list",
+                "--repo",
+                repo,
+                "--workflow",
+                "merge_backfill_artifacts.yml",
+                "--status",
+                "success",
+                "--limit",
+                str(limit),
+                "--json",
+                "databaseId,createdAt,updatedAt",
+            ]
+        ),
     )
     runs.sort(key=lambda item: str(item.get("createdAt") or ""))
     return runs

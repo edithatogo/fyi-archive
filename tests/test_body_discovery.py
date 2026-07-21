@@ -72,10 +72,12 @@ def test_fallback_preserves_last_good_until_verified_restore(monkeypatch, tmp_pa
 
     def restore(**kwargs):
         kwargs["output_path"].write_text(
-            json.dumps({
-                "bodies": [{"name": "verified"}],
-                "provenance": {"payload_sha256": "abc"},
-            }),
+            json.dumps(
+                {
+                    "bodies": [{"name": "verified"}],
+                    "provenance": {"payload_sha256": "abc"},
+                }
+            ),
             encoding="utf-8",
         )
         kwargs["provenance_path"].write_text(
@@ -105,10 +107,12 @@ def test_live_success_writes_verified_provenance(monkeypatch, tmp_path: Path) ->
 
     def live(**kwargs):
         kwargs["output_path"].write_text(
-            json.dumps({
-                "bodies": [{"name": "live"}],
-                "provenance": {"payload_sha256": "abc"},
-            }),
+            json.dumps(
+                {
+                    "bodies": [{"name": "live"}],
+                    "provenance": {"payload_sha256": "abc"},
+                }
+            ),
             encoding="utf-8",
         )
         return {"bodies": [{"name": "live"}], "provenance": {"payload_sha256": "abc"}}
