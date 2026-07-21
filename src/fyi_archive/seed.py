@@ -237,34 +237,43 @@ def capture_with_fyi_cli(
         # Keep the parent bounded even when an upstream CLI or HTTP client
         # ignores its own runtime option.
         timeout_seconds = max(1.0, caps.max_runtime_minutes * 60 + 30)
+    creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        creationflags=creationflags,
+    )
     try:
-        if timeout_seconds is None:
-            completed = subprocess.run(command, check=True, capture_output=True, text=True)
-        else:
-            completed = subprocess.run(
-                command,
-                check=True,
+        stdout, stderr = process.communicate(timeout=timeout_seconds)
+    except subprocess.TimeoutExpired as error:
+        if sys.platform == "win32":
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                check=False,
                 capture_output=True,
                 text=True,
-                timeout=timeout_seconds,
             )
-    except subprocess.CalledProcessError as error:
-        raise CaptureError(
-            request_id=request.request_id,
-            command=command,
-            returncode=error.returncode,
-            stdout=error.stdout or "",
-            stderr=error.stderr or "",
-        ) from error
-    except subprocess.TimeoutExpired as error:
+        else:
+            process.kill()
+        stdout, stderr = process.communicate()
         raise CaptureError(
             request_id=request.request_id,
             command=command,
             returncode=124,
-            stdout=str(error.stdout or ""),
-            stderr=str(error.stderr or "capture subprocess timed out"),
+            stdout=stdout or str(error.stdout or ""),
+            stderr=stderr or str(error.stderr or "capture subprocess timed out"),
         ) from error
-    return json.loads(completed.stdout)
+    if process.returncode:
+        raise CaptureError(
+            request_id=request.request_id,
+            command=command,
+            returncode=process.returncode,
+            stdout=stdout or "",
+            stderr=stderr or "",
+        )
+    return json.loads(stdout)
 
 
 def capture_with_retry(
