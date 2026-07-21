@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from argparse import Namespace
 import importlib.util
+import json
+from argparse import Namespace
 from pathlib import Path
 
 import pytest
@@ -23,3 +24,10 @@ def test_live_rollout_requires_explicit_confirmation(tmp_path: Path) -> None:
 
 def test_live_rollout_confirmation_constant_is_narrow() -> None:
     assert LIVE_CAPTURE_CONFIRMATION == "I_CONFIRM_BOUNDED_READ_ONLY_CAPTURE"
+
+
+def test_empirical_pilot_config_is_limited_to_commonwealth_and_nsw() -> None:
+    config_path = Path("configs/au/jurisdiction_rollout_empirical_pilot.json")
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    assert config["instance_id"] == "au-rtk"
+    assert config["jurisdictions"] == ["NSW", "FEDERAL"]
