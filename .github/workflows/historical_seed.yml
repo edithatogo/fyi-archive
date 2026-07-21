@@ -153,6 +153,37 @@ jobs:
           fi
           uv run fyi-archive seed run "${args[@]}"
 
+      - name: Record capture output diagnostics
+        if: ${{ always() }}
+        run: |
+          set +e
+          echo "Capture output tree:"
+          find data -maxdepth 6 -type f -print 2>/dev/null | sort || true
+          echo "Request JSON summaries:"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          for path in sorted(Path("data/raw/requests").glob("**/request.json")):
+              try:
+                  payload = json.loads(path.read_text(encoding="utf-8"))
+                  print(json.dumps({"path": str(path), "keys": sorted(payload), "id": payload.get("id"), "request_id": payload.get("request_id")}, sort_keys=True))
+              except Exception as error:  # noqa: BLE001 - diagnostic step must continue
+                  print(json.dumps({"path": str(path), "error": str(error)}, sort_keys=True))
+          PY
+
+      - name: Upload capture diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: historical-seed-capture-diagnostics
+          if-no-files-found: ignore
+          path: |
+            data/raw/requests/**
+            data/warc/**
+            data/attachments/**
+            data/_state/ledger.jsonl
+
       - name: Build manifest
         env:
           DRY_RUN: ${{ inputs.dry_run }}
