@@ -243,6 +243,12 @@ calls for (R-05). Registered there in parallel.
 | `archive-health-doctor` | observability_quality | R-23 |
 | `cross-worker-rate-limiter` | archive discovery and backfill jobs with bounded aggregate pacing | safer concurrent request rate across workers; archived in [./archive/cross_worker_rate_limiter_20260701/](./archive/cross_worker_rate_limiter_20260701/) |
 
+### [ ] Track: Incremental jurisdiction archive completion
+Track ID: `jurisdiction_archive_completion_20260721`
+Goal: Preserve immutable, replayable and public-safe archive evidence for every FOI-O roadmap target.
+Link: [./tracks/jurisdiction_archive_completion_20260721/](./tracks/jurisdiction_archive_completion_20260721/)
+GitHub: [#210](https://github.com/edithatogo/fyi-archive/issues/210); programme parent [foi-o #81](https://github.com/edithatogo/foi-o/issues/81).
+
 ## Archived tracks
 
 ### [x] Track: GitHub project best practices and workflow maximization
