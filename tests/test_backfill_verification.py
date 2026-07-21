@@ -410,9 +410,12 @@ def test_load_controller_state_accepts_local_wrapped_and_bare_snapshots(
     wrapped = tmp_path / "wrapped.json"
     wrapped.write_text(json.dumps({"state": {"complete": True}}), encoding="utf-8")
     monkeypatch.setenv("BACKFILL_STATE_SNAPSHOT", str(wrapped))
-    assert backfill_verification.load_controller_state(
-        repo="example/repo", state_label="state"
-    )["state"]["complete"] is True
+    assert (
+        backfill_verification.load_controller_state(repo="example/repo", state_label="state")[
+            "state"
+        ]["complete"]
+        is True
+    )
 
     bare = tmp_path / "bare.json"
     bare.write_text(
@@ -441,23 +444,23 @@ def test_load_controller_state_rejects_missing_issue_after_open_and_all_searches
 
 
 def test_controller_summary_prefers_captured_record_summary() -> None:
-    result = backfill_verification.controller_summary(
-        {
-            "issue_number": 1,
-            "issue_url": "",
-            "issue_title": "",
-            "state": {
-                "summary": {"captured_records": 9},
-                "batches": [{"status": "merged", "record_count": 3}],
-            },
-        }
-    )
+    result = backfill_verification.controller_summary({
+        "issue_number": 1,
+        "issue_url": "",
+        "issue_title": "",
+        "state": {
+            "summary": {"captured_records": 9},
+            "batches": [{"status": "merged", "record_count": 3}],
+        },
+    })
     assert result["captured_records"] == 9
 
 
 @respx.mock
 def test_zenodo_manifest_uses_query_token_after_forbidden_responses() -> None:
-    respx.get("https://zenodo.example/file").mock(side_effect=[Response(403), Response(200, json={"record_count": 2})])
+    respx.get("https://zenodo.example/file").mock(
+        side_effect=[Response(403), Response(200, json={"record_count": 2})]
+    )
     response = backfill_verification.get_zenodo_manifest_response(
         token="token",
         manifest_url="https://zenodo.example/file",
