@@ -229,6 +229,23 @@ jobs:
           fi
           uv run fyi-archive seed run "${args[@]}"
 
+      - name: Validate live capture output
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          set -euo pipefail
+          if [ ! -s data/_state/ledger.jsonl ]; then
+            echo "Live seed produced no ledger evidence" >&2
+            exit 1
+          fi
+          if grep -q '"status": "failed"' data/_state/ledger.jsonl; then
+            echo "Live seed recorded one or more failed captures; refusing derived export" >&2
+            exit 1
+          fi
+          if [ ! -d data/raw/requests ]; then
+            echo "Live seed produced no raw request store" >&2
+            exit 1
+          fi
+
       - name: Build chunk manifest
         env:
           DRY_RUN: ${{ inputs.dry_run }}
@@ -297,6 +314,7 @@ jobs:
             --output-dir dist/process-events/projection
 
       - name: Upload chunk artifacts
+        if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: historical-backfill-${{ matrix.label }}
@@ -309,3 +327,4 @@ jobs:
             manifests/authorities.json
             dist/provenance.json
             dist/process-events/**
+          if-no-files-found: warn
