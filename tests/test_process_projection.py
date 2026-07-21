@@ -78,7 +78,8 @@ def test_projection_rejects_malformed_json(tmp_path: Path) -> None:
 @pytest.mark.parametrize("field", ["event_id", "case_id"])
 def test_projection_rejects_empty_identity(tmp_path: Path, field: str) -> None:
     events = tmp_path / "events.jsonl"
-    row = {"event_id": "e1", "case_id": "c1", "activity": "opened", field: ""}
+    row: dict[str, object] = {"event_id": "e1", "case_id": "c1", "activity": "opened"}
+    row[field] = ""
     _write_jsonl(events, [row])
     with pytest.raises(ValueError, match="invalid"):
         build_process_projection(events_path=events, output_dir=tmp_path / "out")
