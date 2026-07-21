@@ -106,7 +106,7 @@ logging = "loguru"
 
 [tool.uv.sources]
 # Pin the capture tool fix while its release PR is reviewed; upgrade the rev with the release tag.
-fyi-cli = { git = "https://github.com/edithatogo/fyi-cli", rev = "0930487" }
+fyi-cli = { git = "https://github.com/edithatogo/fyi-cli", rev = "626afb4" }
 
 # --------------------------------------------------------------------------- #
 # Ruff — mirror the family rule set (corpus-cases-medilegal-nz)
