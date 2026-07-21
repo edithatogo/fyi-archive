@@ -89,6 +89,22 @@ def test_assemble_manifest_loads_fyi_cli_request_directory(tmp_path: Path) -> No
     assert record["warc_record_ids"] == ["<urn:uuid:test>"]
 
 
+def test_assemble_manifest_uses_numeric_directory_id_when_payload_omits_id(tmp_path: Path) -> None:
+    request_dir = tmp_path / "derived" / "unknown" / "7"
+    request_dir.mkdir(parents=True)
+    (request_dir / "request.json").write_text(
+        json.dumps({"url_title": "request-7", "title": "Captured"}), encoding="utf-8"
+    )
+    manifest = assemble_manifest(
+        derived_dir=tmp_path / "derived",
+        manifest_path=tmp_path / "manifest.json",
+        parquet_path=tmp_path / "manifest.parquet",
+        authorities_path=tmp_path / "authorities.json",
+        fyi_cli_version="1.2.0",
+    )
+    assert manifest["requests"][0]["request_id"] == 7
+
+
 def test_manifest_cli_build(tmp_path: Path) -> None:
     derived = tmp_path / "derived"
     write_record(derived / "1.json", 1)

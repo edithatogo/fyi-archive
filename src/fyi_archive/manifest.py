@@ -31,7 +31,10 @@ def canonical_sha256(data: dict[str, Any]) -> str:
 
 def normalize_request_record(data: dict[str, Any]) -> dict[str, Any]:
     """Normalize one derived record into manifest shape."""
-    request_id = int(data.get("request_id") or data["id"])
+    request_id_value = data.get("request_id") or data.get("id")
+    if request_id_value is None:
+        raise ValueError("derived request record must contain request_id or id")
+    request_id = int(request_id_value)
     normalized = {
         "request_id": request_id,
         "url_title": str(data.get("url_title") or f"request-{request_id}"),
@@ -62,6 +65,13 @@ def load_request_directory_record(request_json_path: Path) -> dict[str, Any]:
     """Load a fyi-cli derived request directory into manifest shape."""
     request_dir = request_json_path.parent
     data = json.loads(request_json_path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"request record must be an object: {request_json_path}")
+    if not data.get("request_id") and not data.get("id"):
+        try:
+            data["request_id"] = int(request_dir.name)
+        except ValueError as error:
+            raise ValueError(f"request directory name is not numeric: {request_dir}") from error
     attachments_path = request_dir / "attachments.json"
     snapshot_meta_path = request_dir / "snapshot_meta.json"
     attachments = (
