@@ -21,7 +21,12 @@ def test_projection_preserves_source_order_and_writes_viewer_resources(tmp_path:
         events,
         [
             {"event_id": "e2", "case_id": "c1", "activity": "closed", "source_index": 2},
-            {"event_id": "e1", "case_id": "c1", "activity": "opened", "source_index": 1},
+            {
+                "event_id": "e1",
+                "case_id": "c1",
+                "activity": "opened",
+                "source_order": {"event_sequence": 1},
+            },
         ],
     )
     output = tmp_path / "projection"
@@ -49,6 +54,23 @@ def test_projection_rejects_wrong_contract(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="unsupported"):
         build_process_projection(events_path=events, output_dir=tmp_path / "out")
+
+
+def test_projection_accepts_fyi_cli_logical_request_id(tmp_path: Path) -> None:
+    events = tmp_path / "events.jsonl"
+    _write_jsonl(
+        events,
+        [
+            {
+                "event_id": "e1",
+                "logical_request_id": "urn:fyi:nz-fyi:request:7",
+                "activity": "opened",
+                "source_order": {"event_sequence": 0},
+            }
+        ],
+    )
+    coverage = build_process_projection(events_path=events, output_dir=tmp_path / "out")
+    assert coverage["case_count"] == 1
 
 
 def test_process_cli_projects_and_verifies(tmp_path: Path) -> None:
