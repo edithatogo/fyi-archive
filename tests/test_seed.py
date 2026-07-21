@@ -164,6 +164,33 @@ def test_capture_with_fyi_cli_converts_subprocess_timeout_to_capture_error(
     assert "hung" in raised.value.stderr
 
 
+def test_capture_retry_does_not_repeat_parent_timeout(tmp_path: Path, monkeypatch) -> None:
+    calls = 0
+
+    def timed_out(*args, **kwargs):  # noqa: ANN002, ANN003
+        nonlocal calls
+        calls += 1
+        raise CaptureError(
+            request_id="request",
+            command=[],
+            returncode=124,
+            stdout="",
+            stderr="timed out",
+        )
+
+    monkeypatch.setattr("fyi_archive.seed.capture_with_fyi_cli", timed_out)
+    with pytest.raises(CaptureError, match="exit 124"):
+        capture_with_retry(
+            SeedRequest(20000, "request-20000"),
+            tmp_path / "data",
+            tmp_path / "dist",
+            SeedCaps(max_runtime_minutes=1),
+            (),
+            retry_attempts=3,
+        )
+    assert calls == 1
+
+
 def test_run_seed_non_dry_run_records_capture_summary(tmp_path: Path, monkeypatch) -> None:
     derived_path = tmp_path / "data" / "raw" / "requests" / "agency" / "20000"
     derived_path.mkdir(parents=True)
