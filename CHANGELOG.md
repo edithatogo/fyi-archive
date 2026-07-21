@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.14.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.13.0...fyi_archive-v0.14.0) (2026-07-21)
+
+
+### Features
+
+* refresh HF card from verified sync metadata ([#204](https://github.com/edithatogo/fyi-archive/issues/204)) ([74481da](https://github.com/edithatogo/fyi-archive/commit/74481dab64215a77ae5ee32c722927fddbd26f16))
+
+
+### Bug Fixes
+
+* allow empty process logs in backfill merges ([#209](https://github.com/edithatogo/fyi-archive/issues/209)) ([ed3154c](https://github.com/edithatogo/fyi-archive/commit/ed3154c3ae31a6a62656fd76c1055c251b26dd4b))
+* discover process logs in downloaded artifacts ([#208](https://github.com/edithatogo/fyi-archive/issues/208)) ([16171ba](https://github.com/edithatogo/fyi-archive/commit/16171babd377db9f133defc67918f0c2c1a77156))
+
 ## [0.13.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.12.0...fyi_archive-v0.13.0) (2026-07-21)
 
 

@@ -31,8 +31,6 @@ def test_missing_run_provenance_is_rejected() -> None:
     result = validate_derived_manifest(document)
     assert result["ok"] is False
     assert "extraction_run_id" in " ".join(result["errors"])
-
-
 def test_validate_derived_command_accepts_fixture(tmp_path: Path, capsys) -> None:
     manifest = tmp_path / "manifest.json"
     manifest.write_text(FIXTURE.read_text(encoding="utf-8"), encoding="utf-8")
