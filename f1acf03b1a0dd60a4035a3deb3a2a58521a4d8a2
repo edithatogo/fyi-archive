@@ -1,0 +1,1 @@
+Context: AU rollout invoked unsupported fyi-cli capture flags and assembled manifests from an unused derived path. Decision: require explicit bounded read-only confirmation, pass robots-aware shared pacing controls, enforce parent pacing and byte/disk caps, and build manifests from actual capture output. Validation: 44 focused tests passed.
