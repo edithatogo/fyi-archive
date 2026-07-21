@@ -101,6 +101,38 @@ jobs:
           path: |
             data/au-rtk/rollout/discovered_bodies.json
             data/au-rtk/rollout/discovered_bodies.provenance.json
+      - name: Export and verify AU process projections
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          root=data/au-rtk/rollout
+          mkdir -p "$root/process-events"
+          : > "$root/process-events/events.jsonl"
+          shopt -s nullglob
+          for jurisdiction_dir in "$root"/*/; do
+            [ -d "$jurisdiction_dir/derived/requests" ] || continue
+            jurisdiction="$(basename "$jurisdiction_dir")"
+            mkdir -p "$jurisdiction_dir/process-events"
+            uv run fyi export-process-events \
+              --derived-dir "$jurisdiction_dir/derived/requests" \
+              --output "$jurisdiction_dir/process-events/events.jsonl" \
+              --captured-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            uv run fyi-archive process project \
+              --events "$jurisdiction_dir/process-events/events.jsonl" \
+              --manifest "$jurisdiction_dir/manifest.json" \
+              --output-dir "$jurisdiction_dir/process-events/projection" \
+              --snapshot-revision "au-rtk-${jurisdiction}-${GITHUB_RUN_ID}"
+            uv run fyi-archive process verify \
+              --output-dir "$jurisdiction_dir/process-events/projection"
+            cat "$jurisdiction_dir/process-events/events.jsonl" >> "$root/process-events/events.jsonl"
+          done
+          uv run fyi-archive process project \
+            --events "$root/process-events/events.jsonl" \
+            --manifest "$root/national_manifest.json" \
+            --output-dir "$root/process-events/projection" \
+            --snapshot-revision "au-rtk-national-${GITHUB_RUN_ID}"
+          uv run fyi-archive process verify \
+            --output-dir "$root/process-events/projection"
       - name: Verify national manifest
         if: ${{ inputs.dry_run }}
         run: |
