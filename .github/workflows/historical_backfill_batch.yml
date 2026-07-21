@@ -179,8 +179,50 @@ jobs:
               [ "$attempt" = "3" ] && break
               sleep $((attempt * 20))
             done
+            if [ "$discovered" = "true" ] && [ ! -s data/_state/discovered_requests.jsonl ]; then
+              echo "Live discovery returned an empty queue; resolving canonical request slugs from the public HF manifest"
+              uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          from huggingface_hub import hf_hub_download
+
+          manifest_path = hf_hub_download(
+              repo_id="edithatogo/fyi-archive-nz",
+              filename="manifests/latest_manifest.json",
+              repo_type="dataset",
+          )
+          manifest = json.loads(Path(manifest_path).read_text(encoding="utf-8"))
+          id_from = int(os.environ["ID_FROM"])
+          id_to = int(os.environ["ID_TO"])
+          output = Path("data/_state/discovered_requests.jsonl")
+          rows = []
+          for request in manifest.get("requests", []):
+              request_id = request.get("request_id")
+              if isinstance(request_id, int) and id_from <= request_id <= id_to:
+                  rows.append(
+                      {
+                          "request_id": request_id,
+                          "url_title": request.get("url_title") or f"request-{request_id}",
+                          "title": request.get("title") or "",
+                          "authority": request.get("authority") or "",
+                      }
+                  )
+          rows.sort(key=lambda row: row["request_id"])
+          output.write_text(
+              "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows),
+              encoding="utf-8",
+          )
+          print(f"Resolved {len(rows)} canonical request(s) from HF manifest")
+          PY
+            fi
             if [ "$discovered" = "true" ]; then
-              args+=(--requests-file data/_state/discovered_requests.jsonl)
+              if [ -s data/_state/discovered_requests.jsonl ]; then
+                args+=(--requests-file data/_state/discovered_requests.jsonl)
+              else
+                args+=(--id-from "$ID_FROM" --id-to "$ID_TO" --allow-undiscovered)
+              fi
             else
               args+=(--id-from "$ID_FROM" --id-to "$ID_TO" --allow-undiscovered)
             fi
