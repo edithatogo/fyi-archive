@@ -7,6 +7,7 @@ import subprocess
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
 import respx
 from httpx import Response
 from typer.testing import CliRunner
@@ -401,6 +402,83 @@ def test_backfill_verification_helpers_cover_state_loading_and_writers(
     assert report_path.exists()
     assert (versions_dir / "latest_backfill_verification.json").exists()
     assert (versions_dir / "2026-06" / "backfill_verification.json").exists()
+
+
+def test_load_controller_state_accepts_local_wrapped_and_bare_snapshots(
+    tmp_path: Path, monkeypatch
+) -> None:
+    wrapped = tmp_path / "wrapped.json"
+    wrapped.write_text(json.dumps({"state": {"complete": True}}), encoding="utf-8")
+    monkeypatch.setenv("BACKFILL_STATE_SNAPSHOT", str(wrapped))
+    assert backfill_verification.load_controller_state(
+        repo="example/repo", state_label="state"
+    )["state"]["complete"] is True
+
+    bare = tmp_path / "bare.json"
+    bare.write_text(
+        json.dumps({"complete": False, "issue_url": "url", "issue_title": "title"}),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("BACKFILL_STATE_SNAPSHOT", str(bare))
+    result = backfill_verification.load_controller_state(
+        repo="example/repo", state_label="state", issue_number=7
+    )
+    assert result == {
+        "issue_number": 7,
+        "issue_url": "url",
+        "issue_title": "title",
+        "state": {"complete": False, "issue_url": "url", "issue_title": "title"},
+    }
+
+
+def test_load_controller_state_rejects_missing_issue_after_open_and_all_searches(
+    monkeypatch,
+) -> None:
+    monkeypatch.delenv("BACKFILL_STATE_SNAPSHOT", raising=False)
+    monkeypatch.setattr(backfill_verification, "gh_json", lambda args: [])
+    with pytest.raises(ValueError, match="no issue found"):
+        backfill_verification.load_controller_state(repo="example/repo", state_label="state")
+
+
+def test_controller_summary_prefers_captured_record_summary() -> None:
+    result = backfill_verification.controller_summary(
+        {
+            "issue_number": 1,
+            "issue_url": "",
+            "issue_title": "",
+            "state": {
+                "summary": {"captured_records": 9},
+                "batches": [{"status": "merged", "record_count": 3}],
+            },
+        }
+    )
+    assert result["captured_records"] == 9
+
+
+@respx.mock
+def test_zenodo_manifest_uses_query_token_after_forbidden_responses() -> None:
+    respx.get("https://zenodo.example/file").mock(side_effect=[Response(403), Response(200, json={"record_count": 2})])
+    response = backfill_verification.get_zenodo_manifest_response(
+        token="token",
+        manifest_url="https://zenodo.example/file",
+        deposition_id=42,
+    )
+    assert response.json() == {"record_count": 2}
+
+
+@respx.mock
+def test_zenodo_published_manifest_uses_query_token_after_forbidden_response() -> None:
+    respx.get("https://zenodo.example/draft").mock(return_value=Response(404))
+    respx.get("https://zenodo.example/api/records/42/files/latest_manifest.json/content").mock(
+        side_effect=[Response(403), Response(200, json={"record_count": 2})]
+    )
+    response = backfill_verification.get_zenodo_manifest_response(
+        token="token",
+        manifest_url="https://zenodo.example/draft",
+        deposition_id=42,
+        api_url="https://zenodo.example/api",
+    )
+    assert response.json() == {"record_count": 2}
 
 
 @respx.mock
