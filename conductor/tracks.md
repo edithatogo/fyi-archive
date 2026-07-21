@@ -37,6 +37,12 @@ Link: [./tracks/operational_evidence_refresh_20260713/](./tracks/operational_evi
 - `fyi-cli: <track>` — a capability track in the companion `fyi-cli` repo that must
   land before this track's orchestration can function.
 
+## [~] Track: Full-corpus process projection and continuation
+Track ID: `full_corpus_process_projection_20260721`
+Goal: Consume the pinned fyi-cli process-event contract and emit deterministic,
+public-safe Parquet resources with coverage, lineage, and checksum evidence.
+Link: [./tracks/full_corpus_process_projection_20260721/](./tracks/full_corpus_process_projection_20260721/)
+
 ## [ ] Track: FOI-O derived re-extraction publication
 Track ID: `foio_derived_reextraction_20260714`
 Goal: Publish ontology-pinned candidate annotations as a separately versioned
