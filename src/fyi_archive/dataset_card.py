@@ -13,7 +13,7 @@ def render(card: str, summary: dict[str, object]) -> str:
         "## Verified snapshot metadata",
         "",
         f"- Publication status: **{'verified' if summary['verified'] else 'unverified'}**",
-        f"- Snapshot records: **{int(summary['record_count']):,}**",
+        f"- Snapshot records: **{int(str(summary['record_count'])):,}**",
         f"- Generated at: `{summary['generated_at']}`",
         f"- Manifest SHA-256: `{summary['manifest_sha256']}`",
         "",
