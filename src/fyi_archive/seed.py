@@ -286,6 +286,8 @@ def capture_with_retry(
             return capture_with_fyi_cli(request, data_dir, dist_dir, caps, extra_args)
         except CaptureError as error:
             last_error = error
+            if error.returncode == 124:
+                raise
             if attempt >= attempts or not is_transient_capture_error(error):
                 raise
             time.sleep(max(0.0, retry_backoff_seconds) * attempt)
