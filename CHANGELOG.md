@@ -5,6 +5,21 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.13.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.12.0...fyi_archive-v0.13.0) (2026-07-21)
+
+
+### Features
+
+* add opt-in Sigstore release signing ([#186](https://github.com/edithatogo/fyi-archive/issues/186)) ([a3fdad1](https://github.com/edithatogo/fyi-archive/commit/a3fdad194e08981c1fe4ec41c8b80ffb51bfc2a3))
+* consume fyi-cli process event projections ([#198](https://github.com/edithatogo/fyi-archive/issues/198)) ([a5efdc8](https://github.com/edithatogo/fyi-archive/commit/a5efdc8857291653090b5de30e5a5383140c1ce6))
+
+
+### Bug Fixes
+
+* map fyi-cli logical request ids ([#201](https://github.com/edithatogo/fyi-archive/issues/201)) ([2fe6279](https://github.com/edithatogo/fyi-archive/commit/2fe62791a3ea62842978c86701fb4d5f1f9fa9e3))
+* normalize live capture directory ids ([#199](https://github.com/edithatogo/fyi-archive/issues/199)) ([99b0b2e](https://github.com/edithatogo/fyi-archive/commit/99b0b2ef96b63be824e7e8bfdae4b359f00c257b))
+* pin fyi-cli exporter commit ([#203](https://github.com/edithatogo/fyi-archive/issues/203)) ([5370f92](https://github.com/edithatogo/fyi-archive/commit/5370f92ed6e4a257a9ee52bd06657e117770fdfe))
+
 ## [0.12.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.11.1...fyi_archive-v0.12.0) (2026-07-14)
 
 
