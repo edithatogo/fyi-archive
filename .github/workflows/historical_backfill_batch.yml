@@ -225,6 +225,35 @@ jobs:
             --fetch-end "${{ matrix.id_to }}" \
             --fetch-label "historical-backfill-${{ matrix.label }}"
 
+      - name: Export chunk process events
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          derived_dir=data/derived/requests
+          if [ "$DRY_RUN" != "true" ]; then
+            derived_dir=data/raw/requests
+          fi
+          mkdir -p dist/process-events
+          captured_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          uv run fyi export-process-events \
+            --derived-dir "$derived_dir" \
+            --output dist/process-events/events.jsonl \
+            --captured-at "$captured_at"
+
+      - name: Build and verify chunk process projection
+        env:
+          SNAPSHOT_REVISION: historical-backfill-${{ matrix.label }}
+        run: |
+          set -euo pipefail
+          uv run fyi-archive process project \
+            --events dist/process-events/events.jsonl \
+            --manifest manifests/latest_manifest.json \
+            --output-dir dist/process-events/projection \
+            --snapshot-revision "$SNAPSHOT_REVISION"
+          uv run fyi-archive process verify \
+            --output-dir dist/process-events/projection
+
       - name: Upload chunk artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -237,3 +266,4 @@ jobs:
             manifests/latest_manifest.parquet
             manifests/authorities.json
             dist/provenance.json
+            dist/process-events/**
