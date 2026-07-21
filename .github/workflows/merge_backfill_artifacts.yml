@@ -237,6 +237,32 @@ jobs:
             --artifact manifests/authorities.json \
             --fetch-label "historical-backfill-merge-${RUN_ID}"
 
+      - name: Upload verified process projection to Hugging Face
+        if: env.DRY_RUN != 'true'
+        env:
+          HF_REPO_ID: ${{ vars.HF_REPO_ID || 'edithatogo/fyi-archive-nz' }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          [ -n "$HF_TOKEN" ] || { echo "HF_TOKEN is required for process-log deposit"; exit 1; }
+          [ "$HF_REPO_ID" = "edithatogo/fyi-archive-nz" ] || {
+            echo "Refusing process-log upload to non-allowlisted dataset: $HF_REPO_ID"
+            exit 1
+          }
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          HfApi(token=os.environ["HF_TOKEN"]).upload_folder(
+              folder_path="dist/process-events",
+              path_in_repo="process-events",
+              repo_id=os.environ["HF_REPO_ID"],
+              repo_type="dataset",
+              token=os.environ["HF_TOKEN"],
+              commit_message="data: publish verified historical process projection",
+          )
+          PY
+
       - name: Persist merged backfill state
         if: env.DRY_RUN != 'true'
         env:
