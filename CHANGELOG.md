@@ -5,6 +5,19 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.15.1](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.15.0...fyi_archive-v0.15.1) (2026-07-21)
+
+
+### Bug Fixes
+
+* bound live fyi-cli capture subprocesses ([a2b57a6](https://github.com/edithatogo/fyi-archive/commit/a2b57a646ea4773b582098dd8db08d39cd245591))
+* bound live fyi-cli capture subprocesses ([#220](https://github.com/edithatogo/fyi-archive/issues/220)) ([7d6a2b4](https://github.com/edithatogo/fyi-archive/commit/7d6a2b409397636de1dcbb38ba57f791c7960b63))
+* make capture timeouts terminal ([780a8c3](https://github.com/edithatogo/fyi-archive/commit/780a8c3d584f4f3f7438021c7278c8a50d2c5457))
+* make capture timeouts terminal ([#222](https://github.com/edithatogo/fyi-archive/issues/222)) ([f249df0](https://github.com/edithatogo/fyi-archive/commit/f249df0eb3ad84286f93e12e026b1e15d24a3a80))
+* resolve canonical live request slugs ([79c9cc9](https://github.com/edithatogo/fyi-archive/commit/79c9cc942aa49762099c0d7b35848f006a011305))
+* resolve canonical live request slugs ([#223](https://github.com/edithatogo/fyi-archive/issues/223)) ([090fdfb](https://github.com/edithatogo/fyi-archive/commit/090fdfb3aeef40fc2500dc439bc6bcc8615c7c7d))
+* terminate timed out capture process trees ([ead77ba](https://github.com/edithatogo/fyi-archive/commit/ead77ba6a2313e3e734d17cd2c8127fa1cdf382e))
+
 ## [0.15.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.14.0...fyi_archive-v0.15.0) (2026-07-21)
 
 
