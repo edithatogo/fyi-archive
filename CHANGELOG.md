@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.15.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.14.0...fyi_archive-v0.15.0) (2026-07-21)
+
+
+### Features
+
+* validate versioned FOI-O derived manifests ([#213](https://github.com/edithatogo/fyi-archive/issues/213)) ([5e835a1](https://github.com/edithatogo/fyi-archive/commit/5e835a1b5195b913a3f6fef260ab7046593cccb8))
+
 ## [0.14.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.13.0...fyi_archive-v0.14.0) (2026-07-21)
 
 
