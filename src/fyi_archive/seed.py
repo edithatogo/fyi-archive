@@ -232,8 +232,22 @@ def capture_with_fyi_cli(
         command.extend(["--max-runtime-minutes", str(caps.max_runtime_minutes)])
     if caps.max_disk_gb is not None:
         command.extend(["--max-disk-gb", str(caps.max_disk_gb)])
+    timeout_seconds: float | None = None
+    if caps.max_runtime_minutes is not None:
+        # Keep the parent bounded even when an upstream CLI or HTTP client
+        # ignores its own runtime option.
+        timeout_seconds = max(1.0, caps.max_runtime_minutes * 60 + 30)
     try:
-        completed = subprocess.run(command, check=True, capture_output=True, text=True)
+        if timeout_seconds is None:
+            completed = subprocess.run(command, check=True, capture_output=True, text=True)
+        else:
+            completed = subprocess.run(
+                command,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+            )
     except subprocess.CalledProcessError as error:
         raise CaptureError(
             request_id=request.request_id,
@@ -241,6 +255,14 @@ def capture_with_fyi_cli(
             returncode=error.returncode,
             stdout=error.stdout or "",
             stderr=error.stderr or "",
+        ) from error
+    except subprocess.TimeoutExpired as error:
+        raise CaptureError(
+            request_id=request.request_id,
+            command=command,
+            returncode=124,
+            stdout=str(error.stdout or ""),
+            stderr=str(error.stderr or "capture subprocess timed out"),
         ) from error
     return json.loads(completed.stdout)
 
