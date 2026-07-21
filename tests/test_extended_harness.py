@@ -399,12 +399,10 @@ def test_sync_baseline_restore_and_subprocess_contract(tmp_path: Path, monkeypat
         derived_dir=tmp_path / "derived", output_path=tmp_path / "baseline.json"
     )
     payload = json.loads(baseline.read_text(encoding="utf-8"))
-    assert payload["requests"][0]["content_sha256"] == fyi_diff_content_sha256(
-        {
-            "id": 1,
-            "title": "A",
-        }
-    )
+    assert payload["requests"][0]["content_sha256"] == fyi_diff_content_sha256({
+        "id": 1,
+        "title": "A",
+    })
 
     snapshot = tmp_path / "snapshot"
     (snapshot / "manifests").mkdir(parents=True)
@@ -615,9 +613,9 @@ def test_nsw_queue_selection_is_deduplicated_and_scoped(tmp_path: Path) -> None:
     ]
     selected = select_nsw_authorities(bodies)
     assert [row["slug"] for row in selected] == ["council"]
-    csv_style = select_nsw_authorities(
-        [{"URL name": "nsw-health", "Name": "NSW Health", "Tags": "state-government-nsw"}]
-    )
+    csv_style = select_nsw_authorities([
+        {"URL name": "nsw-health", "Name": "NSW Health", "Tags": "state-government-nsw"}
+    ])
     assert [row["slug"] for row in csv_style] == ["nsw-health"]
     assert set(csv_style[0]) == {"slug", "name", "jurisdiction"}
     bodies_path = tmp_path / "bodies.json"

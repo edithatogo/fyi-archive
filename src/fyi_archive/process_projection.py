@@ -64,20 +64,18 @@ def _case_rows(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         grouped.setdefault(event["case_id"], []).append(event)
     result = []
     for case_id, case_events in grouped.items():
-        result.append(
-            {
-                "case_id": case_id,
-                "event_count": len(case_events),
-                "first_source_index": min(
-                    int(event.get("source_index", event.get("source_order", 0)) or 0)
-                    for event in case_events
-                ),
-                "last_source_index": max(
-                    int(event.get("source_index", event.get("source_order", 0)) or 0)
-                    for event in case_events
-                ),
-            }
-        )
+        result.append({
+            "case_id": case_id,
+            "event_count": len(case_events),
+            "first_source_index": min(
+                int(event.get("source_index", event.get("source_order", 0)) or 0)
+                for event in case_events
+            ),
+            "last_source_index": max(
+                int(event.get("source_index", event.get("source_order", 0)) or 0)
+                for event in case_events
+            ),
+        })
     return sorted(result, key=lambda row: row["case_id"])
 
 
