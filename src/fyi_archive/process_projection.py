@@ -114,7 +114,9 @@ def build_process_projection(
     """Validate and materialize a process-event projection into Parquet files."""
     events = _sort_events(_read_jsonl(events_path))
     _validate_events(events)
-    attachments = _read_jsonl(attachments_path) if attachments_path and attachments_path.exists() else []
+    attachments = (
+        _read_jsonl(attachments_path) if attachments_path and attachments_path.exists() else []
+    )
     for row in attachments:
         if row.get("contract_version", CONTRACT_VERSION) != CONTRACT_VERSION:
             raise ValueError("unsupported attachment contract version")
@@ -153,7 +155,9 @@ def build_process_projection(
         or expected_requests == len({row["case_id"] for row in events}),
     }
     coverage_path = output_dir / "coverage.json"
-    coverage_path.write_text(json.dumps(coverage, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    coverage_path.write_text(
+        json.dumps(coverage, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     metadata = {
         "name": "fyi-archive-process-events",
         "version": CONTRACT_VERSION,
@@ -165,6 +169,11 @@ def build_process_projection(
         "coverage": "coverage.json",
     }
     metadata_path = output_dir / "dataset_info.json"
-    metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    _write_checksums(output_dir, [event_path, case_path, attachment_path, revision_path, coverage_path, metadata_path])
+    metadata_path.write_text(
+        json.dumps(metadata, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    _write_checksums(
+        output_dir,
+        [event_path, case_path, attachment_path, revision_path, coverage_path, metadata_path],
+    )
     return coverage
