@@ -140,6 +140,24 @@ jobs:
           if meta["record_count"] < 1:
               raise SystemExit("NSW seed manifest is empty")
           PY
+      - name: Export NSW process events
+        run: |
+          set -euo pipefail
+          mkdir -p "$ROOT/dist/process-events"
+          uv run fyi export-process-events \
+            --derived-dir "$ROOT/derived/requests" \
+            --output "$ROOT/dist/process-events/events.jsonl" \
+            --captured-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      - name: Build and verify NSW process projection
+        run: |
+          set -euo pipefail
+          uv run fyi-archive process project \
+            --events "$ROOT/dist/process-events/events.jsonl" \
+            --manifest "$ROOT/manifests/latest_manifest.json" \
+            --output-dir "$ROOT/dist/process-events/projection" \
+            --snapshot-revision "au-rtk-nsw-${GITHUB_RUN_ID}"
+          uv run fyi-archive process verify \
+            --output-dir "$ROOT/dist/process-events/projection"
       - name: Upload NSW seed evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
