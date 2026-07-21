@@ -82,6 +82,33 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Render verified dataset card
+        run: |
+          set -euo pipefail
+          uv run python scripts/render_dataset_card.py \
+            --card DATASET_CARD.md \
+            --summary sync-summary.json \
+            --output rendered-dataset-card.md
+
+      - name: Upload verified dataset card
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj="rendered-dataset-card.md",
+              path_in_repo="README.md",
+              repo_id=os.environ["HF_REPO_ID"],
+              repo_type="dataset",
+              token=os.environ["HF_TOKEN"],
+              commit_message="docs: refresh verified snapshot metadata",
+          )
+          PY
+
       - name: Upload sync artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
@@ -94,3 +121,4 @@ jobs:
             manifests/authorities.json
             conductor/archive_health.json
             sync-summary.json
+            rendered-dataset-card.md
