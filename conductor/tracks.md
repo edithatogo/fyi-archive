@@ -43,6 +43,24 @@ Goal: Consume the pinned fyi-cli process-event contract and emit deterministic,
 public-safe Parquet resources with coverage, lineage, and checksum evidence.
 Link: [./tracks/full_corpus_process_projection_20260721/](./tracks/full_corpus_process_projection_20260721/)
 
+## [ ] Track: FOI-O derived re-extraction publication
+Track ID: `foio_derived_reextraction_20260714`
+Goal: Publish ontology-pinned candidate annotations as a separately versioned
+derived layer while preserving immutable archive records.
+Depends on: `foi-o` V2 extraction contract and `nlp-policy-nz` FOI-O adapter.
+Link: [./tracks/foio_derived_reextraction_20260714/](./tracks/foio_derived_reextraction_20260714/)
+
+## [~] Track: Maximal quality profile
+Track ID: `maximal_quality_profile_20260714`
+Link: [./tracks/maximal_quality_profile_20260714/](./tracks/maximal_quality_profile_20260714/)
+
+## [ ] Track: Australian FOI corpus readiness
+Track ID: `au_foi_corpus_readiness_20260714`
+Goal: Produce pinned, rights-aware, jurisdiction-stratified public examples for
+FOI-O validation, beginning with Commonwealth and NSW.
+Depends on: existing AU multi-instance, rollout, and publication tracks.
+Link: [./tracks/au_foi_corpus_readiness_20260714/](./tracks/au_foi_corpus_readiness_20260714/)
+
 ---
 
 ## Foundation tracks
@@ -202,6 +220,16 @@ Link: [./tracks/alaveteli_sitewide_queue_20260713/](./tracks/alaveteli_sitewide_
 ---
 
 ## Companion capability tracks (in fyi-cli)
+
+### [ ] Track: Full-corpus process projection and continuation
+Track ID: `full_corpus_process_projection_20260721`
+Goal: Build and maintain revisioned public-safe case/event projections for full-corpus process mining.
+Link: [./tracks/full_corpus_process_projection_20260721/](./tracks/full_corpus_process_projection_20260721/)
+GitHub: [#196](https://github.com/edithatogo/fyi-archive/issues/196), registered as a subissue of [foi-process #36](https://github.com/edithatogo/foi-process/issues/36).
+Upstream: [fyi-cli #231](https://github.com/edithatogo/fyi-cli/issues/231) / `process-event-export_20260721`.
+Downstream: [foi-process #37](https://github.com/edithatogo/foi-process/issues/37) / `T10-full-corpus-process-mining`.
+
+---
 
 These live in `fyi-cli`'s `.conductor/` and are prerequisites for the archive tracks
 above. They are the "improving and adding features" to `fyi-cli` that the user's brief

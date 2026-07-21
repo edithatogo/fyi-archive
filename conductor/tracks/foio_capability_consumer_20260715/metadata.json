@@ -1,0 +1,9 @@
+{
+  "name": "foio_capability_consumer_20260715",
+  "title": "Adopt FOI-O capability declaration contract",
+  "status": "in_progress",
+  "issue": 190,
+  "created_at": "2026-07-15",
+  "owner": "fyi-archive",
+  "upstream": "edithatogo/foi-o#25"
+}

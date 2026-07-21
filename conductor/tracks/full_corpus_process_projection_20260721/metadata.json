@@ -1,9 +1,26 @@
 {
   "track_id": "full_corpus_process_projection_20260721",
   "title": "Full-corpus process projection and continuation",
+  "type": "feature",
   "status": "in_progress",
-  "description": "Consume the pinned fyi-cli process-event contract and emit deterministic public-safe Dataset Viewer resources.",
+  "created_at": "2026-07-21T00:00:00+10:00",
+  "updated_at": "2026-07-21T00:00:00+10:00",
+  "description": "Build and maintain a full-corpus, public-safe, revisioned process projection from archived Alaveteli captures.",
   "issue": "https://github.com/edithatogo/fyi-archive/issues/196",
+  "github_parent_issue": "https://github.com/edithatogo/foi-process/issues/36",
   "upstream_issue": "https://github.com/edithatogo/fyi-cli/issues/231",
-  "parent_issue": "https://github.com/edithatogo/foi-process/issues/36"
+  "depends_on": ["process-event-export_20260721"],
+  "downstream_track": "edithatogo/foi-process:T10-full-corpus-process-mining"
+  "type": "feature",
+  "status": "planned",
+  "created_at": "2026-07-21T00:00:00+10:00",
+  "updated_at": "2026-07-21T00:00:00+10:00",
+  "description": "Build and maintain a full-corpus, public-safe, revisioned process projection from archived Alaveteli captures.",
+  "github_parent_issue": "https://github.com/edithatogo/foi-process/issues/36",
+  "github_issue": "https://github.com/edithatogo/fyi-archive/issues/196",
+  "depends_on": [
+    "https://github.com/edithatogo/fyi-cli/issues/231",
+    "process-event-export_20260721"
+  ],
+  "downstream_track": "edithatogo/foi-process:T10-full-corpus-process-mining"
 }

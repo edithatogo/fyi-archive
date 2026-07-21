@@ -1,13 +1,43 @@
 # Specification: Full-corpus process projection and continuation
 
-The archive consumes the versioned public-safe process-event stream emitted by
-`fyi-cli` and materializes separate process-mining resources. Faithful WARC/WACZ
-and raw request manifests remain the source evidence and are not replaced.
+GitHub issue: https://github.com/edithatogo/fyi-archive/issues/196  
+Parent epic: https://github.com/edithatogo/foi-process/issues/36  
+Upstream issue: https://github.com/edithatogo/fyi-cli/issues/231
 
-## Acceptance
+## Overview
 
-- Contract version `1.0.0` is validated before output is written.
-- Events retain source ordering and deterministic case projections.
-- Events, cases, attachment metadata, and snapshot revisions are separate Parquet resources.
-- Coverage, dataset metadata, and SHA-256 checksums are emitted.
-- A checksum verification command fails closed before publication.
+Create a separately identified derived layer containing process cases, events,
+attachment metadata, revisions, and coverage information for every captured request.
+The layer supports deterministic full backfill and daily continuation without replacing
+or conflating immutable archive manifests and raw WARC/WACZ evidence.
+
+## Functional requirements
+
+- Validate the pinned upstream process-event contract.
+- Produce partitioned Parquet for cases, events, attachment metadata, and revisions.
+- Produce coverage, checksum, source-revision, rights, and snapshot-lineage manifests.
+- Resume full-corpus backfill and merge incremental changes deterministically.
+- Propagate corrections, retractions, and takedown tombstones.
+- Expose Dataset Viewer-compatible configurations and splits.
+- Preserve source ordering and stable identifiers across shards and compaction.
+
+## Storage and publication boundary
+
+Raw evidence remains in the archive layer. The process projection excludes message
+bodies, requester identity, request titles, OCR text, embeddings, and attachment bytes.
+Projection publication remains separately gated even when local generation succeeds.
+
+## Acceptance criteria
+
+- Request coverage reconciles exactly to a pinned archive manifest, with explicit exclusions.
+- Event totals reconcile to source timeline totals.
+- Full replay and incremental merge produce identical active rows and hashes.
+- Repeated generation is deterministic and shard paths are stable.
+- Dataset Viewer validates all intended configs, splits, and Parquet shards.
+- Removal and replacement tests prove that stale public rows cannot survive recursively.
+
+## Out of scope
+
+- Process mining algorithms and dashboard UI.
+- Raw WARC, correspondence, OCR, NLP, or embedding publication.
+- Paid hosted compute or transactional serving infrastructure.

@@ -29,21 +29,17 @@ def test_cdx_array_and_morph_rows_deduplicate_by_url(tmp_path: Path) -> None:
     )
     cdx = tmp_path / "cdx.json"
     cdx.write_text(
-        json.dumps(
-            [
-                ["original", "timestamp", "digest"],
-                ["https://www.righttoknow.org.au/request/example", "20180101", "sha1:A"],
-                ["https://www.righttoknow.org.au/request/other", "20180102", "sha1:B"],
-            ]
-        ),
+        json.dumps([
+            ["original", "timestamp", "digest"],
+            ["https://www.righttoknow.org.au/request/example", "20180101", "sha1:A"],
+            ["https://www.righttoknow.org.au/request/other", "20180102", "sha1:B"],
+        ]),
         encoding="utf-8",
     )
-    merged = merge_historical_sources(
-        [
-            load_historical_source(morph, "morph"),
-            load_historical_source(cdx, "internet_archive_cdx"),
-        ]
-    )
+    merged = merge_historical_sources([
+        load_historical_source(morph, "morph"),
+        load_historical_source(cdx, "internet_archive_cdx"),
+    ])
     assert merged["record_count"] == 2
     assert merged["records"][0]["title"] == "Historical"
 
@@ -64,14 +60,12 @@ def test_skips_invalid_morph_urls(tmp_path: Path) -> None:
 def test_cdx_supports_dict_rows_and_short_lists(tmp_path: Path) -> None:
     path = tmp_path / "cdx.json"
     path.write_text(
-        json.dumps(
-            [
-                {"original": "https://example.test/request/a"},
-                ["https://example.test/request/b"],
-                ["not-a-url", "2020"],
-                "ignored",
-            ]
-        ),
+        json.dumps([
+            {"original": "https://example.test/request/a"},
+            ["https://example.test/request/b"],
+            ["not-a-url", "2020"],
+            "ignored",
+        ]),
         encoding="utf-8",
     )
     document = load_historical_source(path, "internet_archive_cdx")
@@ -89,19 +83,17 @@ def test_rejects_non_array_cdx_payload(tmp_path: Path) -> None:
 def test_alaveteli_json_feed_preserves_instance_and_metadata(tmp_path: Path) -> None:
     path = tmp_path / "feed.json"
     path.write_text(
-        json.dumps(
-            {
-                "entries": [
-                    {
-                        "id": 42,
-                        "url": "https://example.test/request/example",
-                        "title": "A request",
-                        "public_body": {"name": "Agency"},
-                        "state": "successful",
-                    }
-                ]
-            }
-        ),
+        json.dumps({
+            "entries": [
+                {
+                    "id": 42,
+                    "url": "https://example.test/request/example",
+                    "title": "A request",
+                    "public_body": {"name": "Agency"},
+                    "state": "successful",
+                }
+            ]
+        }),
         encoding="utf-8",
     )
     document = load_historical_source(path, "alaveteli_feed_json", instance_id="example")
@@ -131,20 +123,18 @@ def test_structured_exports_support_json_and_preserve_source_kind(
 ) -> None:
     path = tmp_path / f"{source_kind}.json"
     path.write_text(
-        json.dumps(
-            {
-                "results": [
-                    {
-                        "request_id": "42",
-                        "request_url": "https://example.test/request/42",
-                        "subject": "A request",
-                        "public_body_name": "Agency",
-                        "status": "successful",
-                    },
-                    {"subject": "No public URL"},
-                ]
-            }
-        ),
+        json.dumps({
+            "results": [
+                {
+                    "request_id": "42",
+                    "request_url": "https://example.test/request/42",
+                    "subject": "A request",
+                    "public_body_name": "Agency",
+                    "status": "successful",
+                },
+                {"subject": "No public URL"},
+            ]
+        }),
         encoding="utf-8",
     )
     document = load_historical_source(path, source_kind, instance_id="example")
@@ -167,20 +157,18 @@ def test_structured_csv_supports_tabular_operator_export(tmp_path: Path) -> None
 def test_structured_exports_support_nested_records_and_authority_dict(tmp_path: Path) -> None:
     path = tmp_path / "nested.json"
     path.write_text(
-        json.dumps(
-            {
-                "data": {
-                    "records": [
-                        {
-                            "id": 7,
-                            "url": "https://example.test/request/7",
-                            "authority": {"url_name": "agency"},
-                            "name": "Nested request",
-                        }
-                    ]
-                }
+        json.dumps({
+            "data": {
+                "records": [
+                    {
+                        "id": 7,
+                        "url": "https://example.test/request/7",
+                        "authority": {"url_name": "agency"},
+                        "name": "Nested request",
+                    }
+                ]
             }
-        ),
+        }),
         encoding="utf-8",
     )
     document = load_historical_source(path, "official_dataset")

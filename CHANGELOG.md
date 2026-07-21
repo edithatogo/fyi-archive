@@ -5,6 +5,18 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.12.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.11.1...fyi_archive-v0.12.0) (2026-07-14)
+
+
+### Features
+
+* adopt FOI-O capability declarations ([#191](https://github.com/edithatogo/fyi-archive/issues/191)) ([192b981](https://github.com/edithatogo/fyi-archive/commit/192b9816314fbaaeca4e464215bd2e74bb255f03))
+
+
+### Documentation
+
+* refresh health evidence status ([#184](https://github.com/edithatogo/fyi-archive/issues/184)) ([70d58d5](https://github.com/edithatogo/fyi-archive/commit/70d58d5358b433d42d7fc8e6d7a7a6d6916697d7))
+
 ## [0.11.1](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.11.0...fyi_archive-v0.11.1) (2026-07-13)
 
 

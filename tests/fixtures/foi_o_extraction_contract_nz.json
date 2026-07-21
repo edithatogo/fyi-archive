@@ -1,0 +1,14 @@
+{
+  "conforms_to": "foi-o-extraction-contract/0.1.0",
+  "contract_id": "foi-o-extraction",
+  "version": "0.1.0",
+  "release_status": "draft",
+  "ontology": {"id": "foi-o", "version": "2.0.0", "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+  "profile": {"id": "foi-o-nz", "version": "2.0.0", "jurisdiction": "NZ", "core_compatibility": "^2.0.0", "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+  "codebook": {"id": "foi-o-nz-codebook", "version": "2.0.0", "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"},
+  "schemas": ["codebook-entry/0.1.0", "evidence-assertion/0.1.0"],
+  "capabilities": {"candidate_events": true, "evidence_spans": true, "uncertainty": true, "bitemporal_sources": true, "jurisdiction_profiles": ["foi-o-nz"]},
+  "migrations": {"catalogue": "migrations/v1-to-v2-empirical-overlay.md", "unknown_major": "reject"},
+  "candidate_status": "candidate",
+  "provenance": {"source_repository": "edithatogo/fyi-archive", "source_revision": "0123456789abcdef0123456789abcdef01234567", "source_digest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", "extraction_run_id": "fixture-run", "pipeline_id": "nlp-policy-nz.foio-adapter", "pipeline_version": "0.1.0", "generated_at": "2026-07-14T00:00:00Z"}
+}
