@@ -179,7 +179,7 @@ def test_capture_retry_does_not_repeat_parent_timeout(tmp_path: Path, monkeypatc
         )
 
     monkeypatch.setattr("fyi_archive.seed.capture_with_fyi_cli", timed_out)
-    with pytest.raises(CaptureError, match="timed out"):
+    with pytest.raises(CaptureError, match="exit 124"):
         capture_with_retry(
             SeedRequest(20000, "request-20000"),
             tmp_path / "data",
