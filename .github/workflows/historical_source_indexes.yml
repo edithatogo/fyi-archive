@@ -62,7 +62,7 @@ jobs:
             --retry 1 --retry-delay 60 --max-time 300 \
             -A "fyi-archive-historical-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
             --get "https://web.archive.org/cdx/search/cdx" \
-            --data-urlencode "url=www.righttoknow.org.au/request/*" \
+            --data-urlencode "url=www.righttoknow.org.au/request" \
             --data-urlencode "output=json" \
             --data-urlencode "filter=statuscode:200" \
             --data-urlencode "fl=original,timestamp,digest" \
@@ -92,7 +92,7 @@ jobs:
               "schema": "fyi-archive.historical-source-input-provenance.v1",
               "retrieved_at": datetime.now(timezone.utc).isoformat(),
               "morph_source": "https://api.morph.io/openaustralia/right_to_know_requests",
-              "internet_archive_cdx_scope": "https://www.righttoknow.org.au/request/*",
+              "internet_archive_cdx_scope": "https://www.righttoknow.org.au/request (prefix match)",
               "inputs": inputs,
               "secret_values_recorded": False,
           }
