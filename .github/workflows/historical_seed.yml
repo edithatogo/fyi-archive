@@ -228,9 +228,9 @@ jobs:
       - name: Export process events
         env:
           DRY_RUN: ${{ inputs.dry_run }}
-          CAPTURED_AT: ${{ github.run_started_at }}
         run: |
           set -euo pipefail
+          CAPTURED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           derived_dir=data/raw/requests
           if [ "$DRY_RUN" = "true" ]; then
             derived_dir=data/derived/requests
