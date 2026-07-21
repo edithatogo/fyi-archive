@@ -8,6 +8,7 @@ from typing import Annotated
 
 import typer
 
+from fyi_archive.derived_layer import validate_derived_manifest
 from fyi_archive.process_projection import build_process_projection, verify_process_projection
 
 app = typer.Typer(name="process", help="Build public-safe process-mining projections.")
@@ -45,3 +46,20 @@ def verify(
     except (OSError, ValueError) as error:
         raise typer.BadParameter(str(error)) from error
     typer.echo(json.dumps({"verified": True, "output_dir": str(output_dir)}))
+
+
+@app.command("validate-derived")
+def validate_derived(
+    manifest: Annotated[Path, typer.Option(help="FOI-O derived-layer manifest JSON.")],
+) -> None:
+    """Validate a separately versioned FOI-O candidate manifest."""
+    try:
+        document = json.loads(manifest.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise typer.BadParameter(str(error)) from error
+    if not isinstance(document, dict):
+        raise typer.BadParameter("derived manifest must be a JSON object")
+    result = validate_derived_manifest(document)
+    typer.echo(json.dumps(result, indent=2, sort_keys=True))
+    if not result["ok"]:
+        raise typer.Exit(code=1)
