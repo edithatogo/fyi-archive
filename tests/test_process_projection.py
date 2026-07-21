@@ -5,7 +5,9 @@ from pathlib import Path
 
 import polars as pl
 import pytest
+from typer.testing import CliRunner
 
+from fyi_archive.cli import app
 from fyi_archive.process_projection import build_process_projection, verify_process_projection
 
 
@@ -47,3 +49,46 @@ def test_projection_rejects_wrong_contract(tmp_path: Path) -> None:
     )
     with pytest.raises(ValueError, match="unsupported"):
         build_process_projection(events_path=events, output_dir=tmp_path / "out")
+
+
+def test_process_cli_projects_and_verifies(tmp_path: Path) -> None:
+    events = tmp_path / "events.jsonl"
+    _write_jsonl(events, [{"event_id": "e1", "case_id": "c1", "activity": "opened"}])
+    output = tmp_path / "out"
+    runner = CliRunner()
+    result = runner.invoke(
+        app, ["process", "project", "--events", str(events), "--output-dir", str(output)]
+    )
+    assert result.exit_code == 0, result.output
+    result = runner.invoke(app, ["process", "verify", "--output-dir", str(output)])
+    assert result.exit_code == 0, result.output
+
+
+def test_projection_rejects_malformed_json(tmp_path: Path) -> None:
+    events = tmp_path / "events.jsonl"
+    events.write_text("not-json\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="invalid JSON"):
+        build_process_projection(events_path=events, output_dir=tmp_path / "out")
+
+    events.write_text("[]\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="must be an object"):
+        build_process_projection(events_path=events, output_dir=tmp_path / "out")
+
+
+@pytest.mark.parametrize("field", ["event_id", "case_id"])
+def test_projection_rejects_empty_identity(tmp_path: Path, field: str) -> None:
+    events = tmp_path / "events.jsonl"
+    row = {"event_id": "e1", "case_id": "c1", "activity": "opened", field: ""}
+    _write_jsonl(events, [row])
+    with pytest.raises(ValueError, match="invalid"):
+        build_process_projection(events_path=events, output_dir=tmp_path / "out")
+
+
+def test_process_cli_reports_projection_and_checksum_errors(tmp_path: Path) -> None:
+    events = tmp_path / "events.jsonl"
+    _write_jsonl(events, [{"event_id": "e1", "case_id": "c1"}])
+    runner = CliRunner()
+    result = runner.invoke(app, ["process", "project", "--events", str(events)])
+    assert result.exit_code != 0
+    result = runner.invoke(app, ["process", "verify", "--output-dir", str(tmp_path / "missing")])
+    assert result.exit_code != 0
