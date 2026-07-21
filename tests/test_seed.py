@@ -141,8 +141,27 @@ def test_capture_with_fyi_cli_builds_current_capture_command(tmp_path: Path, mon
     assert "--max-runtime-minutes" in command
     assert "--max-disk-gb" in command
     assert "--base-url" in command
-    assert kwargs == {"check": True, "capture_output": True, "text": True}
+    assert kwargs == {"check": True, "capture_output": True, "text": True, "timeout": 150}
     assert summary == {"derived_path": "derived/20000"}
+
+
+def test_capture_with_fyi_cli_converts_subprocess_timeout_to_capture_error(
+    tmp_path: Path, monkeypatch
+) -> None:
+    def timed_out(command, **kwargs):  # noqa: ANN001, ANN202
+        raise subprocess.TimeoutExpired(command, kwargs["timeout"], stderr="hung")
+
+    monkeypatch.setattr(subprocess, "run", timed_out)
+    with pytest.raises(CaptureError) as raised:
+        capture_with_fyi_cli(
+            SeedRequest(20000, "request-20000"),
+            tmp_path / "data",
+            tmp_path / "dist",
+            SeedCaps(max_runtime_minutes=1),
+            (),
+        )
+    assert raised.value.returncode == 124
+    assert "hung" in raised.value.stderr
 
 
 def test_run_seed_non_dry_run_records_capture_summary(tmp_path: Path, monkeypatch) -> None:
