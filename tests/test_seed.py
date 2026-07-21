@@ -119,11 +119,15 @@ def test_requests_from_id_range_builds_fallback_queue() -> None:
 def test_capture_with_fyi_cli_builds_current_capture_command(tmp_path: Path, monkeypatch) -> None:
     calls = []
 
-    def fake_run(command, **kwargs):  # noqa: ANN001, ANN202
+    def fake_popen(command, **kwargs):  # noqa: ANN001, ANN202
         calls.append((command, kwargs))
-        return SimpleNamespace(stdout='{"derived_path": "derived/20000"}')
+        return SimpleNamespace(
+            pid=123,
+            returncode=0,
+            communicate=lambda timeout=None: ('{"derived_path": "derived/20000"}', ""),
+        )
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
 
     summary = capture_with_fyi_cli(
         SeedRequest(20000, "request-20000"),
@@ -141,17 +145,32 @@ def test_capture_with_fyi_cli_builds_current_capture_command(tmp_path: Path, mon
     assert "--max-runtime-minutes" in command
     assert "--max-disk-gb" in command
     assert "--base-url" in command
-    assert kwargs == {"check": True, "capture_output": True, "text": True, "timeout": 150}
+    assert kwargs["stdout"] == subprocess.PIPE
+    assert kwargs["stderr"] == subprocess.PIPE
+    assert kwargs["text"] is True
     assert summary == {"derived_path": "derived/20000"}
 
 
 def test_capture_with_fyi_cli_converts_subprocess_timeout_to_capture_error(
     tmp_path: Path, monkeypatch
 ) -> None:
-    def timed_out(command, **kwargs):  # noqa: ANN001, ANN202
-        raise subprocess.TimeoutExpired(command, kwargs["timeout"], stderr="hung")
+    calls = 0
 
-    monkeypatch.setattr(subprocess, "run", timed_out)
+    def communicate(*, timeout: float | None = None):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise subprocess.TimeoutExpired([], timeout or 1.0, stderr="hung")
+        return "", ""
+
+    process = SimpleNamespace(
+        pid=123,
+        returncode=None,
+        communicate=communicate,
+        kill=lambda: None,
+    )
+    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: process)
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: None)
     with pytest.raises(CaptureError) as raised:
         capture_with_fyi_cli(
             SeedRequest(20000, "request-20000"),

@@ -227,13 +227,18 @@ def test_capture_with_fyi_cli_includes_base_url(monkeypatch: pytest.MonkeyPatch)
     recorded: list[list[str]] = []
 
     class Completed:
+        pid = 1
+        returncode = 0
         stdout = json.dumps({"derived_path": "data/raw/1/request.json"})
 
-    def fake_run(command: list[str], check: bool, capture_output: bool, text: bool) -> Completed:
+        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+            return self.stdout, ""
+
+    def fake_popen(command: list[str], **kwargs: object) -> Completed:
         recorded.append(list(command))
         return Completed()
 
-    monkeypatch.setattr("fyi_archive.seed.subprocess.run", fake_run)
+    monkeypatch.setattr("fyi_archive.seed.subprocess.Popen", fake_popen)
     summary = capture_with_fyi_cli(
         SeedRequest(request_id=42, url_title="r-42"),
         Path("data"),
@@ -260,13 +265,18 @@ def test_capture_with_fyi_cli_passes_rate_limiting_flags(monkeypatch: pytest.Mon
     recorded: list[list[str]] = []
 
     class Completed:
+        pid = 1
+        returncode = 0
         stdout = json.dumps({"derived_path": "data/raw/1/request.json"})
 
-    def fake_run(command: list[str], check: bool, capture_output: bool, text: bool) -> Completed:
+        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+            return self.stdout, ""
+
+    def fake_popen(command: list[str], **kwargs: object) -> Completed:
         recorded.append(list(command))
         return Completed()
 
-    monkeypatch.setattr("fyi_archive.seed.subprocess.run", fake_run)
+    monkeypatch.setattr("fyi_archive.seed.subprocess.Popen", fake_popen)
     capture_with_fyi_cli(
         SeedRequest(request_id=1, url_title="r-1"),
         Path("data"),
