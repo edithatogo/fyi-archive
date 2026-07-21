@@ -208,6 +208,24 @@ jobs:
           Path(".tmp/backfill-record-counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
 
+      - name: Merge process event logs
+        run: |
+          set -euo pipefail
+          mkdir -p dist/process-events
+          find .tmp/backfill-artifacts -path '*/historical-backfill-*/dist/process-events/events.jsonl' \
+            -type f -print0 | sort -z | xargs -0 cat > dist/process-events/events.jsonl
+          if [ ! -s dist/process-events/events.jsonl ]; then
+            echo "No process event logs were found in the downloaded chunk artifacts"
+            exit 1
+          fi
+          uv run fyi-archive process project \
+            --events dist/process-events/events.jsonl \
+            --manifest manifests/latest_manifest.json \
+            --output-dir dist/process-events/projection \
+            --snapshot-revision "historical-backfill-merge-${GITHUB_RUN_ID}"
+          uv run fyi-archive process verify \
+            --output-dir dist/process-events/projection
+
       - name: Generate merge provenance
         env:
           RUN_ID: ${{ github.run_id }}
@@ -291,3 +309,4 @@ jobs:
             manifests/authorities.json
             dist/provenance.json
             dist/merge_backfill_dry_run.json
+            dist/process-events/**
