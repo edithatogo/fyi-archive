@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import operator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -76,7 +77,7 @@ def _case_rows(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 for event in case_events
             ),
         })
-    return sorted(result, key=lambda row: row["case_id"])
+    return sorted(result, key=operator.itemgetter("case_id"))
 
 
 def _write_checksums(output_dir: Path, paths: list[Path]) -> None:
