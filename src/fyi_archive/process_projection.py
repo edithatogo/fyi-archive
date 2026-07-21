@@ -20,6 +20,14 @@ CONTRACT_VERSION = "1.0.0"
 REQUIRED_EVENT_FIELDS = {"event_id", "case_id", "activity"}
 
 
+def _source_index(row: dict[str, Any]) -> int:
+    """Return the source sequence from scalar or fyi-cli structured ordering."""
+    value = row.get("source_index", row.get("source_order", 0))
+    if isinstance(value, dict):
+        value = value.get("event_sequence", value.get("sequence", 0))
+    return int(value or 0)
+
+
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
@@ -31,6 +39,8 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
             raise ValueError(f"invalid JSON on line {line_number} of {path}") from error
         if not isinstance(value, dict):
             raise ValueError(f"JSONL line {line_number} must be an object")
+        if "case_id" not in value and value.get("logical_request_id"):
+            value["case_id"] = value["logical_request_id"]
         rows.append(value)
     return rows
 
@@ -53,7 +63,7 @@ def _sort_events(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         rows,
         key=lambda row: (
             str(row.get("case_id", "")),
-            int(row.get("source_index", row.get("source_order", 0)) or 0),
+            _source_index(row),
             str(row.get("event_id", "")),
         ),
     )
@@ -68,14 +78,8 @@ def _case_rows(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         result.append({
             "case_id": case_id,
             "event_count": len(case_events),
-            "first_source_index": min(
-                int(event.get("source_index", event.get("source_order", 0)) or 0)
-                for event in case_events
-            ),
-            "last_source_index": max(
-                int(event.get("source_index", event.get("source_order", 0)) or 0)
-                for event in case_events
-            ),
+            "first_source_index": min(_source_index(event) for event in case_events),
+            "last_source_index": max(_source_index(event) for event in case_events),
         })
     return sorted(result, key=operator.itemgetter("case_id"))
 
