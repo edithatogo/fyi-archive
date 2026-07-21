@@ -190,6 +190,7 @@ def test_capture_retry_does_not_repeat_parent_timeout(tmp_path: Path, monkeypatc
         )
     assert calls == 1
 
+
 def test_run_seed_non_dry_run_records_capture_summary(tmp_path: Path, monkeypatch) -> None:
     derived_path = tmp_path / "data" / "raw" / "requests" / "agency" / "20000"
     derived_path.mkdir(parents=True)
