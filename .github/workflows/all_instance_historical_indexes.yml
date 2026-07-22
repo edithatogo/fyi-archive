@@ -32,6 +32,8 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
+      - name: Install locked runtime
+        run: uv sync --extra dev --frozen
       - name: Enumerate configured instances
         run: |
           set -euo pipefail
@@ -122,10 +124,45 @@ jobs:
           }
           Path(".tmp/all-instance-cdx/summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
+      - name: Import, filter, and enrich canonical request pages
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/all-instance-core
+          while IFS=$'\t' read -r instance_id base_url status; do
+            cdx=".tmp/all-instance-cdx/${instance_id}.json"
+            imported=".tmp/all-instance-core/${instance_id}.historical-index.json"
+            filtered=".tmp/all-instance-core/${instance_id}.request-pages-index.json"
+            core=".tmp/all-instance-core/${instance_id}.historical-core.json"
+            python scripts/import_historical_sources.py --internet-archive-cdx "$cdx" --instance-id "$instance_id" --output "$imported"
+            python scripts/filter_historical_request_pages.py --input "$imported" --output "$filtered"
+            python scripts/enrich_historical_core.py --historical-index "$filtered" --instance-id "$instance_id" --limit 25 --delay-seconds 3 --timeout-seconds 15 --user-agent "fyi-archive-all-instance-replay/1.0 (+https://github.com/${GITHUB_REPOSITORY})" --output "$core"
+            python - "$instance_id" "$cdx" "$imported" "$filtered" "$core" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          instance_id, cdx, imported, filtered, core = sys.argv[1:]
+          paths = [Path(item) for item in (cdx, imported, filtered, core)]
+          status = {
+              "schema": "fyi-archive.historical-core-status.v1",
+              "instance_id": instance_id,
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "replay_limit_per_instance": 25,
+              "replay_delay_seconds": 3,
+              "replay_timeout_seconds": 15,
+              "artifacts": {path.name: {"byte_count": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()} for path in paths},
+          }
+          Path(f".tmp/all-instance-core/{instance_id}.status.json").write_text(json.dumps(status, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+          done < .tmp-instances.tsv
       - name: Retain all-instance CDX evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: all-instance-internet-archive-cdx-${{ github.run_id }}
           retention-days: 90
           if-no-files-found: error
-          path: .tmp/all-instance-cdx/
+          path: |
+            .tmp/all-instance-cdx/
+            .tmp/all-instance-core/
