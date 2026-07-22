@@ -2,8 +2,9 @@
 
 ## Phase 1: Readiness and prerequisites
 
-- [ ] Confirm scope, rights, licensing, metadata, release, and persistence prerequisites in the parent issue.
-- [ ] Capture repository-specific validation commands and baseline results.
+- [x] Confirm scope, rights, licensing, metadata, release, and persistence prerequisites in the parent issue.
+- [x] Capture repository-specific validation commands and baseline results.
+- [x] Add the repository-side archive registry readiness contract and regression test.
 
 ## Phase 2: Registry deliverables
 
@@ -12,7 +13,6 @@
 
 ## Phase 3: Reconciliation and closeout
 
-- [ ] Reconcile Conductor status, issue state, project state, and external evidence.
+- [x] Reconcile Conductor status, issue state, project state, and external evidence.
 - [ ] Run the repository's documented validation workflow.
 - [ ] Archive this track only after all automatable work is complete and every remaining external gate is explicit.
-
