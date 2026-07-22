@@ -7,7 +7,7 @@ import hashlib
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 
 def sha256(path: Path) -> str:
@@ -27,7 +27,9 @@ def build_manifest(root: Path, *, instance_id: str) -> dict[str, Any]:
     if not isinstance(artifacts, dict) or not artifacts:
         raise ValueError("status artifact has no hashed artifacts")
     files = []
-    for name, metadata in sorted(artifacts.items()):
+    for raw_name, raw_metadata in sorted(artifacts.items()):
+        name = cast("str", raw_name)
+        metadata = cast("dict[str, Any]", raw_metadata)
         path = root / name
         if not path.is_file():
             raise ValueError(f"missing declared artifact: {path}")
