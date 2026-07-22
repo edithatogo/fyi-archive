@@ -12,7 +12,14 @@ LICENSE = ROOT / "LICENSE"
 
 def check() -> None:
     text = DOC.read_text(encoding="utf-8") if DOC.is_file() else ""
-    required = ("repository_ready_external_gates_pending", "#227", "#228", "Source-declared", "Zenodo", "FAIRsharing")
+    required = (
+        "repository_ready_external_gates_pending",
+        "#227",
+        "#228",
+        "Source-declared",
+        "Zenodo",
+        "FAIRsharing",
+    )
     missing = [fragment for fragment in required if fragment not in text]
     if missing:
         raise AssertionError("Archive registry readiness document missing: " + ", ".join(missing))
