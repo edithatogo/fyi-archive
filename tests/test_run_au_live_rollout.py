@@ -8,7 +8,8 @@ from pathlib import Path
 import pytest
 
 SPEC = importlib.util.spec_from_file_location("run_au_live_rollout", "scripts/run_au_live_rollout.py")
-assert SPEC is not None and SPEC.loader is not None
+assert SPEC is not None
+assert SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 LIVE_CAPTURE_CONFIRMATION = MODULE.LIVE_CAPTURE_CONFIRMATION
