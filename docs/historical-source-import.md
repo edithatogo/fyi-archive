@@ -13,12 +13,21 @@ uv run python scripts/import_historical_sources.py `
 Morph CSV rows and Internet Archive CDX rows are retained as evidence inputs,
 not converted into live-capture records. The output records each input path,
 local retrieval time, SHA-256 checksum, source type, and row count. Duplicate
-request URLs are represented once, with the first source record retained.
+request URLs are represented once, with all source evidence retained. Live or
+official discovery takes precedence over an Internet Archive row; the latter
+is marked `historical_discovery_candidate`, `verification_status=unverified`,
+and `capture_required=true`.
 
 This process does not access Right to Know, does not use a proxy, and does not
 claim that a page or attachment was captured. A later capture step must verify
 each URL through a permitted read-only route before it can enter a WARC/WACZ
 manifest.
+
+The `NZ historical source index` workflow downloads a bounded Internet Archive
+CDX index for `fyi.org.nz`, downloads the current public manifest, and emits a
+reconciliation report. It classifies URLs as `live_captured` or
+`archive_only_candidate`; it does not treat Wayback evidence as a substitute
+for `fyi-cli` live capture.
 
 ## GitHub Actions
 

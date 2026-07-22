@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
-from hypothesis import given, settings
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from fyi_archive.health import parity_report
@@ -18,7 +18,7 @@ def canonical_hash_stable(data: dict[str, Any]) -> str:
 
 
 @given(st.dictionaries(st.text(min_size=1), st.text(), min_size=1))
-@settings(max_examples=50)
+@settings(max_examples=50, suppress_health_check=[HealthCheck.too_slow])
 def test_canonical_hash_is_deterministic(data: dict[str, Any]) -> None:
     """Hash must be identical regardless of dict key order."""
     hash1 = canonical_hash_stable(data)
@@ -27,7 +27,7 @@ def test_canonical_hash_is_deterministic(data: dict[str, Any]) -> None:
 
 
 @given(st.dictionaries(st.text(min_size=1), st.text(), min_size=1))
-@settings(max_examples=50)
+@settings(max_examples=50, suppress_health_check=[HealthCheck.too_slow])
 def test_canonical_hash_changes_if_content_changes(data: dict[str, Any]) -> None:
     """Hash must differ when content differs."""
     hash_original = canonical_hash_stable(data)

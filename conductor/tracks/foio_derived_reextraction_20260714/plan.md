@@ -6,10 +6,10 @@ still requires real source and Hugging Face digests.
 
 ## Phase 1: Contract and storage boundary
 
-- [ ] Pin the source `fyi-archive-nz` revision and FOI-O extraction contract.
-- [ ] Define and validate a versioned derived-manifest schema.
-- [ ] Define separate local and Hugging Face paths or dataset identity for derived records.
-- [ ] Add negative tests preventing raw-manifest replacement or field conflation.
+- [x] Pin the source `fyi-archive-nz` revision and FOI-O extraction contract.
+- [x] Define and validate a versioned derived-manifest schema.
+- [x] Define separate local and Hugging Face paths or dataset identity for derived records.
+- [x] Add negative tests preventing raw-manifest replacement or field conflation.
 
 ## Phase 2: Publication and verification
 

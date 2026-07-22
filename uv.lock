@@ -814,7 +814,7 @@ wheels = [
 
 [[package]]
 name = "fyi-archive"
-version = "0.15.0"
+version = "0.15.1"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -867,7 +867,7 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.1.0" },
     { name = "feedparser", specifier = ">=6.0.11" },
     { name = "frictionless", marker = "extra == 'dev'", specifier = ">=5.18.0" },
-    { name = "fyi-cli", git = "https://github.com/edithatogo/fyi-cli?rev=626afb4" },
+    { name = "fyi-cli", git = "https://github.com/edithatogo/fyi-cli?rev=a93bca3a8272d15eb3d8eacd7a92cacde839dc65" },
     { name = "httpx", extras = ["http2"], specifier = ">=0.28.0" },
     { name = "httpx-limiter", specifier = ">=0.6.0" },
     { name = "huggingface-hub", extras = ["hf-xet"], specifier = ">=0.27.0" },
@@ -899,7 +899,7 @@ provides-extras = ["dev"]
 [[package]]
 name = "fyi-cli"
 version = "1.2.1"
-source = { git = "https://github.com/edithatogo/fyi-cli?rev=626afb4#626afb4f9288a0ccd007a34a44aece143bbed138" }
+source = { git = "https://github.com/edithatogo/fyi-cli?rev=a93bca3a8272d15eb3d8eacd7a92cacde839dc65#a93bca3a8272d15eb3d8eacd7a92cacde839dc65" }
 dependencies = [
     { name = "cryptography" },
     { name = "fastmcp" },
