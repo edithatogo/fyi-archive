@@ -7,7 +7,9 @@ from pathlib import Path
 
 import pytest
 
-SPEC = importlib.util.spec_from_file_location("run_au_live_rollout", "scripts/run_au_live_rollout.py")
+SPEC = importlib.util.spec_from_file_location(
+    "run_au_live_rollout", "scripts/run_au_live_rollout.py"
+)
 assert SPEC is not None
 assert SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)

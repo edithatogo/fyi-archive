@@ -14,7 +14,9 @@ def test_morph_workflow_uses_secret_and_retains_redacted_provenance() -> None:
 
 
 def test_all_instance_workflow_is_bounded_and_uses_registry_prefix_queries() -> None:
-    workflow = (ROOT / ".github/workflows/all_instance_historical_indexes.yml").read_text(encoding="utf-8")
+    workflow = (ROOT / ".github/workflows/all_instance_historical_indexes.yml").read_text(
+        encoding="utf-8"
+    )
     assert "from fyi_archive.instances import list_instances" in workflow
     assert "CDX_LIMIT_PER_INSTANCE" in workflow
     assert "between 1 and 100000" in workflow

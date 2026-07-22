@@ -16,7 +16,9 @@ def is_canonical_request_url(url: str) -> bool:
     from urllib.parse import urlparse
 
     parsed = urlparse(url)
-    return parsed.scheme in {"http", "https"} and bool(CANONICAL_REQUEST_PATH.fullmatch(parsed.path))
+    return parsed.scheme in {"http", "https"} and bool(
+        CANONICAL_REQUEST_PATH.fullmatch(parsed.path)
+    )
 
 
 def filter_index(index: dict[str, Any]) -> dict[str, Any]:
