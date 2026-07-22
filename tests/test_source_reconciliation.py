@@ -8,7 +8,8 @@ _SPEC = importlib.util.spec_from_file_location(
     "reconcile_source_candidates",
     Path(__file__).parents[1] / "scripts" / "reconcile_source_candidates.py",
 )
-assert _SPEC and _SPEC.loader
+if _SPEC is None or _SPEC.loader is None:
+    raise RuntimeError("Could not load reconciliation script")
 _MODULE = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_MODULE)
 reconcile = _MODULE.reconcile

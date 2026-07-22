@@ -331,7 +331,9 @@ def merge_historical_sources(inputs: list[dict[str, Any]]) -> dict[str, Any]:
                 current.get("evidence_role") == "historical_discovery_candidate"
                 and record.get("evidence_role") != "historical_discovery_candidate"
             ):
-                preserved = {key: value for key, value in record.items() if value not in (None, "")}
+                preserved = {
+                    key: value for key, value in record.items() if value not in {None, ""}
+                }
                 preserved["evidence_sources"] = current["evidence_sources"]
                 preserved["internet_archive_digests"] = current["internet_archive_digests"]
                 current = preserved
