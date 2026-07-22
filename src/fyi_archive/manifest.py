@@ -187,9 +187,7 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
                 and record_jurisdiction
                 and record_jurisdiction.upper() != expected_jurisdiction
             ):
-                raise ValueError(
-                    "Manifest record jurisdiction does not match meta.jurisdiction"
-                )
+                raise ValueError("Manifest record jurisdiction does not match meta.jurisdiction")
     if meta.get("record_count") != len(requests):
         msg = "Manifest record_count does not match request count"
         raise ValueError(msg)

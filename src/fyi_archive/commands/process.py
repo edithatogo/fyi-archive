@@ -24,8 +24,12 @@ def project(
     output_dir: Annotated[Path, typer.Option()] = Path("dist/process-events"),
     manifest: Annotated[Path | None, typer.Option()] = None,
     attachments: Annotated[Path | None, typer.Option()] = None,
-    takedown: Annotated[Path | None, typer.Option(help="JSONL stable IDs excluded from derived output.")] = None,
-    source_reconciliation: Annotated[Path | None, typer.Option(help="Historical candidate reconciliation JSON.")] = None,
+    takedown: Annotated[
+        Path | None, typer.Option(help="JSONL stable IDs excluded from derived output.")
+    ] = None,
+    source_reconciliation: Annotated[
+        Path | None, typer.Option(help="Historical candidate reconciliation JSON.")
+    ] = None,
     snapshot_revision: Annotated[str | None, typer.Option()] = None,
 ) -> None:
     """Validate and materialize process events for archive publication."""

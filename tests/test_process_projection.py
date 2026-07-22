@@ -145,11 +145,27 @@ def test_projection_consumes_resumed_event_shards_deterministically(tmp_path: Pa
     shards.mkdir()
     _write_jsonl(
         shards / "002.jsonl",
-        [{"event_id": "e2", "logical_event_id": "le2", "revision": 1, "case_id": "c1", "activity": "closed"}],
+        [
+            {
+                "event_id": "e2",
+                "logical_event_id": "le2",
+                "revision": 1,
+                "case_id": "c1",
+                "activity": "closed",
+            }
+        ],
     )
     _write_jsonl(
         shards / "001.jsonl",
-        [{"event_id": "e1", "logical_event_id": "le1", "revision": 1, "case_id": "c1", "activity": "opened"}],
+        [
+            {
+                "event_id": "e1",
+                "logical_event_id": "le1",
+                "revision": 1,
+                "case_id": "c1",
+                "activity": "opened",
+            }
+        ],
     )
     output = tmp_path / "out"
     coverage = build_process_projection(events_path=shards, output_dir=output)

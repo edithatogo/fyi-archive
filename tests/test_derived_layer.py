@@ -33,7 +33,9 @@ def test_missing_run_provenance_is_rejected() -> None:
     assert "extraction_run_id" in " ".join(result["errors"])
 
 
-@pytest.mark.parametrize("field", ["message_body", "ocr_text", "embedding_vector", "attachment_bytes"])
+@pytest.mark.parametrize(
+    "field", ["message_body", "ocr_text", "embedding_vector", "attachment_bytes"]
+)
 def test_raw_material_is_rejected_from_derived_manifest(field: str) -> None:
     document = json.loads(FIXTURE.read_text(encoding="utf-8"))
     document[field] = "raw-material"

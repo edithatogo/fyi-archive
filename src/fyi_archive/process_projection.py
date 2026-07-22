@@ -184,9 +184,7 @@ def build_process_projection(
         for row in raw_events
         if row.get("case_id") not in takedown_ids and row.get("event_id") not in takedown_ids
     ]
-    events = _sort_events(
-        _materialize_active_events(filtered_events)
-    )
+    events = _sort_events(_materialize_active_events(filtered_events))
     _validate_events(events)
     attachments = (
         _read_jsonl(attachments_path) if attachments_path and attachments_path.exists() else []
@@ -203,9 +201,7 @@ def build_process_projection(
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path else {}
     source_reconciliation = {}
     if source_reconciliation_path and source_reconciliation_path.exists():
-        source_reconciliation = json.loads(
-            source_reconciliation_path.read_text(encoding="utf-8")
-        )
+        source_reconciliation = json.loads(source_reconciliation_path.read_text(encoding="utf-8"))
 
     output_dir.mkdir(parents=True, exist_ok=True)
     event_columns = sorted({key for row in events for key in row})
@@ -230,7 +226,9 @@ def build_process_projection(
     pl.DataFrame(revisions).write_parquet(revision_path)
 
     expected_requests = manifest.get("meta", {}).get("record_count")
-    manifest_requests = manifest.get("requests") if isinstance(manifest.get("requests"), list) else []
+    manifest_requests = (
+        manifest.get("requests") if isinstance(manifest.get("requests"), list) else []
+    )
     expected_attachments = sum(
         len(request.get("attachments") or [])
         for request in manifest_requests
@@ -243,9 +241,7 @@ def build_process_projection(
         "snapshot_revision": snapshot_revision,
         "event_count": len(events),
         "excluded_event_count": len(raw_events) - len(events),
-        "retracted_event_count": sum(
-            row.get("operation") == "retract" for row in filtered_events
-        ),
+        "retracted_event_count": sum(row.get("operation") == "retract" for row in filtered_events),
         "case_count": len({row["case_id"] for row in events}),
         "attachment_count": len(attachments),
         "manifest_attachment_count": expected_attachments if manifest_requests else None,
