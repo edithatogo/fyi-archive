@@ -15,7 +15,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from defusedxml import ElementTree
 
@@ -38,7 +38,13 @@ def _url(value: object) -> str:
     parsed = urlparse(candidate)
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return ""
-    return candidate
+    query = [
+        (key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key.lower() not in {"fbclid", "gclid", "mc_cid", "mc_eid"}
+    ]
+    path = parsed.path.rstrip("/") or "/"
+    return urlunparse((parsed.scheme.lower(), parsed.netloc.lower(), path, "", urlencode(query), ""))
 
 
 def _morph_rows(path: Path) -> list[dict[str, Any]]:
@@ -51,6 +57,8 @@ def _morph_rows(path: Path) -> list[dict[str, Any]]:
                 continue
             output.append({
                 "source": "morph_io",
+                "evidence_role": "authoritative_discovery",
+                "capture_required": True,
                 "source_url": source_url,
                 "source_record_id": str(row.get("request_url") or ""),
                 "title": str(row.get("title") or ""),
@@ -61,7 +69,7 @@ def _morph_rows(path: Path) -> list[dict[str, Any]]:
         return output
 
 
-def _cdx_rows(path: Path) -> list[dict[str, Any]]:
+def _cdx_rows(path: Path, *, instance_id: str | None = None) -> list[dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, list):
         raise ValueError("Internet Archive CDX export must be a JSON array")
@@ -79,8 +87,10 @@ def _cdx_rows(path: Path) -> list[dict[str, Any]]:
         else:
             continue
         if source_url:
-            output.append({
+            record = {
                 "source": "internet_archive_cdx",
+                "evidence_role": "historical_discovery_candidate",
+                "capture_required": True,
                 "source_url": source_url,
                 "source_record_id": digest,
                 "title": "",
@@ -88,7 +98,10 @@ def _cdx_rows(path: Path) -> list[dict[str, Any]]:
                 "state": "",
                 "observed_at": timestamp,
                 "archive_digest": digest,
-            })
+            }
+            if instance_id:
+                record["instance_id"] = instance_id
+            output.append(record)
     return output
 
 
@@ -105,6 +118,8 @@ def _feed_record(
 ) -> dict[str, Any]:
     record: dict[str, Any] = {
         "source": source,
+        "evidence_role": "authoritative_discovery",
+        "capture_required": True,
         "source_url": source_url,
         "source_record_id": source_record_id,
         "title": title,
@@ -265,7 +280,7 @@ def load_historical_source(
     if source_kind == "morph":
         records = _morph_rows(path)
     elif source_kind == "internet_archive_cdx":
-        records = _cdx_rows(path)
+        records = _cdx_rows(path, instance_id=instance_id)
     elif source_kind == "alaveteli_feed_json":
         records = _feed_rows(path, instance_id=instance_id, source=source_kind)
     elif source_kind == "alaveteli_atom":
@@ -286,11 +301,43 @@ def load_historical_source(
 
 
 def merge_historical_sources(inputs: list[dict[str, Any]]) -> dict[str, Any]:
-    """Deduplicate source records by URL and return an evidence index."""
+    """Merge candidates while retaining every source's provenance.
+
+    Internet Archive rows are discovery evidence only. They never replace a
+    live/official discovery row and never imply that the page was captured.
+    """
     by_url: dict[str, dict[str, Any]] = {}
     for document in inputs:
         for record in document["records"]:
-            by_url.setdefault(record["source_url"], record)
+            url = record["source_url"]
+            current = by_url.get(url)
+            if current is None:
+                current = dict(record)
+                current["evidence_sources"] = []
+                current["internet_archive_digests"] = []
+                by_url[url] = current
+            evidence = {
+                "source": record.get("source"),
+                "source_record_id": record.get("source_record_id"),
+                "observed_at": record.get("observed_at", ""),
+                "archive_digest": record.get("archive_digest", ""),
+            }
+            if evidence not in current["evidence_sources"]:
+                current["evidence_sources"].append(evidence)
+            digest = str(record.get("archive_digest") or "")
+            if digest and digest not in current["internet_archive_digests"]:
+                current["internet_archive_digests"].append(digest)
+            if (
+                current.get("evidence_role") == "historical_discovery_candidate"
+                and record.get("evidence_role") != "historical_discovery_candidate"
+            ):
+                preserved = {key: value for key, value in record.items() if value not in (None, "")}
+                preserved["evidence_sources"] = current["evidence_sources"]
+                preserved["internet_archive_digests"] = current["internet_archive_digests"]
+                current = preserved
+                by_url[url] = current
+            current["capture_required"] = True
+            current["verification_status"] = "unverified"
     records = [by_url[url] for url in sorted(by_url)]
     return {
         "schema": "historical-source-index-v1",
