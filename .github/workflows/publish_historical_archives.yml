@@ -80,7 +80,6 @@ jobs:
         if: env.PUBLISH_TO_HUGGINGFACE == 'true'
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_REPO_ID_OVERRIDE: ${{ vars.HF_REPO_ID }}
         run: |
           set -euo pipefail
           [ "$CONFIRMATION" = "publish-historical-archives" ] || { echo 'Exact publication confirmation is required' >&2; exit 1; }
@@ -92,9 +91,8 @@ jobs:
           from huggingface_hub import HfApi
 
           api = HfApi(token=os.environ['HF_TOKEN'])
-          override = os.environ.get('HF_REPO_ID_OVERRIDE', '')
           for bundle in sorted(Path('.tmp/verified-bundles').iterdir()):
-              repo_id = override or get_instance(bundle.name).hf_repo_id
+              repo_id = get_instance(bundle.name).hf_repo_id
               api.upload_folder(
                   repo_id=repo_id,
                   repo_type='dataset',
