@@ -47,7 +47,7 @@ jobs:
       - name: Verify immutable manifests and build publication bundles
         run: |
           set -euo pipefail
-          test -f .tmp/historical-run/all-instance-manifests/summary.json
+          test -f .tmp/historical-run/summary.json
           mkdir -p .tmp/verified-bundles
           python - <<'PY'
           import hashlib
@@ -56,7 +56,7 @@ jobs:
           from pathlib import Path
 
           root = Path('.tmp/historical-run')
-          summary = json.loads((root / 'all-instance-manifests/summary.json').read_text())
+          summary = json.loads((root / 'summary.json').read_text())
           manifests = summary.get('manifests') or []
           if not manifests:
               raise SystemExit('manifest set is empty')
@@ -70,7 +70,7 @@ jobs:
               destination = Path('.tmp/verified-bundles') / instance
               destination.mkdir(parents=True)
               for artifact in manifest['artifacts']:
-                  source = root / 'all-instance-core' / artifact['name']
+                  source = root / artifact['name']
                   if hashlib.sha256(source.read_bytes()).hexdigest() != artifact['sha256']:
                       raise SystemExit(f'artifact hash mismatch: {instance}/{artifact["name"]}')
                   shutil.copy2(source, destination / artifact['name'])
