@@ -34,7 +34,9 @@ jobs:
           uv run python scripts/capture_historical_fulltext.py \
             --index .tmp/archive/au-rtk.request-pages-index.json \
             --instance-id au-rtk \
-            --output .tmp/archive/au-rtk.fulltext.json
+            --output .tmp/archive/au-rtk.fulltext.json \
+            --timeout 30 \
+            --retries 2
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: au-rtk-fulltext-${{ github.run_id }}

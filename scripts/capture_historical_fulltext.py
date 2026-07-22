@@ -14,7 +14,7 @@ from typing import Any
 from bs4 import BeautifulSoup
 
 
-def capture(index: dict[str, Any], *, instance_id: str, delay: float, timeout: float) -> dict[str, Any]:
+def capture(index: dict[str, Any], *, instance_id: str, delay: float, timeout: float, retries: int = 2) -> dict[str, Any]:
     records = list(index.get("records") or [])
     output = []
     for number, record in enumerate(records):
@@ -22,15 +22,19 @@ def capture(index: dict[str, Any], *, instance_id: str, delay: float, timeout: f
         timestamp = str(record.get("observed_at") or "")
         replay = f"https://web.archive.org/web/{timestamp}id_/{source_url}" if timestamp and source_url else ""
         item: dict[str, Any] = {"source_url": source_url, "replay_url": replay, "archive_timestamp": timestamp, "archive_digest": record.get("archive_digest"), "instance_id": instance_id}
-        try:
-            request = urllib.request.Request(replay, headers={"User-Agent": "fyi-archive-fulltext-replay/1.0"})  # noqa: S310
-            with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
-                raw = response.read(8 * 1024 * 1024)
-            html = raw.decode("utf-8", errors="replace")
-            text = " ".join(BeautifulSoup(html, "html.parser").get_text(" ").split())
-            item.update({"status": "captured", "byte_count": len(raw), "html_sha256": hashlib.sha256(raw).hexdigest(), "text": text, "text_sha256": hashlib.sha256(text.encode()).hexdigest()})
-        except Exception as error:  # noqa: BLE001
-            item.update({"status": "failed", "diagnostic": str(error)})
+        for attempt in range(retries + 1):
+            try:
+                request = urllib.request.Request(replay, headers={"User-Agent": "fyi-archive-fulltext-replay/1.0"})  # noqa: S310
+                with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
+                    raw = response.read(8 * 1024 * 1024)
+                html = raw.decode("utf-8", errors="replace")
+                text = " ".join(BeautifulSoup(html, "html.parser").get_text(" ").split())
+                item.update({"status": "captured", "attempts": attempt + 1, "byte_count": len(raw), "html_sha256": hashlib.sha256(raw).hexdigest(), "text": text, "text_sha256": hashlib.sha256(text.encode()).hexdigest()})
+                break
+            except Exception as error:  # noqa: BLE001
+                item.update({"status": "failed", "attempts": attempt + 1, "diagnostic": str(error)})
+                if attempt < retries:
+                    time.sleep(max(0.0, delay))
         output.append(item)
         if number + 1 < len(records):
             time.sleep(max(0.0, delay))
@@ -44,8 +48,9 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--delay", type=float, default=3.0)
     parser.add_argument("--timeout", type=float, default=15.0)
+    parser.add_argument("--retries", type=int, default=2)
     args = parser.parse_args()
-    result = capture(json.loads(args.index.read_text(encoding="utf-8")), instance_id=args.instance_id, delay=args.delay, timeout=args.timeout)
+    result = capture(json.loads(args.index.read_text(encoding="utf-8")), instance_id=args.instance_id, delay=args.delay, timeout=args.timeout, retries=args.retries)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return 0
 
