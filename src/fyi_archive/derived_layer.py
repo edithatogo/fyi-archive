@@ -7,6 +7,7 @@ from typing import Any
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
 CONTRACT = "foi-o-extraction-contract/0.1.0"
+CONTRACT_ID = "foi-o-extraction"
 REQUIRED_PROVENANCE = {
     "source_repository",
     "source_revision",
@@ -16,13 +17,25 @@ REQUIRED_PROVENANCE = {
     "pipeline_version",
     "generated_at",
 }
+FORBIDDEN_RAW_FIELDS = {
+    "request_body",
+    "message_body",
+    "ocr_text",
+    "embedding",
+    "embedding_vector",
+    "attachment_bytes",
+}
 
 
 def validate_derived_manifest(document: dict[str, Any]) -> dict[str, Any]:
     """Validate a candidate derived-layer declaration and return diagnostics."""
     errors: list[str] = []
+    leaked = sorted(FORBIDDEN_RAW_FIELDS.intersection(document))
+    errors.extend(f"derived manifest must not contain raw field {field}" for field in leaked)
     if document.get("conforms_to") != CONTRACT:
         errors.append(f"conforms_to must be {CONTRACT}")
+    if document.get("contract_id") != CONTRACT_ID:
+        errors.append(f"contract_id must be {CONTRACT_ID}")
     if document.get("release_status") not in {"draft", "verified"}:
         errors.append("release_status must be draft or verified")
     if document.get("candidate_status") != "candidate":

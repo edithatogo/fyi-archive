@@ -1,0 +1,81 @@
+name: NZ historical source index
+
+on:
+  schedule:
+    - cron: "31 18 * * 0"
+  workflow_dispatch:
+    inputs:
+      cdx_limit:
+        description: Maximum distinct Internet Archive URLs to request
+        required: true
+        default: "5000"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nz-historical-source-index
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CDX_LIMIT: ${{ inputs.cdx_limit || '5000' }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+      - name: Download Internet Archive CDX candidates
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/nz-historical-source-inputs
+          curl --fail-with-body --location --silent --show-error \
+            --retry 2 --retry-delay 30 --max-time 300 \
+            -A "fyi-archive-nz-historical-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
+            --get "https://web.archive.org/cdx/search/cdx" \
+            --data-urlencode "url=www.fyi.org.nz/request/*" \
+            --data-urlencode "output=json" \
+            --data-urlencode "filter=statuscode:200" \
+            --data-urlencode "fl=original,timestamp,digest" \
+            --data-urlencode "collapse=urlkey" \
+            --data-urlencode "limit=${CDX_LIMIT}" \
+            --output .tmp/nz-historical-source-inputs/internet_archive_cdx.json
+          test -s .tmp/nz-historical-source-inputs/internet_archive_cdx.json
+      - name: Download current public manifest
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --location --silent --show-error \
+            --retry 2 --retry-delay 30 --max-time 180 \
+            "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/manifests/latest_manifest.json" \
+            --output .tmp/nz-historical-source-inputs/latest_manifest.json
+          test -s .tmp/nz-historical-source-inputs/latest_manifest.json
+      - name: Build and reconcile historical candidates
+        run: |
+          set -euo pipefail
+          uv run python scripts/import_historical_sources.py \
+            --internet-archive-cdx .tmp/nz-historical-source-inputs/internet_archive_cdx.json \
+            --instance-id nz-fyi \
+            --output .tmp/nz-historical-source-index.json
+          uv run python scripts/reconcile_source_candidates.py \
+            --historical-source-index .tmp/nz-historical-source-index.json \
+            --manifest .tmp/nz-historical-source-inputs/latest_manifest.json \
+            --output .tmp/nz-source-reconciliation.json
+      - name: Retain NZ historical evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nz-historical-source-index-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          path: |
+            .tmp/nz-historical-source-inputs
+            .tmp/nz-historical-source-index.json
+            .tmp/nz-source-reconciliation.json

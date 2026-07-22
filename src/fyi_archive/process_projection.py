@@ -10,9 +10,8 @@ from __future__ import annotations
 import hashlib
 import json
 import operator
-from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import polars as pl
 
@@ -45,6 +44,18 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def _read_takedown_ids(path: Path | None) -> set[str]:
+    """Read stable case/event IDs that must not enter the derived layer."""
+    if path is None or not path.exists():
+        return set()
+    ids: set[str] = set()
+    for row in _read_jsonl(path):
+        value = row.get("case_id") or row.get("event_id") or row.get("id")
+        if isinstance(value, str) and value:
+            ids.add(value)
+    return ids
+
+
 def _validate_events(rows: list[dict[str, Any]]) -> None:
     for index, row in enumerate(rows):
         missing = REQUIRED_EVENT_FIELDS - row.keys()
@@ -67,6 +78,46 @@ def _sort_events(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             str(row.get("event_id", "")),
         ),
     )
+
+
+def merge_process_event_logs(paths: list[Path]) -> list[dict[str, Any]]:
+    """Merge resumed event-log shards deterministically.
+
+    A logical event revision is immutable once emitted. Duplicate deliveries
+    are collapsed, while two different payloads claiming the same logical
+    revision fail closed instead of being guessed at.
+    """
+    merged: dict[tuple[str, int], dict[str, Any]] = {}
+    for path in paths:
+        for row in _read_jsonl(path):
+            logical_id = str(row.get("logical_event_id") or row.get("event_id") or "")
+            revision = int(row.get("revision", 1))
+            key = (logical_id, revision)
+            previous = merged.get(key)
+            if previous is None:
+                merged[key] = row
+            elif previous != row:
+                raise ValueError(
+                    f"conflicting payloads for logical event revision {logical_id}:{revision}"
+                )
+    result = _sort_events(list(merged.values()))
+    _validate_events(result)
+    return result
+
+
+def _materialize_active_events(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep the latest revision of each logical event and apply tombstones."""
+    latest: dict[str, dict[str, Any]] = {}
+    for row in rows:
+        logical_id = str(row.get("logical_event_id") or row.get("event_id") or "")
+        revision = int(row.get("revision", 1))
+        previous = latest.get(logical_id)
+        if previous is None or (revision, str(row.get("event_id", ""))) > (
+            int(previous.get("revision", 1)),
+            str(previous.get("event_id", "")),
+        ):
+            latest[logical_id] = row
+    return [row for row in latest.values() if row.get("operation") != "retract"]
 
 
 def _case_rows(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -104,6 +155,12 @@ def verify_process_projection(output_dir: Path) -> None:
         path = output_dir / relative
         if not path.exists() or hashlib.sha256(path.read_bytes()).hexdigest() != expected:
             raise ValueError(f"checksum mismatch: {relative}")
+    coverage_path = output_dir / "coverage.json"
+    if coverage_path.exists():
+        coverage = json.loads(coverage_path.read_text(encoding="utf-8"))
+        for field in ("request_count_reconciles", "attachment_count_reconciles"):
+            if coverage.get(field) is False:
+                raise ValueError(f"projection coverage does not reconcile: {field}")
 
 
 def build_process_projection(
@@ -112,17 +169,39 @@ def build_process_projection(
     output_dir: Path,
     manifest_path: Path | None = None,
     attachments_path: Path | None = None,
+    takedown_path: Path | None = None,
+    source_reconciliation_path: Path | None = None,
     snapshot_revision: str | None = None,
 ) -> dict[str, Any]:
     """Validate and materialize a process-event projection into Parquet files."""
-    events = _sort_events(_read_jsonl(events_path))
+    event_inputs = sorted(events_path.glob("*.jsonl")) if events_path.is_dir() else [events_path]
+    if not event_inputs:
+        raise ValueError(f"no JSONL event shards found in {events_path}")
+    raw_events = merge_process_event_logs(event_inputs)
+    takedown_ids = _read_takedown_ids(takedown_path)
+    filtered_events = [
+        row
+        for row in raw_events
+        if row.get("case_id") not in takedown_ids and row.get("event_id") not in takedown_ids
+    ]
+    events = _sort_events(_materialize_active_events(filtered_events))
     _validate_events(events)
     attachments = (
         _read_jsonl(attachments_path) if attachments_path and attachments_path.exists() else []
     )
+    attachments = [
+        row
+        for row in attachments
+        if row.get("case_id") not in takedown_ids and row.get("event_id") not in takedown_ids
+    ]
     for row in attachments:
         if row.get("contract_version", CONTRACT_VERSION) != CONTRACT_VERSION:
             raise ValueError("unsupported attachment contract version")
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path else {}
+    source_reconciliation = {}
+    if source_reconciliation_path and source_reconciliation_path.exists():
+        source_reconciliation = json.loads(source_reconciliation_path.read_text(encoding="utf-8"))
 
     output_dir.mkdir(parents=True, exist_ok=True)
     event_columns = sorted({key for row in events for key in row})
@@ -137,26 +216,52 @@ def build_process_projection(
     revisions = [
         {
             "revision": snapshot_revision or "local",
-            "captured_at": datetime.now(UTC).isoformat(),
+            "captured_at": manifest.get("meta", {}).get("captured_at")
+            or snapshot_revision
+            or "local",
             "event_count": len(events),
             "case_count": len({row["case_id"] for row in events}),
         }
     ]
     pl.DataFrame(revisions).write_parquet(revision_path)
 
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path else {}
     expected_requests = manifest.get("meta", {}).get("record_count")
+    manifest_requests = cast(
+        "list[dict[str, object]]",
+        manifest.get("requests") if isinstance(manifest.get("requests"), list) else [],
+    )
+    expected_attachments = sum(
+        len(cast("list[object]", request["attachments"]))
+        for request in manifest_requests
+        if isinstance(request.get("attachments"), list)
+    )
+    attachment_input_supplied = attachments_path is not None
     coverage = {
         "contract_version": CONTRACT_VERSION,
-        "source_events": str(events_path),
+        "source_events": [str(path) for path in event_inputs],
         "snapshot_revision": snapshot_revision,
         "event_count": len(events),
+        "excluded_event_count": len(raw_events) - len(events),
+        "retracted_event_count": sum(row.get("operation") == "retract" for row in filtered_events),
         "case_count": len({row["case_id"] for row in events}),
         "attachment_count": len(attachments),
+        "manifest_attachment_count": expected_attachments if manifest_requests else None,
+        "attachment_count_reconciles": (
+            not attachment_input_supplied
+            or not manifest_requests
+            or expected_attachments == len(attachments)
+        ),
+        "takedown_ids": sorted(takedown_ids),
         "manifest_request_count": expected_requests,
         "request_count_reconciles": expected_requests is None
         or expected_requests == len({row["case_id"] for row in events}),
     }
+    if isinstance(source_reconciliation, dict):
+        coverage["source_reconciliation"] = {
+            "schema": source_reconciliation.get("schema"),
+            "candidate_count": source_reconciliation.get("candidate_count", 0),
+            "counts": source_reconciliation.get("counts", {}),
+        }
     coverage_path = output_dir / "coverage.json"
     coverage_path.write_text(
         json.dumps(coverage, indent=2, sort_keys=True) + "\n", encoding="utf-8"
