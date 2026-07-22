@@ -37,7 +37,7 @@ jobs:
       - name: Enumerate configured instances
         run: |
           set -euo pipefail
-          python - <<'PY' > .tmp-instances.tsv
+          uv run python - <<'PY' > .tmp-instances.tsv
           from fyi_archive.instances import list_instances
           for instance in list_instances():
               if "internet_archive" in instance.source_modes:
@@ -79,7 +79,7 @@ jobs:
               printf '[]\n' > "$output"
               result="retrieval_failed"
             fi
-            python - "$instance_id" "$base_url" "$status" "$query_url" "$output" "$source_status" "$result" <<'PY'
+            uv run python - "$instance_id" "$base_url" "$status" "$query_url" "$output" "$source_status" "$result" <<'PY'
           import hashlib
           import json
           import sys
@@ -109,7 +109,7 @@ jobs:
       - name: Build inventory summary
         run: |
           set -euo pipefail
-          python - <<'PY'
+          uv run python - <<'PY'
           import json
           from pathlib import Path
 
@@ -133,10 +133,10 @@ jobs:
             imported=".tmp/all-instance-core/${instance_id}.historical-index.json"
             filtered=".tmp/all-instance-core/${instance_id}.request-pages-index.json"
             core=".tmp/all-instance-core/${instance_id}.historical-core.json"
-            python scripts/import_historical_sources.py --internet-archive-cdx "$cdx" --instance-id "$instance_id" --output "$imported"
-            python scripts/filter_historical_request_pages.py --input "$imported" --output "$filtered"
-            python scripts/enrich_historical_core.py --historical-index "$filtered" --instance-id "$instance_id" --limit 25 --delay-seconds 3 --timeout-seconds 15 --user-agent "fyi-archive-all-instance-replay/1.0 (+https://github.com/${GITHUB_REPOSITORY})" --output "$core"
-            python - "$instance_id" "$cdx" "$imported" "$filtered" "$core" <<'PY'
+            uv run python scripts/import_historical_sources.py --internet-archive-cdx "$cdx" --instance-id "$instance_id" --output "$imported"
+            uv run python scripts/filter_historical_request_pages.py --input "$imported" --output "$filtered"
+            uv run python scripts/enrich_historical_core.py --historical-index "$filtered" --instance-id "$instance_id" --limit 25 --delay-seconds 3 --timeout-seconds 15 --user-agent "fyi-archive-all-instance-replay/1.0 (+https://github.com/${GITHUB_REPOSITORY})" --output "$core"
+            uv run python - "$instance_id" "$cdx" "$imported" "$filtered" "$core" <<'PY'
           import hashlib
           import json
           import sys
@@ -162,7 +162,7 @@ jobs:
           set -euo pipefail
           mkdir -p .tmp/all-instance-manifests
           while IFS=$'\t' read -r instance_id base_url status; do
-            python scripts/build_historical_archive_manifest.py \
+            uv run python scripts/build_historical_archive_manifest.py \
               --root .tmp/all-instance-core \
               --instance-id "$instance_id" \
               --output ".tmp/all-instance-manifests/${instance_id}.manifest.json"
