@@ -1,0 +1,42 @@
+name: Capture frozen AU full text
+
+on:
+  workflow_dispatch:
+    inputs:
+      historical_run_id:
+        description: Successful parallel archive run containing the frozen AU frame
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
+        with:
+          name: all-instance-internet-archive-cdx-${{ inputs.historical_run_id }}
+          run-id: ${{ inputs.historical_run_id }}
+          github-token: ${{ github.token }}
+          path: .tmp/archive
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --extra dev --frozen
+      - run: |
+          set -euo pipefail
+          test -f .tmp/archive/au-rtk.request-pages-index.json
+          uv run python scripts/capture_historical_fulltext.py \
+            --index .tmp/archive/au-rtk.request-pages-index.json \
+            --instance-id au-rtk \
+            --output .tmp/archive/au-rtk.fulltext.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: au-rtk-fulltext-${{ github.run_id }}
+          retention-days: 90
+          path: .tmp/archive/au-rtk.fulltext.json
