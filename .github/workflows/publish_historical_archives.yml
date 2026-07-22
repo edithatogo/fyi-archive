@@ -85,16 +85,18 @@ jobs:
           [ "$CONFIRMATION" = "publish-historical-archives" ] || { echo 'Exact publication confirmation is required' >&2; exit 1; }
           [ -n "${HF_TOKEN:-}" ] || { echo 'HF_TOKEN is required' >&2; exit 1; }
           uv run python - <<'PY'
+          import json
           import os
           from pathlib import Path
           from fyi_archive.instances import get_instance
           from huggingface_hub import HfApi
 
           api = HfApi(token=os.environ['HF_TOKEN'])
+          verification = []
           for bundle in sorted(Path('.tmp/verified-bundles').iterdir()):
               repo_id = get_instance(bundle.name).hf_repo_id
               api.create_repo(repo_id=repo_id, repo_type='dataset', exist_ok=True, token=os.environ['HF_TOKEN'])
-              api.upload_folder(
+              commit = api.upload_folder(
                   repo_id=repo_id,
                   repo_type='dataset',
                   folder_path=str(bundle),
@@ -102,7 +104,16 @@ jobs:
                   commit_message=f'data: publish verified historical archive {bundle.name}',
                   token=os.environ['HF_TOKEN'],
               )
-              print(f'published {bundle.name} to {repo_id}')
+              remote = api.repo_info(repo_id=repo_id, repo_type='dataset', token=os.environ['HF_TOKEN'])
+              commit_sha = getattr(commit, 'oid', None)
+              remote_sha = getattr(remote, 'sha', None)
+              if not commit_sha or commit_sha != remote_sha:
+                  raise SystemExit(f'remote commit verification failed: {bundle.name}')
+              verification.append({'instance_id': bundle.name, 'repo_id': repo_id, 'commit_sha': commit_sha})
+              print(f'published and verified {bundle.name} to {repo_id} at {commit_sha}')
+          Path('.tmp/verified-bundles/remote-verification.json').write_text(
+              json.dumps({'schema': 'fyi-archive.huggingface-remote-verification.v1', 'repositories': verification}, indent=2, sort_keys=True) + '\n'
+          )
           PY
       - name: Upload verification evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
