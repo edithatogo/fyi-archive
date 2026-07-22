@@ -42,15 +42,13 @@ def capture(
                 raw = response.read(8 * 1024 * 1024)
             html = raw.decode("utf-8", errors="replace")
             text = " ".join(BeautifulSoup(html, "html.parser").get_text(" ").split())
-            item.update(
-                {
-                    "status": "captured",
-                    "byte_count": len(raw),
-                    "html_sha256": hashlib.sha256(raw).hexdigest(),
-                    "text": text,
-                    "text_sha256": hashlib.sha256(text.encode()).hexdigest(),
-                }
-            )
+            item.update({
+                "status": "captured",
+                "byte_count": len(raw),
+                "html_sha256": hashlib.sha256(raw).hexdigest(),
+                "text": text,
+                "text_sha256": hashlib.sha256(text.encode()).hexdigest(),
+            })
         except Exception as error:  # noqa: BLE001
             item.update({"status": "failed", "diagnostic": str(error)})
         output.append(item)
