@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 import polars as pl
@@ -15,7 +16,7 @@ from fyi_archive.process_projection import (
 )
 
 
-def _write_jsonl(path: Path, rows: list[dict[str, object]]) -> None:
+def _write_jsonl(path: Path, rows: Sequence[Mapping[str, object]]) -> None:
     path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
 
 
