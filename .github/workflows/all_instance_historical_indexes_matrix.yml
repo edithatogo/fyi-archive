@@ -66,13 +66,11 @@ jobs:
           root=.tmp/instance
           mkdir -p "$root"
           host="${BASE_URL#https://}"; host="${host#http://}"; host="${host%%/*}"
-          curl --fail-with-body --location --silent --show-error --retry 1 --retry-delay 30 --max-time 300 \
-            -A "fyi-archive-parallel-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
-            --get https://web.archive.org/cdx/search/cdx \
-            --data-urlencode "url=${host}/request" --data-urlencode 'matchType=prefix' \
-            --data-urlencode output=json --data-urlencode filter=statuscode:200 \
-            --data-urlencode fl=original,timestamp,digest,statuscode,length \
-            --data-urlencode collapse=urlkey --data-urlencode "limit=${CDX_LIMIT}" \
+          uv run python scripts/fetch_internet_archive_cdx.py \
+            --url-pattern "${host}/request" \
+            --limit "${CDX_LIMIT}" \
+            --retries 5 \
+            --backoff 10 \
             --output "$root/${INSTANCE_ID}.json"
           uv run python scripts/import_historical_sources.py --internet-archive-cdx "$root/${INSTANCE_ID}.json" --instance-id "$INSTANCE_ID" --output "$root/${INSTANCE_ID}.historical-index.json"
           uv run python scripts/filter_historical_request_pages.py --input "$root/${INSTANCE_ID}.historical-index.json" --output "$root/${INSTANCE_ID}.request-pages-index.json"
