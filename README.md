@@ -103,6 +103,7 @@ Archive publication versions are dynamic monthly identifiers of the form
 
 ```env
 HF_TOKEN
+MORPH_API_KEY
 ZENODO_TOKEN
 ZENODO_SANDBOX_TOKEN        # optional, for draft rehearsal
 OSF_TOKEN
