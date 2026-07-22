@@ -157,6 +157,28 @@ jobs:
           Path(f".tmp/all-instance-core/{instance_id}.status.json").write_text(json.dumps(status, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
           done < .tmp-instances.tsv
+      - name: Create immutable manifests
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/all-instance-manifests
+          while IFS=$'\t' read -r instance_id base_url status; do
+            python scripts/build_historical_archive_manifest.py \
+              --root .tmp/all-instance-core \
+              --instance-id "$instance_id" \
+              --output ".tmp/all-instance-manifests/${instance_id}.manifest.json"
+          done < .tmp-instances.tsv
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifests = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(Path(".tmp/all-instance-manifests").glob("*.manifest.json"))]
+          if not manifests:
+              raise SystemExit("no immutable manifests created")
+          Path(".tmp/all-instance-manifests/summary.json").write_text(
+              json.dumps({"schema": "fyi-archive.immutable-historical-manifest-set.v1", "manifests": manifests}, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
       - name: Retain all-instance CDX evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -166,3 +188,4 @@ jobs:
           path: |
             .tmp/all-instance-cdx/
             .tmp/all-instance-core/
+            .tmp/all-instance-manifests/
