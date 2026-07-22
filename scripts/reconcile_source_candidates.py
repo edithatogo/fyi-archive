@@ -19,7 +19,14 @@ def canonical_url(value: object) -> str:
         if key.lower() not in {"fbclid", "gclid", "mc_cid", "mc_eid"}
     ]
     path = parsed.path.rstrip("/") or "/"
-    return urlunparse((parsed.scheme.lower(), parsed.netloc.lower(), path, "", urlencode(query), ""))
+    return urlunparse((
+        parsed.scheme.lower(),
+        parsed.netloc.lower(),
+        path,
+        "",
+        urlencode(query),
+        "",
+    ))
 
 
 def _records(payload: object, *, keys: tuple[str, ...]) -> list[dict]:
@@ -80,7 +87,11 @@ def main() -> int:
     result = reconcile(args.historical_source_index, args.manifest)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({key: result[key] for key in ("candidate_count", "captured_manifest_count", "counts")}))
+    print(
+        json.dumps({
+            key: result[key] for key in ("candidate_count", "captured_manifest_count", "counts")
+        })
+    )
     return 0
 
 

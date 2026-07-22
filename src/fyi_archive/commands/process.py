@@ -9,7 +9,11 @@ from typing import Annotated
 import typer
 
 from fyi_archive.derived_layer import validate_derived_manifest
-from fyi_archive.process_projection import build_process_projection, verify_process_projection
+from fyi_archive.process_projection import (
+    build_process_projection,
+    merge_process_event_logs,
+    verify_process_projection,
+)
 
 app = typer.Typer(name="process", help="Build public-safe process-mining projections.")
 
@@ -20,6 +24,8 @@ def project(
     output_dir: Annotated[Path, typer.Option()] = Path("dist/process-events"),
     manifest: Annotated[Path | None, typer.Option()] = None,
     attachments: Annotated[Path | None, typer.Option()] = None,
+    takedown: Annotated[Path | None, typer.Option(help="JSONL stable IDs excluded from derived output.")] = None,
+    source_reconciliation: Annotated[Path | None, typer.Option(help="Historical candidate reconciliation JSON.")] = None,
     snapshot_revision: Annotated[str | None, typer.Option()] = None,
 ) -> None:
     """Validate and materialize process events for archive publication."""
@@ -29,6 +35,8 @@ def project(
             output_dir=output_dir,
             manifest_path=manifest,
             attachments_path=attachments,
+            takedown_path=takedown,
+            source_reconciliation_path=source_reconciliation,
             snapshot_revision=snapshot_revision,
         )
     except (OSError, ValueError, json.JSONDecodeError) as error:
@@ -46,6 +54,25 @@ def verify(
     except (OSError, ValueError) as error:
         raise typer.BadParameter(str(error)) from error
     typer.echo(json.dumps({"verified": True, "output_dir": str(output_dir)}))
+
+
+@app.command("merge")
+def merge(
+    inputs: Annotated[list[Path], typer.Argument(help="Event-log JSONL shards to merge.")],
+    output: Annotated[Path, typer.Option(help="Merged deterministic JSONL output.")] = Path(
+        "merged-process-events.ndjson"
+    ),
+) -> None:
+    """Merge resumed/backfill event shards without guessing conflicts."""
+    try:
+        rows = merge_process_event_logs(inputs)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            "".join(json.dumps(row, sort_keys=True) + "\n" for row in rows), encoding="utf-8"
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(json.dumps({"merged": len(rows), "output": str(output)}, sort_keys=True))
 
 
 @app.command("validate-derived")

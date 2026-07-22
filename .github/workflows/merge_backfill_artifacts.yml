@@ -215,12 +215,21 @@ jobs:
           find .tmp/backfill-artifacts -name events.jsonl -type f -print0 \
             | sort -z | xargs -0 cat > dist/process-events/events.jsonl
           if [ ! -s dist/process-events/events.jsonl ]; then
-            echo "No process event rows were found; materializing an empty verified projection"
-            : > dist/process-events/events.jsonl
+            echo "No process event rows were found; refusing to create a verified projection"
+            exit 1
+          fi
+          attachment_files=$(find .tmp/backfill-artifacts -name attachments.jsonl -type f -print | sort)
+          if [ -n "$attachment_files" ]; then
+            printf '%s\n' "$attachment_files" | xargs cat > dist/process-events/attachments.jsonl
+          fi
+          attachment_args=()
+          if [ -s dist/process-events/attachments.jsonl ]; then
+            attachment_args=(--attachments dist/process-events/attachments.jsonl)
           fi
           uv run fyi-archive process project \
             --events dist/process-events/events.jsonl \
             --manifest manifests/latest_manifest.json \
+            "${attachment_args[@]}" \
             --output-dir dist/process-events/projection \
             --snapshot-revision "historical-backfill-merge-${GITHUB_RUN_ID}"
           uv run fyi-archive process verify \

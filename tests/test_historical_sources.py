@@ -75,8 +75,12 @@ def test_cdx_supports_dict_rows_and_short_lists(tmp_path: Path) -> None:
 
 def test_cdx_preserves_instance_id(tmp_path: Path) -> None:
     path = tmp_path / "cdx.json"
-    path.write_text(json.dumps([["https://fyi.org.nz/request/1/a", "20260722", "D"]]), encoding="utf-8")
-    record = load_historical_source(path, "internet_archive_cdx", instance_id="nz-fyi")["records"][0]
+    path.write_text(
+        json.dumps([["https://fyi.org.nz/request/1/a", "20260722", "D"]]), encoding="utf-8"
+    )
+    record = load_historical_source(path, "internet_archive_cdx", instance_id="nz-fyi")["records"][
+        0
+    ]
     assert record["instance_id"] == "nz-fyi"
 
 

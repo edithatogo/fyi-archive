@@ -178,6 +178,18 @@ def validate_manifest(manifest: dict[str, Any]) -> None:
     if jurisdiction is not None and not isinstance(jurisdiction, str):
         msg = "Manifest meta.jurisdiction must be a string when present"
         raise ValueError(msg)
+    if isinstance(jurisdiction, str) and jurisdiction:
+        expected_jurisdiction = jurisdiction.upper()
+        for record in requests:
+            record_jurisdiction = record.get("jurisdiction")
+            if (
+                isinstance(record_jurisdiction, str)
+                and record_jurisdiction
+                and record_jurisdiction.upper() != expected_jurisdiction
+            ):
+                raise ValueError(
+                    "Manifest record jurisdiction does not match meta.jurisdiction"
+                )
     if meta.get("record_count") != len(requests):
         msg = "Manifest record_count does not match request count"
         raise ValueError(msg)
