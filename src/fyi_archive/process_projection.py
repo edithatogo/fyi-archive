@@ -11,7 +11,7 @@ import hashlib
 import json
 import operator
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import polars as pl
 
@@ -226,13 +226,14 @@ def build_process_projection(
     pl.DataFrame(revisions).write_parquet(revision_path)
 
     expected_requests = manifest.get("meta", {}).get("record_count")
-    manifest_requests = (
-        manifest.get("requests") if isinstance(manifest.get("requests"), list) else []
+    manifest_requests = cast(
+        "list[dict[str, object]]",
+        manifest.get("requests") if isinstance(manifest.get("requests"), list) else [],
     )
     expected_attachments = sum(
-        len(request.get("attachments") or [])
+        len(cast("list[object]", request["attachments"]))
         for request in manifest_requests
-        if isinstance(request, dict)
+        if isinstance(request.get("attachments"), list)
     )
     attachment_input_supplied = attachments_path is not None
     coverage = {

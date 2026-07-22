@@ -6,6 +6,7 @@ import argparse
 import json
 from collections import Counter
 from pathlib import Path
+from typing import Any, cast
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 
@@ -29,17 +30,17 @@ def canonical_url(value: object) -> str:
     ))
 
 
-def _records(payload: object, *, keys: tuple[str, ...]) -> list[dict]:
+def _records(payload: object, *, keys: tuple[str, ...]) -> list[dict[str, Any]]:
     if not isinstance(payload, dict):
         return []
     for key in keys:
         value = payload.get(key)
         if isinstance(value, list):
-            return [row for row in value if isinstance(row, dict)]
+            return [cast("dict[str, Any]", row) for row in value if isinstance(row, dict)]
     return []
 
 
-def reconcile(index_path: Path, manifest_path: Path) -> dict:
+def reconcile(index_path: Path, manifest_path: Path) -> dict[str, Any]:
     index = json.loads(index_path.read_text(encoding="utf-8"))
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     candidates = _records(index, keys=("records",))
