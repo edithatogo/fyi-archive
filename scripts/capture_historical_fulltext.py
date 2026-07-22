@@ -35,9 +35,9 @@ def capture(
             "instance_id": instance_id,
         }
         try:
-            request = urllib.request.Request(
+            request = urllib.request.Request(  # noqa: S310
                 replay, headers={"User-Agent": "fyi-archive-fulltext-replay/1.0"}
-            )  # noqa: S310
+            )
             with urllib.request.urlopen(request, timeout=timeout) as response:  # noqa: S310
                 raw = response.read(8 * 1024 * 1024)
             html = raw.decode("utf-8", errors="replace")
