@@ -27,8 +27,14 @@
     "rate_limit_seconds": 2
   },
   "targets": [
+    {"instance_id": "nz-fyi", "platform": "alaveteli", "host": "fyi.org.nz"},
     {"instance_id": "au-rtk", "platform": "alaveteli", "host": "www.righttoknow.org.au", "jurisdictions": ["AU-CTH", "AU-NSW", "AU-ACT", "AU-NT", "AU-QLD", "AU-SA", "AU-TAS", "AU-VIC", "AU-WA"], "classification": "post-import jurisdiction classification required"},
     {"instance_id": "uk-wdtk", "platform": "alaveteli", "host": "www.whatdotheyknow.com"},
+    {"instance_id": "ie-myrighttoknow", "platform": "alaveteli", "host": "www.myrighttoknow.org"},
+    {"instance_id": "se-handlingar", "platform": "alaveteli", "host": "handlingar.se"},
+    {"instance_id": "ua-dostup", "platform": "alaveteli", "host": "dostup.org.ua"},
+    {"instance_id": "uy-quesabes", "platform": "alaveteli", "host": "quesabes.org"},
+    {"instance_id": "ge-askgov", "platform": "alaveteli", "host": "askgov.ge"},
     {"instance_id": "eu-asktheeu", "platform": "alaveteli", "host": "www.asktheeu.org"},
     {"instance_id": "cz-infoprovsechny", "platform": "alaveteli", "host": "www.infoprovsechny.cz"},
     {"instance_id": "fr-madada", "platform": "alaveteli", "host": "madada.fr"},

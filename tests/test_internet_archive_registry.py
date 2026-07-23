@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from fyi_archive.instances import list_instances
 from fyi_archive.internet_archive_registry import load_registry, workflow_matrix
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +21,8 @@ def test_registry_is_valid_and_exposes_only_alaveteli_capture_targets() -> None:
     assert registry["gates"]["publication"] is False
     assert {item["instance"] for item in matrix["include"]} >= {"au-rtk", "uk-wdtk"}
     assert all(item["request_path"] == "/request/*" for item in matrix["include"])
+    expected = {item.id for item in list_instances() if "internet_archive" in item.source_modes}
+    assert {item["instance"] for item in matrix["include"]} == expected
 
 
 def test_non_alaveteli_capture_requires_a_source_specific_adapter(tmp_path: Path) -> None:
