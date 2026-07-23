@@ -30,18 +30,24 @@ def fetch_complete_cdx(
     ]
     pages = _fetch([*base, ("showNumPages", "true")], opener)
     try:
-        page_count = int(pages[1][0])
+        page_value = pages[1][0]
+        page_count = None if page_value is None else int(page_value)
     except (IndexError, TypeError, ValueError) as error:
-        raise RuntimeError("CDX did not provide a verifiable page count") from error
-    if page_count < 0 or page_count > max_pages:
+        raise RuntimeError("CDX returned an invalid page count") from error
+    if page_count is not None and (page_count < 0 or page_count > max_pages):
         raise RuntimeError(f"CDX page count {page_count} exceeds configured cap {max_pages}")
 
     header: list[str] | None = None
     rows: list[list[str]] = []
     fingerprints: set[str] = set()
-    for page in range(page_count):
+    page = 0
+    while page_count is None or page < page_count:
+        if page >= max_pages:
+            raise RuntimeError(f"CDX traversal reached configured cap {max_pages} without terminator")
         payload = _fetch([*base, ("page", str(page))], opener)
-        if not isinstance(payload, list) or not payload:
+        if not isinstance(payload, list) or not payload or len(payload) == 1:
+            if page_count is None:
+                break
             raise RuntimeError(f"CDX page {page} was empty before reported coverage completed")
         current_header = [str(value) for value in payload[0]]
         if header is None:
@@ -54,6 +60,7 @@ def fetch_complete_cdx(
             raise RuntimeError("CDX page repeated during acquisition")
         fingerprints.add(fingerprint)
         rows.extend(page_rows)
+        page += 1
     return [header or ["original", "timestamp", "digest", "statuscode", "length"], *rows]
 
 

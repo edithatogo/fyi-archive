@@ -45,3 +45,16 @@ def test_rejects_page_count_over_cap() -> None:
 
     with pytest.raises(RuntimeError, match="exceeds configured cap"):
         fetch_complete_cdx("example.test/request/*", page_size=10, max_pages=2, opener=opener)
+
+
+def test_uses_empty_page_terminator_when_cdx_page_count_is_unknown() -> None:
+    calls = 0
+
+    def opener(request: Request, timeout: int) -> _Response:
+        nonlocal calls
+        calls += 1
+        if "showNumPages" in request.full_url:
+            return _Response([["blocks"], [None]])
+        return _Response([["original"], ["https://example.test/request/1"]]) if calls == 2 else _Response([])
+
+    assert len(fetch_complete_cdx("example.test/request/*", page_size=10, max_pages=2, opener=opener)) == 2
