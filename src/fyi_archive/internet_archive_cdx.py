@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from typing import Any
+from urllib.error import HTTPError, URLError
 
 CDX_ENDPOINT = "https://web.archive.org/cdx/search/cdx"
 
@@ -69,5 +71,17 @@ def _fetch(params: list[tuple[str, str]], opener: Callable[..., Any]) -> Any:  #
         f"{CDX_ENDPOINT}?{urllib.parse.urlencode(params)}",
         headers={"User-Agent": "fyi-archive-cdx-paginator/1.0"},
     )
-    with opener(request, timeout=60) as response:  # noqa: S310
-        return json.loads(response.read().decode("utf-8"))
+    last_error: Exception | None = None
+    for attempt in range(3):
+        try:
+            with opener(request, timeout=60) as response:  # noqa: S310
+                return json.loads(response.read().decode("utf-8"))
+        except HTTPError as error:
+            if error.code not in {429, 500, 502, 503, 504}:
+                raise
+            last_error = error
+        except URLError as error:
+            last_error = error
+        if attempt < 2:
+            time.sleep(2**attempt)
+    raise RuntimeError(f"CDX request failed after bounded retries: {last_error}")
