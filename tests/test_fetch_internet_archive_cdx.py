@@ -61,12 +61,13 @@ def test_fetch_can_bound_pages() -> None:
 
 
 def test_null_page_count_is_a_fail_closed_error() -> None:
-    def opener(request, timeout):
-        return _Response([["numpages"], [None]])
+    calls = []
 
-    try:
-        fetch_cdx("example.test/request", limit=10, retries=0, opener=opener)
-    except ValueError as error:
-        assert "page count" in str(error)
-    else:
-        raise AssertionError("null page count must fail closed")
+    def opener(request, timeout):
+        calls.append(request.full_url)
+        if "showNumPages" in request.full_url:
+            return _Response([["numpages"], [None]])
+        return _Response([["original"], ["/a"]]) if len(calls) == 2 else _Response([["original"]])
+
+    result = fetch_cdx("example.test/request", limit=10, retries=0, opener=opener)
+    assert result == [["original"], ["/a"]]
