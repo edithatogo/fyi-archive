@@ -15,12 +15,12 @@ CDX_URL = "https://web.archive.org/cdx/search/cdx"
 DEFAULT_FIELDS = "original,timestamp,digest,statuscode,mimetype"
 
 
-def _request_json(params: list[tuple[str, str]], *, user_agent: str, retries: int, backoff: float, opener: Callable[..., Any] = urllib.request.urlopen, sleep: Callable[[float], None] = time.sleep) -> Any:
+def _request_json(params: list[tuple[str, str]], *, user_agent: str, retries: int, backoff: float, opener: Callable[..., Any] = urllib.request.urlopen, sleep: Callable[[float], None] = time.sleep) -> Any:  # noqa: ANN401
     url = f"{CDX_URL}?{urllib.parse.urlencode(params)}"
     last_error: Exception | None = None
     for attempt in range(retries + 1):
         try:
-            request = urllib.request.Request(url, headers={"User-Agent": user_agent})
+            request = urllib.request.Request(url, headers={"User-Agent": user_agent})  # noqa: S310
             with opener(request, timeout=60) as response:  # noqa: S310
                 return json.loads(response.read().decode("utf-8"))
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
@@ -34,7 +34,7 @@ def fetch_cdx(url_pattern: str, *, limit: int, max_pages: int | None = None, ret
     common = [("url", url_pattern), ("output", "json"), ("filter", "statuscode:200"), ("filter", "mimetype:text/html"), ("fl", DEFAULT_FIELDS), ("collapse", "digest"), ("limit", str(limit))]
     if "*" not in url_pattern:
         common.insert(1, ("matchType", "prefix"))
-    count_payload = _request_json(common + [("showNumPages", "true")], user_agent=user_agent, retries=retries, backoff=backoff, opener=opener, sleep=sleep)
+    count_payload = _request_json([*common, ("showNumPages", "true")], user_agent=user_agent, retries=retries, backoff=backoff, opener=opener, sleep=sleep)
     try:
         page_value = count_payload[1][0]
         page_count = None if page_value is None else int(page_value)
@@ -49,7 +49,7 @@ def fetch_cdx(url_pattern: str, *, limit: int, max_pages: int | None = None, ret
     seen_page_fingerprints: set[tuple[tuple[str, ...], ...]] = set()
     page = 0
     while page_count is None or page < page_count:
-        payload = _request_json(common + [("page", str(page))], user_agent=user_agent, retries=retries, backoff=backoff, opener=opener, sleep=sleep)
+        payload = _request_json([*common, ("page", str(page))], user_agent=user_agent, retries=retries, backoff=backoff, opener=opener, sleep=sleep)
         if not isinstance(payload, list) or len(payload) <= 1:
             break
         if header is None:
@@ -67,7 +67,7 @@ def fetch_cdx(url_pattern: str, *, limit: int, max_pages: int | None = None, ret
         page += 1
         if page_count is None and page >= page_cap:
             raise RuntimeError(f"CDX page count unavailable and bounded page cap {page_cap} was reached")
-    return [header or ["original", "timestamp", "digest", "statuscode", "mimetype"]] + rows
+    return [header or ["original", "timestamp", "digest", "statuscode", "mimetype"], *rows]
 
 
 def main() -> int:
