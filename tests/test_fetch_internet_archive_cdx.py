@@ -32,7 +32,14 @@ def test_fetches_pages_deduplicates_rows_and_retries() -> None:
             raise OSError("503")
         return _Response([["original", "timestamp"], ["/a", "1"], ["/b", "2"]])
 
-    result = fetch_cdx("example.test/request", limit=10, retries=1, backoff=0, opener=opener, sleep=lambda _seconds: None)
+    result = fetch_cdx(
+        "example.test/request",
+        limit=10,
+        retries=1,
+        backoff=0,
+        opener=opener,
+        sleep=lambda _seconds: None,
+    )
     assert result == [["original", "timestamp"], ["/a", "1"], ["/b", "2"]]
     assert len(calls) == 4
 
