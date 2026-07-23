@@ -13,6 +13,16 @@ on:
         required: true
         default: "30"
         type: string
+      cdx_timeout_seconds:
+        description: Per-request CDX timeout
+        required: true
+        default: "30"
+        type: string
+      cdx_retries:
+        description: CDX retries after the first request
+        required: true
+        default: "1"
+        type: string
 
 permissions:
   contents: read
@@ -34,12 +44,18 @@ jobs:
         env:
           CDX_LIMIT: ${{ inputs.cdx_limit }}
           CDX_MAX_PAGES: ${{ inputs.cdx_max_pages }}
+          CDX_TIMEOUT: ${{ inputs.cdx_timeout_seconds }}
+          CDX_RETRIES: ${{ inputs.cdx_retries }}
         run: |
           set -euo pipefail
           case "$CDX_LIMIT" in ''|*[!0-9]*) exit 1;; esac
           case "$CDX_MAX_PAGES" in ''|*[!0-9]*) exit 1;; esac
+          case "$CDX_TIMEOUT" in ''|*[!0-9]*) exit 1;; esac
+          case "$CDX_RETRIES" in ''|*[!0-9]*) exit 1;; esac
           test "$CDX_LIMIT" -ge 1 && test "$CDX_LIMIT" -le 100000
           test "$CDX_MAX_PAGES" -ge 1 && test "$CDX_MAX_PAGES" -le 100
+          test "$CDX_TIMEOUT" -ge 1 && test "$CDX_TIMEOUT" -le 120
+          test "$CDX_RETRIES" -le 5
           root=.tmp/instance
           mkdir -p "$root"
           uv run python scripts/fetch_internet_archive_cdx.py \
@@ -47,8 +63,8 @@ jobs:
             --limit "$CDX_LIMIT" \
             --max-pages "$CDX_MAX_PAGES" \
             --transport curl \
-            --timeout 45 \
-            --retries 5 \
+            --timeout "$CDX_TIMEOUT" \
+            --retries "$CDX_RETRIES" \
             --backoff 10 \
             --output "$root/au-rtk.json"
           uv run python scripts/import_historical_sources.py \
