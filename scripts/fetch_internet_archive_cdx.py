@@ -37,19 +37,20 @@ def fetch_cdx(url_pattern: str, *, limit: int, max_pages: int | None = None, ret
     count_payload = _request_json(common + [("showNumPages", "true")], user_agent=user_agent, retries=retries, backoff=backoff, opener=opener, sleep=sleep)
     try:
         page_value = count_payload[1][0]
-        if page_value is None:
-            raise ValueError("CDX returned a null page count")
-        page_count = int(page_value)
-    except (IndexError, TypeError, ValueError) as error:
-        raise ValueError(f"CDX showNumPages response is invalid: {error}") from error
-    page_count = min(page_count, max_pages) if max_pages is not None else page_count
+        page_count = None if page_value is None else int(page_value)
+    except (IndexError, TypeError, ValueError):
+        page_count = None
+    page_cap = max_pages if max_pages is not None else 100
+    if page_count is not None:
+        page_count = min(page_count, page_cap)
     header: list[str] | None = None
     rows: list[list[str]] = []
     seen: set[tuple[str, ...]] = set()
-    for page in range(page_count):
+    page = 0
+    while page_count is None or page < page_count:
         payload = _request_json(common + [("page", str(page))], user_agent=user_agent, retries=retries, backoff=backoff, opener=opener, sleep=sleep)
-        if not isinstance(payload, list) or not payload:
-            continue
+        if not isinstance(payload, list) or len(payload) <= 1:
+            break
         if header is None:
             header = [str(value) for value in payload[0]]
         page_rows = payload[1:] if payload[0] == header else payload
@@ -58,6 +59,9 @@ def fetch_cdx(url_pattern: str, *, limit: int, max_pages: int | None = None, ret
             if normalized not in seen:
                 seen.add(normalized)
                 rows.append(list(normalized))
+        page += 1
+        if page_count is None and page >= page_cap:
+            raise RuntimeError(f"CDX page count unavailable and bounded page cap {page_cap} was reached")
     return [header or ["original", "timestamp", "digest", "statuscode", "mimetype"]] + rows
 
 
