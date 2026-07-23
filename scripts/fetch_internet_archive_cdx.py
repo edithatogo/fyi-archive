@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import time
 import urllib.parse
 import urllib.request
@@ -15,6 +16,35 @@ CDX_URL = "https://web.archive.org/cdx/search/cdx"
 DEFAULT_FIELDS = "original,timestamp,digest,statuscode,mimetype"
 
 
+def _curl_json(
+    params: list[tuple[str, str]],
+    *,
+    user_agent: str,
+    timeout: float,
+) -> Any:  # noqa: ANN401
+    url = f"{CDX_URL}?{urllib.parse.urlencode(params)}"
+    command = [
+        "curl",
+        "--fail-with-body",
+        "--silent",
+        "--show-error",
+        "--location",
+        "--http1.1",
+        "--max-time",
+        str(timeout),
+        "--user-agent",
+        user_agent,
+        url,
+    ]
+    try:
+        result = subprocess.run(
+            command, capture_output=True, check=True, text=True, timeout=timeout + 5
+        )  # noqa: S603
+    except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        raise RuntimeError(f"CDX curl request failed: {error}") from error
+    return json.loads(result.stdout)
+
+
 def _request_json(
     params: list[tuple[str, str]],
     *,
@@ -23,15 +53,19 @@ def _request_json(
     backoff: float,
     opener: Callable[..., Any] = urllib.request.urlopen,  # noqa: S310
     sleep: Callable[[float], None] = time.sleep,
+    transport: str = "urllib",
+    timeout: float = 60.0,
 ) -> Any:  # noqa: ANN401
     url = f"{CDX_URL}?{urllib.parse.urlencode(params)}"
     last_error: Exception | None = None
     for attempt in range(retries + 1):
         try:
+            if transport == "curl":
+                return _curl_json(params, user_agent=user_agent, timeout=timeout)
             request = urllib.request.Request(url, headers={"User-Agent": user_agent})  # noqa: S310
-            with opener(request, timeout=60) as response:  # noqa: S310
+            with opener(request, timeout=timeout) as response:  # noqa: S310
                 return json.loads(response.read().decode("utf-8"))
-        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, RuntimeError) as error:
             last_error = error
             if attempt < retries:
                 sleep(backoff * (2**attempt))
@@ -48,6 +82,8 @@ def fetch_cdx(
     user_agent: str = "fyi-archive-cdx-paginator/1.0",
     opener: Callable[..., Any] = urllib.request.urlopen,  # noqa: S310
     sleep: Callable[[float], None] = time.sleep,
+    transport: str = "urllib",
+    timeout: float = 60.0,
 ) -> list[list[str]]:
     common = [
         ("url", url_pattern),
@@ -67,6 +103,8 @@ def fetch_cdx(
         backoff=backoff,
         opener=opener,
         sleep=sleep,
+        transport=transport,
+        timeout=timeout,
     )
     try:
         page_value = count_payload[1][0]
@@ -89,6 +127,8 @@ def fetch_cdx(
             backoff=backoff,
             opener=opener,
             sleep=sleep,
+            transport=transport,
+            timeout=timeout,
         )
         if not isinstance(payload, list) or len(payload) <= 1:
             break
@@ -119,9 +159,16 @@ def main() -> int:
     parser.add_argument("--max-pages", type=int)
     parser.add_argument("--retries", type=int, default=4)
     parser.add_argument("--backoff", type=float, default=5.0)
+    parser.add_argument("--transport", choices=("urllib", "curl"), default="urllib")
+    parser.add_argument("--timeout", type=float, default=60.0)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    if args.limit < 1 or args.retries < 0 or (args.max_pages is not None and args.max_pages < 1):
+    if (
+        args.limit < 1
+        or args.retries < 0
+        or args.timeout <= 0
+        or (args.max_pages is not None and args.max_pages < 1)
+    ):
         raise SystemExit("limit/retries/max-pages values are invalid")
     payload = fetch_cdx(
         args.url_pattern,
@@ -129,6 +176,8 @@ def main() -> int:
         max_pages=args.max_pages,
         retries=args.retries,
         backoff=args.backoff,
+        transport=args.transport,
+        timeout=args.timeout,
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")

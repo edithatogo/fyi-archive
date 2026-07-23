@@ -46,6 +46,8 @@ jobs:
             --url-pattern "www.righttoknow.org.au/request/*" \
             --limit "$CDX_LIMIT" \
             --max-pages "$CDX_MAX_PAGES" \
+            --transport curl \
+            --timeout 45 \
             --retries 5 \
             --backoff 10 \
             --output "$root/au-rtk.json"

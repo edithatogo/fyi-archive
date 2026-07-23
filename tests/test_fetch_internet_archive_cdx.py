@@ -1,5 +1,6 @@
 import json
 
+import scripts.fetch_internet_archive_cdx as cdx
 from scripts.fetch_internet_archive_cdx import fetch_cdx
 
 
@@ -92,3 +93,21 @@ def test_repeated_page_payload_fails_closed_when_page_count_is_unknown() -> None
         assert str(error) == "CDX page payload repeated before coverage completed"
     else:
         raise AssertionError("repeated CDX pages must fail closed")
+
+
+def test_curl_transport_uses_curl_json(monkeypatch) -> None:
+    calls = []
+
+    def fake_curl(params, *, user_agent, timeout):
+        calls.append((params, user_agent, timeout))
+        if any(key == "showNumPages" for key, _value in params):
+            return [["numpages"], ["1"]]
+        return [["original"], ["/a"]]
+
+    monkeypatch.setattr(cdx, "_curl_json", fake_curl)
+    assert fetch_cdx("example.test/request", limit=10, transport="curl", timeout=12, retries=0) == [
+        ["original"],
+        ["/a"],
+    ]
+    assert len(calls) == 2
+    assert all(call[2] == 12 for call in calls)
