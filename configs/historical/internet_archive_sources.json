@@ -3,6 +3,17 @@
   "status": "configured_not_dispatched",
   "provider": "Internet Archive CDX",
   "endpoint": "https://web.archive.org/cdx/search/cdx",
+  "lifecycle": {
+    "default_target_status": "active",
+    "allowed_statuses": ["candidate", "validated", "active", "blocked", "retired"],
+    "empty_or_failed_probe_status": "blocked",
+    "empirical_use_requires": ["complete_pagination", "rights_review", "immutable_evidence_manifest", "separate_human_approval"]
+  },
+  "tier_policy": {
+    "1": "validated Alaveteli request-path targets; automated CDX index only",
+    "2": "validated non-Alaveteli adapter; manual rights and adapter gate before dispatch",
+    "3": "candidate catalog entry; no network activity"
+  },
   "defaults": {
     "match_type": "prefix",
     "path_suffix": "/request/*",

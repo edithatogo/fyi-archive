@@ -6,6 +6,8 @@ import argparse
 import json
 from pathlib import Path
 
+import jsonschema
+
 from fyi_archive.internet_archive_registry import load_registry, workflow_matrix
 
 
@@ -19,6 +21,9 @@ def main() -> int:
     parser.add_argument("--validate", action="store_true")
     args = parser.parse_args()
     if args.validate:
+        payload = json.loads(args.registry.read_text(encoding="utf-8"))
+        schema_path = Path("schemas/internet-archive-source-registry.schema.json")
+        jsonschema.validate(payload, json.loads(schema_path.read_text(encoding="utf-8")))
         load_registry(args.registry)
         print("Internet Archive source registry: PASS")
     else:
