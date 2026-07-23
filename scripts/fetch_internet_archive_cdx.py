@@ -40,12 +40,13 @@ def fetch_cdx(url_pattern: str, *, limit: int, max_pages: int | None = None, ret
         page_count = None if page_value is None else int(page_value)
     except (IndexError, TypeError, ValueError):
         page_count = None
-    page_cap = max_pages if max_pages is not None else 100
+    page_cap = max_pages if max_pages is not None else 30
     if page_count is not None:
         page_count = min(page_count, page_cap)
     header: list[str] | None = None
     rows: list[list[str]] = []
     seen: set[tuple[str, ...]] = set()
+    seen_page_fingerprints: set[tuple[tuple[str, ...], ...]] = set()
     page = 0
     while page_count is None or page < page_count:
         payload = _request_json(common + [("page", str(page))], user_agent=user_agent, retries=retries, backoff=backoff, opener=opener, sleep=sleep)
@@ -54,6 +55,10 @@ def fetch_cdx(url_pattern: str, *, limit: int, max_pages: int | None = None, ret
         if header is None:
             header = [str(value) for value in payload[0]]
         page_rows = payload[1:] if payload[0] == header else payload
+        page_fingerprint = tuple(tuple(str(value) for value in row) for row in page_rows)
+        if page_fingerprint in seen_page_fingerprints:
+            raise RuntimeError("CDX page payload repeated before coverage completed")
+        seen_page_fingerprints.add(page_fingerprint)
         for row in page_rows:
             normalized = tuple(str(value) for value in row)
             if normalized not in seen:

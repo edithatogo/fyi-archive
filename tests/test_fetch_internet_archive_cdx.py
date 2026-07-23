@@ -71,3 +71,17 @@ def test_null_page_count_is_a_fail_closed_error() -> None:
 
     result = fetch_cdx("example.test/request", limit=10, retries=0, opener=opener)
     assert result == [["original"], ["/a"]]
+
+
+def test_repeated_page_payload_fails_closed_when_page_count_is_unknown() -> None:
+    def opener(request, timeout):
+        if "showNumPages" in request.full_url:
+            return _Response([["numpages"], [None]])
+        return _Response([["original"], ["/same"]])
+
+    try:
+        fetch_cdx("example.test/request", limit=10, retries=0, opener=opener)
+    except RuntimeError as error:
+        assert str(error) == "CDX page payload repeated before coverage completed"
+    else:
+        raise AssertionError("repeated CDX pages must fail closed")
