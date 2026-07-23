@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/edithatogo/fyi-archive/schemas/internet-archive-source-registry.schema.json",
+  "title": "Internet Archive source registry",
+  "type": "object",
+  "required": ["schema_version", "status", "provider", "endpoint", "defaults", "targets", "gates"],
+  "properties": {
+    "schema_version": {"const": "fyi-archive.internet-archive-source-registry.v0.1.0"},
+    "status": {"const": "configured_not_dispatched"},
+    "provider": {"const": "Internet Archive CDX"},
+    "endpoint": {"const": "https://web.archive.org/cdx/search/cdx"},
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["instance_id", "platform", "host"],
+        "properties": {
+          "instance_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$"},
+          "platform": {"const": "alaveteli"},
+          "host": {"type": "string", "pattern": "^[^/]+$"}
+        }
+      }
+    },
+    "non_alaveteli_targets": {"type": "array"},
+    "gates": {
+      "type": "object",
+      "required": ["record_response_sha256", "rights_review_before_manifest", "publication"],
+      "properties": {"publication": {"const": false}}
+    }
+  }
+}

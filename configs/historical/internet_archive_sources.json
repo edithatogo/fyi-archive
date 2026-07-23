@@ -1,0 +1,55 @@
+{
+  "schema_version": "fyi-archive.internet-archive-source-registry.v0.1.0",
+  "status": "configured_not_dispatched",
+  "provider": "Internet Archive CDX",
+  "endpoint": "https://web.archive.org/cdx/search/cdx",
+  "defaults": {
+    "match_type": "prefix",
+    "path_suffix": "/request/*",
+    "output": "json",
+    "fields": ["original", "timestamp", "digest", "statuscode", "length"],
+    "filter": ["statuscode:200"],
+    "collapse": "urlkey",
+    "page_limit": 5000,
+    "max_runtime_minutes": 30,
+    "user_agent": "fyi-archive-historical-index/1.0 (+https://github.com/edithatogo/fyi-archive)",
+    "rate_limit_seconds": 2
+  },
+  "targets": [
+    {"instance_id": "au-rtk", "platform": "alaveteli", "host": "www.righttoknow.org.au", "jurisdictions": ["AU-CTH", "AU-NSW", "AU-ACT", "AU-NT", "AU-QLD", "AU-SA", "AU-TAS", "AU-VIC", "AU-WA"], "classification": "post-import jurisdiction classification required"},
+    {"instance_id": "uk-wdtk", "platform": "alaveteli", "host": "www.whatdotheyknow.com"},
+    {"instance_id": "eu-asktheeu", "platform": "alaveteli", "host": "www.asktheeu.org"},
+    {"instance_id": "cz-infoprovsechny", "platform": "alaveteli", "host": "www.infoprovsechny.cz"},
+    {"instance_id": "fr-madada", "platform": "alaveteli", "host": "madada.fr"},
+    {"instance_id": "nl-woo-knop", "platform": "alaveteli", "host": "www.woo-knop.nl"},
+    {"instance_id": "be-transparencia", "platform": "alaveteli", "host": "transparencia.be"},
+    {"instance_id": "hr-imamopravoznati", "platform": "alaveteli", "host": "imamopravoznati.org"},
+    {"instance_id": "hu-kimittud", "platform": "alaveteli", "host": "kimittud.hu"},
+    {"instance_id": "gr-arthro5a", "platform": "alaveteli", "host": "www.arthro5a.gr"},
+    {"instance_id": "md-vreauinfo", "platform": "alaveteli", "host": "www.vreauinfo.md"},
+    {"instance_id": "hk-accessinfo", "platform": "alaveteli", "host": "accessinfo.hk"},
+    {"instance_id": "lr-infolib", "platform": "alaveteli", "host": "infolib.org.lr"},
+    {"instance_id": "co-queremosdatos", "platform": "alaveteli", "host": "www.queremosdatos.co"},
+    {"instance_id": "us-opramachine", "platform": "alaveteli", "host": "opramachine.com"},
+    {"instance_id": "ro-iastatullaintrebari", "platform": "alaveteli", "host": "iastatullaintrebari.ro"},
+    {"instance_id": "xk-dumedite", "platform": "alaveteli", "host": "dumedite.org"}
+  ],
+  "non_alaveteli_targets": [],
+  "non_alaveteli_policy": {
+    "status": "discovery_required",
+    "include_only_after": ["named system", "official or rights-cleared URL scope", "platform classification", "CDX query shape", "rights review"],
+    "empty_registry_does_not_mean_no_systems": true
+  },
+  "gates": {
+    "retain_raw_cdx": true,
+    "record_retrieval_time": true,
+    "record_response_sha256": true,
+    "require_complete_pagination": true,
+    "empty_result_is_not_population": true,
+    "rights_review_before_manifest": true,
+    "manifest_immutable_after_validation": true,
+    "publication": false,
+    "redistribution": false,
+    "training": false
+  }
+}
