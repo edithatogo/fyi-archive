@@ -19,9 +19,11 @@ def fetch_complete_cdx(
     *,
     page_size: int,
     max_pages: int,
+    max_runtime_seconds: float = 180.0,
     opener: Callable[..., Any] = urllib.request.urlopen,  # noqa: S310
 ) -> list[list[str]]:
     """Retrieve all reported CDX pages or raise without producing a partial result."""
+    deadline = time.monotonic() + max_runtime_seconds
     base = [
         ("url", url_pattern),
         ("output", "json"),
@@ -30,7 +32,7 @@ def fetch_complete_cdx(
         ("collapse", "urlkey"),
         ("limit", str(page_size)),
     ]
-    pages = _fetch([*base, ("showNumPages", "true")], opener)
+    pages = _fetch([*base, ("showNumPages", "true")], opener, deadline=deadline)
     try:
         page_value = pages[1][0]
         page_count = None if page_value is None else int(page_value)
@@ -46,7 +48,7 @@ def fetch_complete_cdx(
     while page_count is None or page < page_count:
         if page >= max_pages:
             raise RuntimeError(f"CDX traversal reached configured cap {max_pages} without terminator")
-        payload = _fetch([*base, ("page", str(page))], opener)
+        payload = _fetch([*base, ("page", str(page))], opener, deadline=deadline)
         if not isinstance(payload, list) or not payload or len(payload) == 1:
             if page_count is None:
                 break
@@ -66,15 +68,20 @@ def fetch_complete_cdx(
     return [header or ["original", "timestamp", "digest", "statuscode", "length"], *rows]
 
 
-def _fetch(params: list[tuple[str, str]], opener: Callable[..., Any]) -> Any:  # noqa: ANN401
+def _fetch(
+    params: list[tuple[str, str]], opener: Callable[..., Any], *, deadline: float
+) -> Any:  # noqa: ANN401
     request = urllib.request.Request(  # noqa: S310
         f"{CDX_ENDPOINT}?{urllib.parse.urlencode(params)}",
         headers={"User-Agent": "fyi-archive-cdx-paginator/1.0"},
     )
     last_error: Exception | None = None
     for attempt in range(3):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise RuntimeError("CDX acquisition exceeded whole-run deadline")
         try:
-            with opener(request, timeout=60) as response:  # noqa: S310
+            with opener(request, timeout=min(60, remaining)) as response:  # noqa: S310
                 return json.loads(response.read().decode("utf-8"))
         except HTTPError as error:
             if error.code not in {429, 500, 502, 503, 504}:
@@ -83,5 +90,5 @@ def _fetch(params: list[tuple[str, str]], opener: Callable[..., Any]) -> Any:  #
         except (TimeoutError, URLError, OSError) as error:
             last_error = error
         if attempt < 2:
-            time.sleep(2**attempt)
+            time.sleep(min(2**attempt, max(0, deadline - time.monotonic())))
     raise RuntimeError(f"CDX request failed after bounded retries: {last_error}")

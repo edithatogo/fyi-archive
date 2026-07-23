@@ -20,8 +20,14 @@ def main() -> int:
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--page-size", type=int, default=1000)
     parser.add_argument("--max-pages", type=int, default=100)
+    parser.add_argument("--max-runtime-seconds", type=float, default=180.0)
     args = parser.parse_args()
-    rows = fetch_complete_cdx(args.url_pattern, page_size=args.page_size, max_pages=args.max_pages)
+    rows = fetch_complete_cdx(
+        args.url_pattern,
+        page_size=args.page_size,
+        max_pages=args.max_pages,
+        max_runtime_seconds=args.max_runtime_seconds,
+    )
     raw = json.dumps(rows, indent=2) + "\n"
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(raw, encoding="utf-8")
