@@ -12,6 +12,7 @@ from typing import Any
 from urllib.error import HTTPError, URLError
 
 CDX_ENDPOINT = "https://web.archive.org/cdx/search/cdx"
+CAPTURE_MODES = frozenset({"url_index", "all_captures"})
 
 
 def fetch_complete_cdx(
@@ -19,19 +20,23 @@ def fetch_complete_cdx(
     *,
     page_size: int,
     max_pages: int,
+    capture_mode: str = "url_index",
     max_runtime_seconds: float = 180.0,
     opener: Callable[..., Any] = urllib.request.urlopen,  # noqa: S310
 ) -> list[list[str]]:
-    """Retrieve all reported CDX pages or raise without producing a partial result."""
+    """Retrieve a complete CDX view or raise without producing a partial result."""
+    if capture_mode not in CAPTURE_MODES:
+        raise ValueError(f"unsupported CDX capture mode: {capture_mode}")
     deadline = time.monotonic() + max_runtime_seconds
     base = [
         ("url", url_pattern),
         ("output", "json"),
         ("filter", "statuscode:200"),
         ("fl", "original,timestamp,digest,statuscode,length"),
-        ("collapse", "urlkey"),
         ("limit", str(page_size)),
     ]
+    if capture_mode == "url_index":
+        base.append(("collapse", "urlkey"))
     pages = _fetch([*base, ("showNumPages", "true")], opener, deadline=deadline)
     try:
         page_value = pages[1][0]
@@ -47,7 +52,9 @@ def fetch_complete_cdx(
     page = 0
     while page_count is None or page < page_count:
         if page >= max_pages:
-            raise RuntimeError(f"CDX traversal reached configured cap {max_pages} without terminator")
+            raise RuntimeError(
+                f"CDX traversal reached configured cap {max_pages} without terminator"
+            )
         payload = _fetch([*base, ("page", str(page))], opener, deadline=deadline)
         if not isinstance(payload, list) or not payload or len(payload) == 1:
             if page_count is None:
@@ -68,9 +75,7 @@ def fetch_complete_cdx(
     return [header or ["original", "timestamp", "digest", "statuscode", "length"], *rows]
 
 
-def _fetch(
-    params: list[tuple[str, str]], opener: Callable[..., Any], *, deadline: float
-) -> Any:  # noqa: ANN401
+def _fetch(params: list[tuple[str, str]], opener: Callable[..., Any], *, deadline: float) -> Any:  # noqa: ANN401
     request = urllib.request.Request(  # noqa: S310
         f"{CDX_ENDPOINT}?{urllib.parse.urlencode(params)}",
         headers={"User-Agent": "fyi-archive-cdx-paginator/1.0"},

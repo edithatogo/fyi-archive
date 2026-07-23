@@ -8,7 +8,7 @@ import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-from fyi_archive.internet_archive_cdx import CDX_ENDPOINT, fetch_complete_cdx
+from fyi_archive.internet_archive_cdx import CAPTURE_MODES, CDX_ENDPOINT, fetch_complete_cdx
 
 
 def _write_json(path: Path, value: dict[str, object]) -> None:
@@ -26,6 +26,7 @@ def main() -> int:
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--page-size", type=int, default=1000)
     parser.add_argument("--max-pages", type=int, default=100)
+    parser.add_argument("--capture-mode", choices=sorted(CAPTURE_MODES), default="url_index")
     parser.add_argument("--max-runtime-seconds", type=float, default=180.0)
     args = parser.parse_args()
     retrieved_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
@@ -35,6 +36,7 @@ def main() -> int:
         "host": args.host,
         "endpoint": CDX_ENDPOINT,
         "url_pattern": args.url_pattern,
+        "capture_mode": args.capture_mode,
         "retrieved_at": retrieved_at,
         "eligible_for_empirical_freeze": False,
         "publication": False,
@@ -45,6 +47,7 @@ def main() -> int:
             args.url_pattern,
             page_size=args.page_size,
             max_pages=args.max_pages,
+            capture_mode=args.capture_mode,
             max_runtime_seconds=args.max_runtime_seconds,
         )
     except Exception as error:

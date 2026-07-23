@@ -55,6 +55,48 @@ def test_uses_empty_page_terminator_when_cdx_page_count_is_unknown() -> None:
         calls += 1
         if "showNumPages" in request.full_url:
             return _Response([["blocks"], [None]])
-        return _Response([["original"], ["https://example.test/request/1"]]) if calls == 2 else _Response([])
+        return (
+            _Response([["original"], ["https://example.test/request/1"]])
+            if calls == 2
+            else _Response([])
+        )
 
-    assert len(fetch_complete_cdx("example.test/request/*", page_size=10, max_pages=2, opener=opener)) == 2
+    assert (
+        len(fetch_complete_cdx("example.test/request/*", page_size=10, max_pages=2, opener=opener))
+        == 2
+    )
+
+
+def test_all_captures_mode_preserves_versions_without_url_collapse() -> None:
+    requests: list[str] = []
+
+    def opener(request: Request, timeout: int) -> _Response:
+        requests.append(request.full_url)
+        if "showNumPages" in request.full_url:
+            return _Response([["blocks"], ["1"]])
+        return _Response(
+            [
+                ["original", "timestamp"],
+                ["https://example.test/request/1", "20200101000000"],
+                ["https://example.test/request/1", "20210101000000"],
+            ]
+        )
+
+    rows = fetch_complete_cdx(
+        "example.test/request/*",
+        page_size=10,
+        max_pages=2,
+        capture_mode="all_captures",
+        opener=opener,
+    )
+
+    assert rows[1:] == [
+        ["https://example.test/request/1", "20200101000000"],
+        ["https://example.test/request/1", "20210101000000"],
+    ]
+    assert all("collapse=urlkey" not in request for request in requests)
+
+
+def test_rejects_unknown_capture_mode() -> None:
+    with pytest.raises(ValueError, match="unsupported CDX capture mode"):
+        fetch_complete_cdx("example.test/request/*", page_size=10, max_pages=2, capture_mode="all")

@@ -36,6 +36,8 @@ def test_writes_failure_evidence_without_a_partial_export(
             "au-rtk",
             "--host",
             "www.righttoknow.org.au",
+            "--capture-mode",
+            "all_captures",
             "--output",
             str(output),
             "--evidence",
@@ -49,6 +51,7 @@ def test_writes_failure_evidence_without_a_partial_export(
     assert not output.exists()
     payload = json.loads(evidence.read_text())
     assert payload["retrieval_status"] == "failed"
+    assert payload["capture_mode"] == "all_captures"
     assert payload["pagination_complete"] is False
     assert payload["response_sha256"] is None
     assert payload["record_count"] is None

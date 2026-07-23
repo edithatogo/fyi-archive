@@ -20,6 +20,13 @@ claim that a page or attachment was captured. A later capture step must verify
 each URL through a permitted read-only route before it can enter a WARC/WACZ
 manifest.
 
+`alaveteli_historical_indexes.yml` obtains the bounded `url_index` view for
+routine discovery. `alaveteli_historical_all_captures.yml` is manual-only and
+requires an exact confirmation before exporting uncollapsed capture metadata.
+The latter is an index export, not replayed page content: an immutable manifest
+still requires independent rights review, recovered-content provenance, source
+validation, and a hash-bound human approval.
+
 ## GitHub Actions
 
 The `Historical source indexes` workflow refreshes both inputs weekly and can

@@ -21,6 +21,7 @@ def test_registry_is_valid_and_exposes_only_alaveteli_capture_targets() -> None:
     assert registry["gates"]["publication"] is False
     assert {item["instance"] for item in matrix["include"]} >= {"au-rtk", "uk-wdtk"}
     assert all(item["request_path"] == "/request/*" for item in matrix["include"])
+    assert all(item["capture_mode"] == "url_index" for item in matrix["include"])
     expected = {item.id for item in list_instances() if "internet_archive" in item.source_modes}
     assert {item["instance"] for item in matrix["include"]} == expected
 
@@ -33,3 +34,25 @@ def test_non_alaveteli_capture_requires_a_source_specific_adapter(tmp_path: Path
 
     with pytest.raises(ValueError, match="platform-specific source adapter"):
         load_registry(path)
+
+
+def test_matrix_can_select_one_registry_instance_for_manual_all_capture_runs() -> None:
+    matrix = workflow_matrix(REGISTRY, instance_id="au-rtk", capture_mode="all_captures")
+
+    assert matrix == {
+        "include": [
+            {
+                "capture_mode": "all_captures",
+                "host": "www.righttoknow.org.au",
+                "instance": "au-rtk",
+                "request_path": "/request/*",
+            }
+        ]
+    }
+
+
+def test_matrix_rejects_unknown_instance_or_capture_mode() -> None:
+    with pytest.raises(ValueError, match="unknown registry instance"):
+        workflow_matrix(REGISTRY, instance_id="not-configured")
+    with pytest.raises(ValueError, match="unsupported CDX capture mode"):
+        workflow_matrix(REGISTRY, capture_mode="all")

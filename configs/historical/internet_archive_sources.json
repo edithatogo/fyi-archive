@@ -21,6 +21,7 @@
     "fields": ["original", "timestamp", "digest", "statuscode", "length"],
     "filter": ["statuscode:200"],
     "collapse": "urlkey",
+    "scheduled_capture_mode": "url_index",
     "page_limit": 5000,
     "max_runtime_minutes": 30,
     "user_agent": "fyi-archive-historical-index/1.0 (+https://github.com/edithatogo/fyi-archive)",
