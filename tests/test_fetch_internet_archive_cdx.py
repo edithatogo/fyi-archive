@@ -37,6 +37,19 @@ def test_fetches_pages_deduplicates_rows_and_retries() -> None:
     assert len(calls) == 4
 
 
+def test_wildcard_scope_omits_incompatible_match_type() -> None:
+    seen = []
+
+    def opener(request, timeout):
+        seen.append(request.full_url)
+        if "showNumPages" in request.full_url:
+            return _Response([["numpages"], ["1"]])
+        return _Response([["original"], ["/a"]])
+
+    fetch_cdx("example.test/request/*", limit=10, retries=0, opener=opener)
+    assert all("matchType=prefix" not in url for url in seen)
+
+
 def test_fetch_can_bound_pages() -> None:
     def opener(request, timeout):
         if "showNumPages" in request.full_url:

@@ -31,7 +31,9 @@ def _request_json(params: list[tuple[str, str]], *, user_agent: str, retries: in
 
 
 def fetch_cdx(url_pattern: str, *, limit: int, max_pages: int | None = None, retries: int = 4, backoff: float = 5.0, user_agent: str = "fyi-archive-cdx-paginator/1.0", opener: Callable[..., Any] = urllib.request.urlopen, sleep: Callable[[float], None] = time.sleep) -> list[list[str]]:
-    common = [("url", url_pattern), ("matchType", "prefix"), ("output", "json"), ("filter", "statuscode:200"), ("fl", DEFAULT_FIELDS), ("collapse", "urlkey"), ("limit", str(limit))]
+    common = [("url", url_pattern), ("output", "json"), ("filter", "statuscode:200"), ("fl", DEFAULT_FIELDS), ("collapse", "urlkey"), ("limit", str(limit))]
+    if "*" not in url_pattern:
+        common.insert(1, ("matchType", "prefix"))
     count_payload = _request_json(common + [("showNumPages", "true")], user_agent=user_agent, retries=retries, backoff=backoff, opener=opener, sleep=sleep)
     try:
         page_value = count_payload[1][0]
