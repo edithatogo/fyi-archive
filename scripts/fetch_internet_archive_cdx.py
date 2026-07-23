@@ -21,7 +21,7 @@ def _request_json(
     user_agent: str,
     retries: int,
     backoff: float,
-    opener: Callable[..., Any] = urllib.request.urlopen,
+    opener: Callable[..., Any] = urllib.request.urlopen,  # noqa: S310
     sleep: Callable[[float], None] = time.sleep,
 ) -> Any:  # noqa: ANN401
     url = f"{CDX_URL}?{urllib.parse.urlencode(params)}"
@@ -46,7 +46,7 @@ def fetch_cdx(
     retries: int = 4,
     backoff: float = 5.0,
     user_agent: str = "fyi-archive-cdx-paginator/1.0",
-    opener: Callable[..., Any] = urllib.request.urlopen,
+    opener: Callable[..., Any] = urllib.request.urlopen,  # noqa: S310
     sleep: Callable[[float], None] = time.sleep,
 ) -> list[list[str]]:
     common = [
