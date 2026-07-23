@@ -45,3 +45,15 @@ def test_fetch_can_bound_pages() -> None:
 
     result = fetch_cdx("example.test/request", limit=10, max_pages=1, retries=0, opener=opener)
     assert len(result) == 2
+
+
+def test_null_page_count_is_a_fail_closed_error() -> None:
+    def opener(request, timeout):
+        return _Response([["numpages"], [None]])
+
+    try:
+        fetch_cdx("example.test/request", limit=10, retries=0, opener=opener)
+    except ValueError as error:
+        assert "page count" in str(error)
+    else:
+        raise AssertionError("null page count must fail closed")
