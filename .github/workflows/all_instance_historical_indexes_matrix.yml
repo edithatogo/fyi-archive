@@ -67,7 +67,7 @@ jobs:
           mkdir -p "$root"
           host="${BASE_URL#https://}"; host="${host#http://}"; host="${host%%/*}"
           uv run python scripts/fetch_internet_archive_cdx.py \
-            --url-pattern "${host}/request" \
+            --url-pattern "${host}/request/*" \
             --limit "${CDX_LIMIT}" \
             --retries 5 \
             --backoff 10 \

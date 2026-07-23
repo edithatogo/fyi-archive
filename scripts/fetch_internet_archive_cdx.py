@@ -34,9 +34,12 @@ def fetch_cdx(url_pattern: str, *, limit: int, max_pages: int | None = None, ret
     common = [("url", url_pattern), ("matchType", "prefix"), ("output", "json"), ("filter", "statuscode:200"), ("fl", DEFAULT_FIELDS), ("collapse", "urlkey"), ("limit", str(limit))]
     count_payload = _request_json(common + [("showNumPages", "true")], user_agent=user_agent, retries=retries, backoff=backoff, opener=opener, sleep=sleep)
     try:
-        page_count = int(count_payload[1][0])
+        page_value = count_payload[1][0]
+        if page_value is None:
+            raise ValueError("CDX returned a null page count")
+        page_count = int(page_value)
     except (IndexError, TypeError, ValueError) as error:
-        raise ValueError("CDX showNumPages response is invalid") from error
+        raise ValueError(f"CDX showNumPages response is invalid: {error}") from error
     page_count = min(page_count, max_pages) if max_pages is not None else page_count
     header: list[str] | None = None
     rows: list[list[str]] = []
