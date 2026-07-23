@@ -80,7 +80,7 @@ def _fetch(params: list[tuple[str, str]], opener: Callable[..., Any]) -> Any:  #
             if error.code not in {429, 500, 502, 503, 504}:
                 raise
             last_error = error
-        except URLError as error:
+        except (TimeoutError, URLError, OSError) as error:
             last_error = error
         if attempt < 2:
             time.sleep(2**attempt)
