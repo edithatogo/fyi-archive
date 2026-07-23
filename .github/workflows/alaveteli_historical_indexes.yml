@@ -68,50 +68,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p ".tmp/$INSTANCE"
-          status=success
-          if ! curl --fail-with-body --location --silent --show-error \
-            --retry 1 --retry-delay 30 --max-time 180 \
-            -A "fyi-archive-historical-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
-            --get "https://web.archive.org/cdx/search/cdx" \
-            --data-urlencode "url=$HOST$REQUEST_PATH" \
-            --data-urlencode "output=json" \
-            --data-urlencode "filter=statuscode:200" \
-            --data-urlencode "fl=original,timestamp,digest" \
-            --data-urlencode "collapse=urlkey" \
-            --data-urlencode "limit=$CDX_LIMIT" \
-            --output ".tmp/$INSTANCE/internet_archive_cdx.json"; then
-            status=failed
-            printf '[]\n' > ".tmp/$INSTANCE/internet_archive_cdx.json"
-          fi
-          cd_hash="$(shasum -a 256 ".tmp/$INSTANCE/internet_archive_cdx.json" | awk '{print $1}')"
-          export CDX_STATUS="$status" CDX_HASH="$cd_hash"
-          python - <<'PY'
-          import json
-          import os
-          from datetime import UTC, datetime
-          from pathlib import Path
-
-          payload = {
-              "instance_id": os.environ["INSTANCE"],
-              "host": os.environ["HOST"],
-              "request_path": os.environ["REQUEST_PATH"],
-              "query_url": "https://web.archive.org/cdx/search/cdx",
-              "retrieved_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-              "status": os.environ["CDX_STATUS"],
-              "response_sha256": os.environ["CDX_HASH"],
-              "coverage": {
-                  "record_count": max(len(json.loads(Path(f".tmp/{os.environ['INSTANCE']}/internet_archive_cdx.json").read_text(encoding="utf-8"))) - 1, 0),
-                  "pagination_complete": False,
-                  "reason": "bounded CDX limit; use the paginated source-artifact workflow before empirical freezing",
-              },
-              "eligible_for_empirical_freeze": False,
-              "publication": False,
-              "redistribution": False,
-          }
-          Path(f".tmp/{payload['instance_id']}/retrieval.json").write_text(
-              json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8"
-          )
-          PY
+          uv run python scripts/fetch_complete_internet_archive_cdx.py \
+            --instance-id "$INSTANCE" \
+            --host "$HOST" \
+            --url-pattern "$HOST$REQUEST_PATH" \
+            --page-size "$CDX_LIMIT" \
+            --max-pages 100 \
+            --output ".tmp/$INSTANCE/internet_archive_cdx.json" \
+            --evidence ".tmp/$INSTANCE/retrieval.json"
       - name: Build provenance-preserving index
         run: |
           set -euo pipefail

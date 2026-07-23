@@ -14,6 +14,8 @@ from fyi_archive.internet_archive_cdx import CDX_ENDPOINT, fetch_complete_cdx
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url-pattern", required=True)
+    parser.add_argument("--instance-id", required=True)
+    parser.add_argument("--host", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--page-size", type=int, default=1000)
@@ -25,6 +27,8 @@ def main() -> int:
     args.output.write_text(raw, encoding="utf-8")
     evidence = {
         "provider": "Internet Archive CDX",
+        "instance_id": args.instance_id,
+        "host": args.host,
         "endpoint": CDX_ENDPOINT,
         "url_pattern": args.url_pattern,
         "retrieved_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
