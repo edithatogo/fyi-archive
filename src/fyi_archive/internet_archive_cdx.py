@@ -26,7 +26,7 @@ def fetch_complete_cdx(
         ("filter", "statuscode:200"),
         ("fl", "original,timestamp,digest,statuscode,length"),
         ("collapse", "urlkey"),
-        ("pageSize", str(page_size)),
+        ("limit", str(page_size)),
     ]
     pages = _fetch([*base, ("showNumPages", "true")], opener)
     try:
