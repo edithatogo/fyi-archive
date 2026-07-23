@@ -9,11 +9,13 @@ import time
 import urllib.parse
 import urllib.request
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Any
 
 CDX_URL = "https://web.archive.org/cdx/search/cdx"
 DEFAULT_FIELDS = "original,timestamp,digest,statuscode,mimetype"
+PAGE_WORKERS = 4
 
 
 def _curl_json(
@@ -118,9 +120,9 @@ def fetch_cdx(
     rows: list[list[str]] = []
     seen: set[tuple[str, ...]] = set()
     seen_page_fingerprints: set[tuple[tuple[str, ...], ...]] = set()
-    page = 0
-    while page_count is None or page < page_count:
-        payload = _request_json(
+
+    def fetch_page(page: int) -> Any:  # noqa: ANN401
+        return _request_json(
             [*common, ("page", str(page))],
             user_agent=user_agent,
             retries=retries,
@@ -130,8 +132,11 @@ def fetch_cdx(
             transport=transport,
             timeout=timeout,
         )
+
+    def process_page(payload: Any) -> bool:  # noqa: ANN401
+        nonlocal header
         if not isinstance(payload, list) or len(payload) <= 1:
-            break
+            return False
         if header is None:
             header = [str(value) for value in payload[0]]
         page_rows = payload[1:] if payload[0] == header else payload
@@ -144,7 +149,21 @@ def fetch_cdx(
             if normalized not in seen:
                 seen.add(normalized)
                 rows.append(list(normalized))
-        page += 1
+        return True
+
+    page = 0
+    while page_count is None or page < page_count:
+        batch_end = min(page + PAGE_WORKERS, page_count or page_cap)
+        page_numbers = range(page, batch_end)
+        with ThreadPoolExecutor(max_workers=min(PAGE_WORKERS, len(page_numbers))) as executor:
+            payloads = list(executor.map(fetch_page, page_numbers))
+        for payload in payloads:
+            if not process_page(payload) and page_count is None:
+                return [
+                    header or ["original", "timestamp", "digest", "statuscode", "mimetype"],
+                    *rows,
+                ]
+        page = batch_end
         if page_count is None and page >= page_cap:
             raise RuntimeError(
                 f"CDX page count unavailable and bounded page cap {page_cap} was reached"
