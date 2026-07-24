@@ -8,6 +8,21 @@ on:
         required: true
         default: "5000"
         type: string
+      enrich_limit_per_instance:
+        description: Number of request pages to enrich per instance; use 0 for source-only capture
+        required: true
+        default: "25"
+        type: string
+      cdx_timeout_seconds:
+        description: Per-request CDX timeout
+        required: true
+        default: "30"
+        type: string
+      cdx_retries:
+        description: CDX retries after the first request
+        required: true
+        default: "1"
+        type: string
 
 permissions:
   contents: read
@@ -59,29 +74,42 @@ jobs:
           INSTANCE_ID: ${{ matrix.instance.id }}
           BASE_URL: ${{ matrix.instance.base_url }}
           CDX_LIMIT: ${{ inputs.cdx_limit_per_instance || '5000' }}
+          ENRICH_LIMIT: ${{ inputs.enrich_limit_per_instance || '25' }}
+          CDX_TIMEOUT: ${{ inputs.cdx_timeout_seconds || '30' }}
+          CDX_RETRIES: ${{ inputs.cdx_retries || '1' }}
         run: |
           set -euo pipefail
           case "$CDX_LIMIT" in ''|*[!0-9]*) exit 1;; esac
+          case "$ENRICH_LIMIT" in ''|*[!0-9]*) exit 1;; esac
+          case "$CDX_TIMEOUT" in ''|*[!0-9]*) exit 1;; esac
+          case "$CDX_RETRIES" in ''|*[!0-9]*) exit 1;; esac
           test "$CDX_LIMIT" -ge 1 && test "$CDX_LIMIT" -le 100000
+          test "$ENRICH_LIMIT" -le 25
+          test "$CDX_TIMEOUT" -ge 1 && test "$CDX_TIMEOUT" -le 120
+          test "$CDX_RETRIES" -le 5
           root=.tmp/instance
           mkdir -p "$root"
           host="${BASE_URL#https://}"; host="${host#http://}"; host="${host%%/*}"
           uv run python scripts/fetch_internet_archive_cdx.py \
             --url-pattern "${host}/request/*" \
             --limit "${CDX_LIMIT}" \
-            --retries 5 \
+            --transport curl \
+            --timeout "$CDX_TIMEOUT" \
+            --retries "$CDX_RETRIES" \
             --backoff 10 \
             --output "$root/${INSTANCE_ID}.json"
           uv run python scripts/import_historical_sources.py --internet-archive-cdx "$root/${INSTANCE_ID}.json" --instance-id "$INSTANCE_ID" --output "$root/${INSTANCE_ID}.historical-index.json"
           uv run python scripts/filter_historical_request_pages.py --input "$root/${INSTANCE_ID}.historical-index.json" --output "$root/${INSTANCE_ID}.request-pages-index.json"
-          uv run python scripts/enrich_historical_core.py --historical-index "$root/${INSTANCE_ID}.request-pages-index.json" --instance-id "$INSTANCE_ID" --limit 25 --delay-seconds 3 --timeout-seconds 15 --output "$root/${INSTANCE_ID}.historical-core.json"
+          if test "$ENRICH_LIMIT" -gt 0; then
+            uv run python scripts/enrich_historical_core.py --historical-index "$root/${INSTANCE_ID}.request-pages-index.json" --instance-id "$INSTANCE_ID" --limit "$ENRICH_LIMIT" --delay-seconds 3 --timeout-seconds 15 --output "$root/${INSTANCE_ID}.historical-core.json"
+          fi
           uv run python - "$INSTANCE_ID" "$root" <<'PY'
-          import hashlib, json, sys
+          import hashlib, json, os, sys
           from datetime import datetime, timezone
           from pathlib import Path
           instance, root = sys.argv[1:]
           paths = sorted(Path(root).glob(f"{instance}.*"))
-          status = {"schema": "fyi-archive.historical-core-status.v1", "instance_id": instance, "generated_at": datetime.now(timezone.utc).isoformat(), "replay_limit_per_instance": 25, "replay_delay_seconds": 3, "replay_timeout_seconds": 15, "artifacts": {p.name: {"byte_count": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in paths}}
+          status = {"schema": "fyi-archive.historical-core-status.v1", "instance_id": instance, "generated_at": datetime.now(timezone.utc).isoformat(), "replay_limit_per_instance": int(os.environ["ENRICH_LIMIT"]), "replay_delay_seconds": 3, "replay_timeout_seconds": 15, "enrichment": "completed" if int(os.environ["ENRICH_LIMIT"]) else "not-run", "artifacts": {p.name: {"byte_count": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in paths}}
           Path(root, f"{instance}.status.json").write_text(json.dumps(status, indent=2, sort_keys=True) + "\n")
           PY
           uv run python scripts/build_historical_archive_manifest.py --root "$root" --instance-id "$INSTANCE_ID" --output "$root/${INSTANCE_ID}.manifest.json"

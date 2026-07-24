@@ -1,0 +1,111 @@
+name: Capture AU RightToKnow historical source
+
+on:
+  workflow_dispatch:
+    inputs:
+      cdx_limit:
+        description: Maximum CDX rows to retrieve
+        required: true
+        default: "5000"
+        type: string
+      cdx_max_pages:
+        description: Hard maximum CDX pages for this bounded capture
+        required: true
+        default: "30"
+        type: string
+      cdx_timeout_seconds:
+        description: Per-request CDX timeout
+        required: true
+        default: "30"
+        type: string
+      cdx_retries:
+        description: CDX retries after the first request
+        required: true
+        default: "1"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527e2f458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --extra dev --frozen
+      - name: Capture and build AU source bundle
+        env:
+          CDX_LIMIT: ${{ inputs.cdx_limit }}
+          CDX_MAX_PAGES: ${{ inputs.cdx_max_pages }}
+          CDX_TIMEOUT: ${{ inputs.cdx_timeout_seconds }}
+          CDX_RETRIES: ${{ inputs.cdx_retries }}
+        run: |
+          set -euo pipefail
+          case "$CDX_LIMIT" in ''|*[!0-9]*) exit 1;; esac
+          case "$CDX_MAX_PAGES" in ''|*[!0-9]*) exit 1;; esac
+          case "$CDX_TIMEOUT" in ''|*[!0-9]*) exit 1;; esac
+          case "$CDX_RETRIES" in ''|*[!0-9]*) exit 1;; esac
+          test "$CDX_LIMIT" -ge 1 && test "$CDX_LIMIT" -le 100000
+          test "$CDX_MAX_PAGES" -ge 1 && test "$CDX_MAX_PAGES" -le 100
+          test "$CDX_TIMEOUT" -ge 1 && test "$CDX_TIMEOUT" -le 120
+          test "$CDX_RETRIES" -le 5
+          root=.tmp/instance
+          mkdir -p "$root"
+          uv run python scripts/fetch_internet_archive_cdx.py \
+            --url-pattern "www.righttoknow.org.au/request/*" \
+            --limit "$CDX_LIMIT" \
+            --max-pages "$CDX_MAX_PAGES" \
+            --transport curl \
+            --timeout "$CDX_TIMEOUT" \
+            --retries "$CDX_RETRIES" \
+            --backoff 10 \
+            --output "$root/au-rtk.json"
+          uv run python scripts/import_historical_sources.py \
+            --internet-archive-cdx "$root/au-rtk.json" \
+            --instance-id au-rtk \
+            --output "$root/au-rtk.historical-index.json"
+          uv run python scripts/filter_historical_request_pages.py \
+            --input "$root/au-rtk.historical-index.json" \
+            --output "$root/au-rtk.request-pages-index.json"
+          uv run python - "$root" <<'PY'
+          import hashlib, json, os, sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+          root = Path(sys.argv[1])
+          paths = sorted(root.glob("au-rtk.*"))
+          status = {
+              "schema": "fyi-archive.historical-source-status.v1",
+              "instance_id": "au-rtk",
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "source_scope": "www.righttoknow.org.au/request/*",
+              "cdx_limit": int(os.environ["CDX_LIMIT"]),
+              "cdx_max_pages": int(os.environ["CDX_MAX_PAGES"]),
+              "enrichment": "not-run",
+              "artifacts": {
+                  path.name: {
+                      "byte_count": path.stat().st_size,
+                      "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                  }
+                  for path in paths
+              },
+          }
+          (root / "au-rtk.source-status.json").write_text(
+              json.dumps(status, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+          uv run python scripts/build_historical_archive_manifest.py \
+            --root "$root" \
+            --instance-id au-rtk \
+            --output "$root/au-rtk.manifest.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: au-rtk-internet-archive-source-${{ github.run_id }}
+          retention-days: 90
+          path: .tmp/instance/

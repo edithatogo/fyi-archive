@@ -1,5 +1,6 @@
 import json
 
+import scripts.fetch_internet_archive_cdx as cdx
 from scripts.fetch_internet_archive_cdx import fetch_cdx
 
 
@@ -32,7 +33,14 @@ def test_fetches_pages_deduplicates_rows_and_retries() -> None:
             raise OSError("503")
         return _Response([["original", "timestamp"], ["/a", "1"], ["/b", "2"]])
 
-    result = fetch_cdx("example.test/request", limit=10, retries=1, backoff=0, opener=opener, sleep=lambda _seconds: None)
+    result = fetch_cdx(
+        "example.test/request",
+        limit=10,
+        retries=1,
+        backoff=0,
+        opener=opener,
+        sleep=lambda _seconds: None,
+    )
     assert result == [["original", "timestamp"], ["/a", "1"], ["/b", "2"]]
     assert len(calls) == 4
 
@@ -71,3 +79,35 @@ def test_null_page_count_is_a_fail_closed_error() -> None:
 
     result = fetch_cdx("example.test/request", limit=10, retries=0, opener=opener)
     assert result == [["original"], ["/a"]]
+
+
+def test_repeated_page_payload_fails_closed_when_page_count_is_unknown() -> None:
+    def opener(request, timeout):
+        if "showNumPages" in request.full_url:
+            return _Response([["numpages"], [None]])
+        return _Response([["original"], ["/same"]])
+
+    try:
+        fetch_cdx("example.test/request", limit=10, retries=0, opener=opener)
+    except RuntimeError as error:
+        assert str(error) == "CDX page payload repeated before coverage completed"
+    else:
+        raise AssertionError("repeated CDX pages must fail closed")
+
+
+def test_curl_transport_uses_curl_json(monkeypatch) -> None:
+    calls = []
+
+    def fake_curl(params, *, user_agent, timeout):
+        calls.append((params, user_agent, timeout))
+        if any(key == "showNumPages" for key, _value in params):
+            return [["numpages"], ["1"]]
+        return [["original"], ["/a"]]
+
+    monkeypatch.setattr(cdx, "_curl_json", fake_curl)
+    assert fetch_cdx("example.test/request", limit=10, transport="curl", timeout=12, retries=0) == [
+        ["original"],
+        ["/a"],
+    ]
+    assert len(calls) == 2
+    assert all(call[2] == 12 for call in calls)
