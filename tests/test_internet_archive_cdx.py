@@ -74,13 +74,11 @@ def test_all_captures_mode_preserves_versions_without_url_collapse() -> None:
         requests.append(request.full_url)
         if "showNumPages" in request.full_url:
             return _Response([["blocks"], ["1"]])
-        return _Response(
-            [
-                ["original", "timestamp"],
-                ["https://example.test/request/1", "20200101000000"],
-                ["https://example.test/request/1", "20210101000000"],
-            ]
-        )
+        return _Response([
+            ["original", "timestamp"],
+            ["https://example.test/request/1", "20200101000000"],
+            ["https://example.test/request/1", "20210101000000"],
+        ])
 
     rows = fetch_complete_cdx(
         "example.test/request/*",

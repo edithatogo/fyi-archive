@@ -44,16 +44,14 @@ def _url(value: object) -> str:
         if key.lower() not in {"fbclid", "gclid", "mc_cid", "mc_eid"}
     ]
     path = parsed.path.rstrip("/") or "/"
-    return urlunparse(
-        (
-            parsed.scheme.lower(),
-            parsed.netloc.lower(),
-            path,
-            "",
-            urlencode(query),
-            "",
-        )
-    )
+    return urlunparse((
+        parsed.scheme.lower(),
+        parsed.netloc.lower(),
+        path,
+        "",
+        urlencode(query),
+        "",
+    ))
 
 
 def _morph_rows(path: Path) -> list[dict[str, Any]]:
@@ -64,19 +62,17 @@ def _morph_rows(path: Path) -> list[dict[str, Any]]:
             source_url = _url(row.get("request_url") or row.get("url"))
             if not source_url:
                 continue
-            output.append(
-                {
-                    "source": "morph_io",
-                    "evidence_role": "authoritative_discovery",
-                    "capture_required": True,
-                    "source_url": source_url,
-                    "source_record_id": str(row.get("request_url") or ""),
-                    "title": str(row.get("title") or ""),
-                    "authority": str(row.get("public_body_name") or ""),
-                    "state": str(row.get("described_state") or row.get("display_status") or ""),
-                    "observed_at": str(row.get("created_at") or ""),
-                }
-            )
+            output.append({
+                "source": "morph_io",
+                "evidence_role": "authoritative_discovery",
+                "capture_required": True,
+                "source_url": source_url,
+                "source_record_id": str(row.get("request_url") or ""),
+                "title": str(row.get("title") or ""),
+                "authority": str(row.get("public_body_name") or ""),
+                "state": str(row.get("described_state") or row.get("display_status") or ""),
+                "observed_at": str(row.get("created_at") or ""),
+            })
         return output
 
 
