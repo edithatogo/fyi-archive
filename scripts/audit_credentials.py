@@ -15,7 +15,7 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 REQUIRED_SERVICES = [
     {"name": "HF_TOKEN", "label": "Hugging Face token"},
@@ -125,7 +125,11 @@ def gh_json(args: list[str]) -> list[dict[str, Any]]:
         return []
     if not completed.stdout.strip():
         return []
-    return json.loads(completed.stdout)
+    payload = json.loads(completed.stdout)
+    if not isinstance(payload, list):
+        return []
+    entries = cast("list[object]", payload)
+    return [cast("dict[str, Any]", entry) for entry in entries if isinstance(entry, dict)]
 
 
 def build_inventory(repo: str, scan_roots: list[Path]) -> dict[str, Any]:
@@ -142,7 +146,7 @@ def build_inventory(repo: str, scan_roots: list[Path]) -> dict[str, Any]:
     }
     github_secrets = gh_json(["secret", "list", "--repo", repo, "--json", "name,updatedAt"])
     github_vars = gh_json(["variable", "list", "--repo", repo, "--json", "name,updatedAt"])
-    file_findings = []
+    file_findings: list[dict[str, str]] = []
     for root in scan_roots:
         if root.exists():
             file_findings.extend(scan_files(root, service_labels))
