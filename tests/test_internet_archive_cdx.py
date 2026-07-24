@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from email.message import Message
+from io import BytesIO
 from typing import Self
 from urllib.error import HTTPError
 from urllib.request import Request
@@ -167,7 +169,9 @@ def test_retries_transient_http_errors_and_rejects_permanent_ones() -> None:
         nonlocal attempts
         attempts += 1
         if attempts < 3:
-            raise HTTPError("https://example.test", 503, "unavailable", {}, None)
+            raise HTTPError(
+                "https://example.test", 503, "unavailable", Message(), BytesIO(b"unavailable")
+            )
         return _Response([["blocks"], ["0"]])
 
     assert fetch_complete_cdx(
@@ -176,7 +180,7 @@ def test_retries_transient_http_errors_and_rejects_permanent_ones() -> None:
     assert attempts == 3
 
     def permanent(_: Request, timeout: int) -> _Response:
-        raise HTTPError("https://example.test", 404, "missing", {}, None)
+        raise HTTPError("https://example.test", 404, "missing", Message(), BytesIO(b"missing"))
 
     with pytest.raises(HTTPError):
         fetch_complete_cdx("example.test/request/*", page_size=10, max_pages=2, opener=permanent)
