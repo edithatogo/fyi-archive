@@ -153,6 +153,37 @@ jobs:
           fi
           uv run fyi-archive seed run "${args[@]}"
 
+      - name: Record capture output diagnostics
+        if: ${{ always() }}
+        run: |
+          set +e
+          echo "Capture output tree:"
+          find data -maxdepth 6 -type f -print 2>/dev/null | sort || true
+          echo "Request JSON summaries:"
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          for path in sorted(Path("data/raw/requests").glob("**/request.json")):
+              try:
+                  payload = json.loads(path.read_text(encoding="utf-8"))
+                  print(json.dumps({"path": str(path), "keys": sorted(payload), "id": payload.get("id"), "request_id": payload.get("request_id")}, sort_keys=True))
+              except Exception as error:  # noqa: BLE001 - diagnostic step must continue
+                  print(json.dumps({"path": str(path), "error": str(error)}, sort_keys=True))
+          PY
+
+      - name: Upload capture diagnostics
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: historical-seed-capture-diagnostics
+          if-no-files-found: ignore
+          path: |
+            data/raw/requests/**
+            data/warc/**
+            data/attachments/**
+            data/_state/ledger.jsonl
+
       - name: Build manifest
         env:
           DRY_RUN: ${{ inputs.dry_run }}
@@ -194,6 +225,33 @@ jobs:
             --fetch-end "$DATE_TO" \
             --fetch-label historical-seed
 
+      - name: Export process events
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          CAPTURED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          derived_dir=data/raw/requests
+          if [ "$DRY_RUN" = "true" ]; then
+            derived_dir=data/derived/requests
+          fi
+          mkdir -p dist/process-events
+          uv run fyi export-process-events \
+            --derived-dir "$derived_dir" \
+            --output dist/process-events/events.jsonl \
+            --captured-at "$CAPTURED_AT"
+
+      - name: Build and verify process projection
+        run: |
+          set -euo pipefail
+          uv run fyi-archive process project \
+            --events dist/process-events/events.jsonl \
+            --manifest manifests/latest_manifest.json \
+            --output-dir dist/process-events/projection \
+            --snapshot-revision "${GITHUB_SHA}"
+          uv run fyi-archive process verify \
+            --output-dir dist/process-events/projection
+
       - name: Upload seed artifacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -207,3 +265,4 @@ jobs:
             manifests/latest_manifest.parquet
             manifests/authorities.json
             dist/provenance.json
+            dist/process-events/**

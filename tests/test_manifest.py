@@ -89,6 +89,22 @@ def test_assemble_manifest_loads_fyi_cli_request_directory(tmp_path: Path) -> No
     assert record["warc_record_ids"] == ["<urn:uuid:test>"]
 
 
+def test_assemble_manifest_uses_numeric_directory_id_when_payload_omits_id(tmp_path: Path) -> None:
+    request_dir = tmp_path / "derived" / "unknown" / "7"
+    request_dir.mkdir(parents=True)
+    (request_dir / "request.json").write_text(
+        json.dumps({"url_title": "request-7", "title": "Captured"}), encoding="utf-8"
+    )
+    manifest = assemble_manifest(
+        derived_dir=tmp_path / "derived",
+        manifest_path=tmp_path / "manifest.json",
+        parquet_path=tmp_path / "manifest.parquet",
+        authorities_path=tmp_path / "authorities.json",
+        fyi_cli_version="1.2.0",
+    )
+    assert manifest["requests"][0]["request_id"] == 7
+
+
 def test_manifest_cli_build(tmp_path: Path) -> None:
     derived = tmp_path / "derived"
     write_record(derived / "1.json", 1)
@@ -196,3 +212,21 @@ def test_manifest_cli_merge(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert '"record_count": 2' in result.stdout
+
+
+def test_manifest_rejects_cross_jurisdiction_record() -> None:
+    manifest = {
+        "meta": {
+            "source": "https://fyi.org.nz/",
+            "instance_id": "nz-fyi",
+            "jurisdiction": "NZ",
+            "record_count": 1,
+        },
+        "requests": [{"request_id": 1, "content_sha256": "a" * 64, "jurisdiction": "NSW"}],
+    }
+    try:
+        validate_manifest(manifest)
+    except ValueError as error:
+        assert "jurisdiction" in str(error)
+    else:
+        raise AssertionError("cross-jurisdiction record was accepted")

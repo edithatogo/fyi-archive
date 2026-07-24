@@ -1,0 +1,83 @@
+name: Publish Process Projection
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: Successful merge run containing a merged-backfill artifact
+        required: true
+        type: string
+      dry_run:
+        description: Validate and download without publishing to Hugging Face
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+      DRY_RUN: ${{ inputs.dry_run }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+
+      - name: Download verified merge artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run download "$ARTIFACT_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "merged-backfill-$ARTIFACT_RUN_ID" \
+            --dir .tmp/merged-backfill
+          test -s .tmp/merged-backfill/dist/process-events/events.jsonl
+          uv run fyi-archive process verify \
+            --output-dir .tmp/merged-backfill/dist/process-events/projection
+
+      - name: Upload verified process projection to Hugging Face
+        if: env.DRY_RUN != 'true'
+        env:
+          HF_REPO_ID: ${{ vars.HF_REPO_ID || 'edithatogo/fyi-archive-nz' }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          [ -n "$HF_TOKEN" ] || { echo "HF_TOKEN is required for process-log deposit"; exit 1; }
+          [ "$HF_REPO_ID" = "edithatogo/fyi-archive-nz" ] || {
+            echo "Refusing process-log upload to non-allowlisted dataset: $HF_REPO_ID"
+            exit 1
+          }
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          HfApi(token=os.environ["HF_TOKEN"]).upload_folder(
+              folder_path=".tmp/merged-backfill/dist/process-events",
+              path_in_repo="process-events",
+              repo_id=os.environ["HF_REPO_ID"],
+              repo_type="dataset",
+              token=os.environ["HF_TOKEN"],
+              commit_message="data: publish verified historical process projection",
+          )
+          PY
+
+      - name: Upload publication evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: process-projection-publication-${{ github.run_id }}
+          path: .tmp/merged-backfill/dist/process-events/**

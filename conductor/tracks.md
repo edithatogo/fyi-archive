@@ -1,5 +1,9 @@
 # Project Tracks
 
+## [ ] Track: archive_registry_readiness_20260721
+
+[Specification and plan](./tracks/archive_registry_readiness_20260721/)
+
 Registry of all tracks for the project. Each track has its own folder with `spec.md`
 + `plan.md` (+ `metadata.json`). Requirements traceability lives in
 [`requirements.md`](./requirements.md); design in [`design.md`](./design.md).
@@ -36,6 +40,12 @@ Link: [./tracks/operational_evidence_refresh_20260713/](./tracks/operational_evi
 
 - `fyi-cli: <track>` — a capability track in the companion `fyi-cli` repo that must
   land before this track's orchestration can function.
+
+## [x] Track: Full-corpus process projection and continuation
+Track ID: `full_corpus_process_projection_20260721`
+Goal: Consume the pinned fyi-cli process-event contract and emit deterministic,
+public-safe Parquet resources with coverage, lineage, and checksum evidence.
+Link: [./tracks/full_corpus_process_projection_20260721/](./tracks/full_corpus_process_projection_20260721/)
 
 ## [ ] Track: FOI-O derived re-extraction publication
 Track ID: `foio_derived_reextraction_20260714`
@@ -205,9 +215,25 @@ Goal: Make the deliberately slow historical backfill measurable in health report
 without increasing source traffic or changing its off-peak schedule.
 Link: [./tracks/coverage_progress_observability_20260713/](./tracks/coverage_progress_observability_20260713/)
 
+### [~] Track: Alaveteli site-wide queue
+Track ID: `alaveteli_sitewide_queue_20260713`
+Goal: Advance working Alaveteli archives through checkpointed public-feed queues
+and verified capture state.
+Link: [./tracks/alaveteli_sitewide_queue_20260713/](./tracks/alaveteli_sitewide_queue_20260713/)
+
 ---
 
 ## Companion capability tracks (in fyi-cli)
+
+### [x] Track: Full-corpus process projection and continuation
+Track ID: `full_corpus_process_projection_20260721`
+Goal: Build and maintain revisioned public-safe case/event projections for full-corpus process mining.
+Link: [./tracks/full_corpus_process_projection_20260721/](./tracks/full_corpus_process_projection_20260721/)
+GitHub: [#196](https://github.com/edithatogo/fyi-archive/issues/196), registered as a subissue of [foi-process #36](https://github.com/edithatogo/foi-process/issues/36).
+Upstream: [fyi-cli #231](https://github.com/edithatogo/fyi-cli/issues/231) / `process-event-export_20260721`.
+Downstream: [foi-process #37](https://github.com/edithatogo/foi-process/issues/37) / `T10-full-corpus-process-mining`.
+
+---
 
 These live in `fyi-cli`'s `.conductor/` and are prerequisites for the archive tracks
 above. They are the "improving and adding features" to `fyi-cli` that the user's brief
@@ -220,6 +246,12 @@ calls for (R-05). Registered there in parallel.
 | `archival-content-diff` | prospective_sync_orchestration | R-14 |
 | `archive-health-doctor` | observability_quality | R-23 |
 | `cross-worker-rate-limiter` | archive discovery and backfill jobs with bounded aggregate pacing | safer concurrent request rate across workers; archived in [./archive/cross_worker_rate_limiter_20260701/](./archive/cross_worker_rate_limiter_20260701/) |
+
+### [ ] Track: Incremental jurisdiction archive completion
+Track ID: `jurisdiction_archive_completion_20260721`
+Goal: Preserve immutable, replayable and public-safe archive evidence for every FOI-O roadmap target.
+Link: [./tracks/jurisdiction_archive_completion_20260721/](./tracks/jurisdiction_archive_completion_20260721/)
+GitHub: [#210](https://github.com/edithatogo/fyi-archive/issues/210); programme parent [foi-o #81](https://github.com/edithatogo/foi-o/issues/81).
 
 ## Archived tracks
 

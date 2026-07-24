@@ -81,6 +81,7 @@ jobs:
       REQUEST_REF: ${{ github.event_name == 'schedule' && '' || inputs.request_ref }}
       MAX_REQUESTS: ${{ github.event_name == 'schedule' && '5' || inputs.max_requests }}
       MIN_INTERVAL: ${{ github.event_name == 'schedule' && '60' || inputs.min_interval }}
+      DISCOVERY_MAX_PAGES: ${{ github.event_name == 'schedule' && '10' || '2' }}
       LIVE_CONFIRMATION: ${{ github.event_name == 'schedule' && 'RUN_LIVE_ALAVETELI_CAPTURE' || inputs.live_confirmation }}
       CATALOG_URL_OVERRIDE: ${{ inputs.catalog_url }}
       CAPTURE_BASE_URL_OVERRIDE: ${{ inputs.capture_base_url }}
@@ -98,6 +99,49 @@ jobs:
       - name: Install dependencies
         if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
         run: uv sync --extra dev --frozen
+      - name: Restore latest verified site state
+        if: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          root="data/$INSTANCE"
+          restore=".tmp/restore-$INSTANCE"
+          mkdir -p "$root" "$restore" .tmp
+          restored=false
+          mapfile -t runs < <(
+            gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow alaveteli_working_sites.yml --branch "$GITHUB_REF_NAME" \
+              --limit 30 --json databaseId,conclusion \
+              --jq '.[] | select(.conclusion == "success") | .databaseId'
+          )
+          for run_id in "${runs[@]}"; do
+            [ "$run_id" = "$GITHUB_RUN_ID" ] && continue
+            candidate="$restore/$run_id"
+            rm -rf "$candidate"
+            mkdir -p "$candidate"
+            if ! gh run download "$run_id" \
+              --repo "$GITHUB_REPOSITORY" \
+              --name "alaveteli-$INSTANCE-$run_id" \
+              --dir "$candidate" >/dev/null 2>&1; then
+              continue
+            fi
+            ledger_file="$(find "$candidate" -type f -path '*/_state/ledger.jsonl' -print -quit)"
+            [ -n "$ledger_file" ] || continue
+            site_root="${ledger_file%/_state/ledger.jsonl}"
+            ledger="$site_root/_state/ledger.jsonl"
+            if [ -s "$ledger" ] && grep -q '"status": "completed"' "$ledger" && grep -q '"dry_run": false' "$ledger"; then
+              cp -a "$site_root/." "$root/"
+              echo "Restored verified live state from run $run_id"
+              echo "restored_run=$run_id" >> "$GITHUB_STEP_SUMMARY"
+              restored=true
+              break
+            fi
+          done
+          if [ "$restored" != "true" ]; then
+            echo "No prior verified live state artifact found for $INSTANCE; starting with an empty state."
+            echo "restored_run=none" >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Enforce live safety gates
         id: window
         if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' }}
@@ -171,8 +215,23 @@ jobs:
             --fallback \
             --repository "${{ github.repository }}" \
             --workflow "alaveteli_working_sites.yml"
-      - name: Discover request queue or use bounded fallback IDs
+      - name: Prepare resumable request queue
+        id: queue
         if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' && steps.window.outputs.eligible == 'true' }}
+        run: |
+          set -euo pipefail
+          root="data/$INSTANCE"
+          mkdir -p "$root/_state" .tmp
+          uv run python scripts/manage_alaveteli_queue.py \
+            --queue "$root/_state/discovered_requests.jsonl" \
+            --ledger "$root/_state/ledger.jsonl" \
+            --output "$root/_state/discovered_requests.jsonl" \
+            > .tmp/queue-state.json
+          pending="$(jq -r '.pending' .tmp/queue-state.json)"
+          echo "pending=$pending" >> "$GITHUB_OUTPUT"
+          echo "queue_pending=$pending" >> "$GITHUB_STEP_SUMMARY"
+      - name: Discover next request queue page or use bounded fallback IDs
+        if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' && steps.window.outputs.eligible == 'true' && steps.queue.outputs.pending == '0' }}
         run: |
           set -euo pipefail
           mkdir -p "data/$INSTANCE/_state"
@@ -180,17 +239,33 @@ jobs:
           if [ -z "$capture_base_url" ]; then
             capture_base_url="$(uv run python -c 'from fyi_archive.instances import get_instance; print(get_instance("'"$INSTANCE"'").capture_base_url())')"
           fi
+          incoming=".tmp/$INSTANCE-discovered-requests.jsonl"
+          rm -f "$incoming"
           if uv run fyi discover --base-url "$capture_base_url" \
+            --delay-seconds "$MIN_INTERVAL" --db "data/$INSTANCE/_state/fyi-cli.db" \
+            --checkpoint "data/$INSTANCE/_state/discovery.checkpoint" \
+            --max-pages "$DISCOVERY_MAX_PAGES" \
+            --output "$incoming" \
+            && test -s "$incoming" \
+            && grep -q '[^[:space:]]' "$incoming"; then
+            discovery="feed"
+          elif uv run fyi discover --base-url "$capture_base_url" \
             --backfill-ids --id-from "$ID_FROM" --id-to "$ID_TO" \
             --delay-seconds "$MIN_INTERVAL" --db "data/$INSTANCE/_state/fyi-cli.db" \
-            --output "data/$INSTANCE/_state/discovered_requests.jsonl" \
-            && test -s "data/$INSTANCE/_state/discovered_requests.jsonl" \
-            && grep -q '[^[:space:]]' "data/$INSTANCE/_state/discovered_requests.jsonl"; then
-            echo "discovery=live" >> "$GITHUB_STEP_SUMMARY"
+            --output "$incoming" \
+            && test -s "$incoming" \
+            && grep -q '[^[:space:]]' "$incoming"; then
+            discovery="bounded-id-fallback"
           else
-            rm -f "data/$INSTANCE/_state/discovered_requests.jsonl"
-            echo "discovery=bounded-id-fallback" >> "$GITHUB_STEP_SUMMARY"
+            discovery="empty"
           fi
+          uv run python scripts/manage_alaveteli_queue.py \
+            --queue "data/$INSTANCE/_state/discovered_requests.jsonl" \
+            --ledger "data/$INSTANCE/_state/ledger.jsonl" \
+            --incoming "$incoming" \
+            --output "data/$INSTANCE/_state/discovered_requests.jsonl" \
+            | tee .tmp/queue-state-after-discovery.json
+          echo "discovery=$discovery" >> "$GITHUB_STEP_SUMMARY"
       - name: Run gentle seed
         if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && (env.DRY_RUN == 'true' || steps.window.outputs.eligible == 'true') }}
         run: |

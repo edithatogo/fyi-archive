@@ -119,11 +119,15 @@ def test_requests_from_id_range_builds_fallback_queue() -> None:
 def test_capture_with_fyi_cli_builds_current_capture_command(tmp_path: Path, monkeypatch) -> None:
     calls = []
 
-    def fake_run(command, **kwargs):  # noqa: ANN001, ANN202
+    def fake_popen(command, **kwargs):  # noqa: ANN001, ANN202
         calls.append((command, kwargs))
-        return SimpleNamespace(stdout='{"derived_path": "derived/20000"}')
+        return SimpleNamespace(
+            pid=123,
+            returncode=0,
+            communicate=lambda timeout=None: ('{"derived_path": "derived/20000"}', ""),
+        )
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
 
     summary = capture_with_fyi_cli(
         SeedRequest(20000, "request-20000"),
@@ -141,8 +145,69 @@ def test_capture_with_fyi_cli_builds_current_capture_command(tmp_path: Path, mon
     assert "--max-runtime-minutes" in command
     assert "--max-disk-gb" in command
     assert "--base-url" in command
-    assert kwargs == {"check": True, "capture_output": True, "text": True}
+    assert kwargs["stdout"] == subprocess.PIPE
+    assert kwargs["stderr"] == subprocess.PIPE
+    assert kwargs["text"] is True
     assert summary == {"derived_path": "derived/20000"}
+
+
+def test_capture_with_fyi_cli_converts_subprocess_timeout_to_capture_error(
+    tmp_path: Path, monkeypatch
+) -> None:
+    calls = 0
+
+    def communicate(*, timeout: float | None = None):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise subprocess.TimeoutExpired([], timeout or 1.0, stderr="hung")
+        return "", ""
+
+    process = SimpleNamespace(
+        pid=123,
+        returncode=None,
+        communicate=communicate,
+        kill=lambda: None,
+    )
+    monkeypatch.setattr(subprocess, "Popen", lambda *args, **kwargs: process)
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: None)
+    with pytest.raises(CaptureError) as raised:
+        capture_with_fyi_cli(
+            SeedRequest(20000, "request-20000"),
+            tmp_path / "data",
+            tmp_path / "dist",
+            SeedCaps(max_runtime_minutes=1),
+            (),
+        )
+    assert raised.value.returncode == 124
+    assert "hung" in raised.value.stderr
+
+
+def test_capture_retry_does_not_repeat_parent_timeout(tmp_path: Path, monkeypatch) -> None:
+    calls = 0
+
+    def timed_out(*args, **kwargs):  # noqa: ANN002, ANN003
+        nonlocal calls
+        calls += 1
+        raise CaptureError(
+            request_id="request",
+            command=[],
+            returncode=124,
+            stdout="",
+            stderr="timed out",
+        )
+
+    monkeypatch.setattr("fyi_archive.seed.capture_with_fyi_cli", timed_out)
+    with pytest.raises(CaptureError, match="exit 124"):
+        capture_with_retry(
+            SeedRequest(20000, "request-20000"),
+            tmp_path / "data",
+            tmp_path / "dist",
+            SeedCaps(max_runtime_minutes=1),
+            (),
+            retry_attempts=3,
+        )
+    assert calls == 1
 
 
 def test_run_seed_non_dry_run_records_capture_summary(tmp_path: Path, monkeypatch) -> None:

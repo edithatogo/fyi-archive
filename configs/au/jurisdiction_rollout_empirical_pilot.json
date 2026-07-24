@@ -1,0 +1,8 @@
+{
+  "instance_id": "au-rtk",
+  "shared_rate_limit_name": "archive-empirical-au-cth-nsw",
+  "jurisdictions": [
+    "NSW",
+    "FEDERAL"
+  ]
+}

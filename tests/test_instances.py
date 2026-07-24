@@ -227,13 +227,18 @@ def test_capture_with_fyi_cli_includes_base_url(monkeypatch: pytest.MonkeyPatch)
     recorded: list[list[str]] = []
 
     class Completed:
+        pid = 1
+        returncode = 0
         stdout = json.dumps({"derived_path": "data/raw/1/request.json"})
 
-    def fake_run(command: list[str], check: bool, capture_output: bool, text: bool) -> Completed:
+        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+            return self.stdout, ""
+
+    def fake_popen(command: list[str], **kwargs: object) -> Completed:
         recorded.append(list(command))
         return Completed()
 
-    monkeypatch.setattr("fyi_archive.seed.subprocess.run", fake_run)
+    monkeypatch.setattr("fyi_archive.seed.subprocess.Popen", fake_popen)
     summary = capture_with_fyi_cli(
         SeedRequest(request_id=42, url_title="r-42"),
         Path("data"),
@@ -260,25 +265,38 @@ def test_capture_with_fyi_cli_passes_rate_limiting_flags(monkeypatch: pytest.Mon
     recorded: list[list[str]] = []
 
     class Completed:
+        pid = 1
+        returncode = 0
         stdout = json.dumps({"derived_path": "data/raw/1/request.json"})
 
-    def fake_run(command: list[str], check: bool, capture_output: bool, text: bool) -> Completed:
+        def communicate(self, timeout: float | None = None) -> tuple[str, str]:
+            return self.stdout, ""
+
+    def fake_popen(command: list[str], **kwargs: object) -> Completed:
         recorded.append(list(command))
         return Completed()
 
-    monkeypatch.setattr("fyi_archive.seed.subprocess.run", fake_run)
+    monkeypatch.setattr("fyi_archive.seed.subprocess.Popen", fake_popen)
     capture_with_fyi_cli(
         SeedRequest(request_id=1, url_title="r-1"),
         Path("data"),
         Path("dist"),
         SeedCaps(),
-        ["--base-url", "https://fyi.org.nz", "--min-interval", "1.5", "--concurrency", "3"],
+        [
+            "--base-url",
+            "https://fyi.org.nz",
+            "--delay-seconds",
+            "1.5",
+            "--db",
+            "capture.db",
+            "--rate-limit-name",
+            "archive-capture-nz-fyi",
+        ],
     )
     cmd = recorded[0]
-    assert "--min-interval" in cmd
-    assert cmd[cmd.index("--min-interval") + 1] == "1.5"
-    assert "--concurrency" in cmd
-    assert cmd[cmd.index("--concurrency") + 1] == "3"
+    assert cmd[cmd.index("--delay-seconds") + 1] == "1.5"
+    assert cmd[cmd.index("--db") + 1] == "capture.db"
+    assert cmd[cmd.index("--rate-limit-name") + 1] == "archive-capture-nz-fyi"
 
 
 def test_seed_cli_dry_run_passes_rate_limiting(tmp_path: Path) -> None:

@@ -208,6 +208,33 @@ jobs:
           Path(".tmp/backfill-record-counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
 
+      - name: Merge process event logs
+        run: |
+          set -euo pipefail
+          mkdir -p dist/process-events
+          find .tmp/backfill-artifacts -name events.jsonl -type f -print0 \
+            | sort -z | xargs -0 cat > dist/process-events/events.jsonl
+          if [ ! -s dist/process-events/events.jsonl ]; then
+            echo "No process event rows were found; refusing to create a verified projection"
+            exit 1
+          fi
+          attachment_files=$(find .tmp/backfill-artifacts -name attachments.jsonl -type f -print | sort)
+          if [ -n "$attachment_files" ]; then
+            printf '%s\n' "$attachment_files" | xargs cat > dist/process-events/attachments.jsonl
+          fi
+          attachment_args=()
+          if [ -s dist/process-events/attachments.jsonl ]; then
+            attachment_args=(--attachments dist/process-events/attachments.jsonl)
+          fi
+          uv run fyi-archive process project \
+            --events dist/process-events/events.jsonl \
+            --manifest manifests/latest_manifest.json \
+            "${attachment_args[@]}" \
+            --output-dir dist/process-events/projection \
+            --snapshot-revision "historical-backfill-merge-${GITHUB_RUN_ID}"
+          uv run fyi-archive process verify \
+            --output-dir dist/process-events/projection
+
       - name: Generate merge provenance
         env:
           RUN_ID: ${{ github.run_id }}
@@ -218,6 +245,32 @@ jobs:
             --artifact manifests/latest_manifest.parquet \
             --artifact manifests/authorities.json \
             --fetch-label "historical-backfill-merge-${RUN_ID}"
+
+      - name: Upload verified process projection to Hugging Face
+        if: env.DRY_RUN != 'true'
+        env:
+          HF_REPO_ID: ${{ vars.HF_REPO_ID || 'edithatogo/fyi-archive-nz' }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          [ -n "$HF_TOKEN" ] || { echo "HF_TOKEN is required for process-log deposit"; exit 1; }
+          [ "$HF_REPO_ID" = "edithatogo/fyi-archive-nz" ] || {
+            echo "Refusing process-log upload to non-allowlisted dataset: $HF_REPO_ID"
+            exit 1
+          }
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          HfApi(token=os.environ["HF_TOKEN"]).upload_folder(
+              folder_path="dist/process-events",
+              path_in_repo="process-events",
+              repo_id=os.environ["HF_REPO_ID"],
+              repo_type="dataset",
+              token=os.environ["HF_TOKEN"],
+              commit_message="data: publish verified historical process projection",
+          )
+          PY
 
       - name: Persist merged backfill state
         if: env.DRY_RUN != 'true'
@@ -291,3 +344,4 @@ jobs:
             manifests/authorities.json
             dist/provenance.json
             dist/merge_backfill_dry_run.json
+            dist/process-events/**

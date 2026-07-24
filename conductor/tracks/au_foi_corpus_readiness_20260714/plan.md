@@ -5,7 +5,7 @@
 - [ ] Task: Define jurisdiction, outcome, time, agency, correspondence, and
       attachment strata with explicit unknown categories.
 - [ ] Task: Define source-rights, takedown, sensitive-data, and publication gates.
-- [ ] Task: Add manifest validation and cross-jurisdiction contamination tests.
+- [x] Task: Add manifest validation and cross-jurisdiction contamination tests.
 - [ ] Task: Pin the initial Commonwealth and NSW sampling frame.
 
 ## Phase 2: Capped pilot capture

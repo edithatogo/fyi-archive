@@ -72,7 +72,7 @@ jobs:
             --retry 1 --retry-delay 30 --max-time 180 \
             -A "fyi-archive-historical-core/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
             --get "https://web.archive.org/cdx/search/cdx" \
-            --data-urlencode "url=$HOST/request/*" \
+            --data-urlencode "url=$HOST/request" \
             --data-urlencode "output=json" \
             --data-urlencode "filter=statuscode:200" \
             --data-urlencode "fl=original,timestamp,digest" \

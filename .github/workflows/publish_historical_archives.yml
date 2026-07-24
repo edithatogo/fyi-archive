@@ -1,0 +1,124 @@
+name: Publish verified historical archives
+
+on:
+  workflow_dispatch:
+    inputs:
+      historical_run_id:
+        description: Completed all-instance historical inventory run ID
+        required: true
+        type: string
+      publish_to_huggingface:
+        description: Upload verified bundles to configured Hugging Face repositories
+        required: true
+        default: false
+        type: boolean
+      confirmation:
+        description: Type publish-historical-archives to permit remote writes
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify-and-publish:
+    runs-on: ubuntu-latest
+    env:
+      HISTORICAL_RUN_ID: ${{ inputs.historical_run_id }}
+      PUBLISH_TO_HUGGINGFACE: ${{ inputs.publish_to_huggingface }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
+        with:
+          name: all-instance-internet-archive-cdx-${{ inputs.historical_run_id }}
+          run-id: ${{ inputs.historical_run_id }}
+          github-token: ${{ github.token }}
+          path: .tmp/historical-run
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install locked runtime
+        run: uv sync --extra dev --frozen
+      - name: Verify immutable manifests and build publication bundles
+        run: |
+          set -euo pipefail
+          test -f .tmp/historical-run/summary.json
+          mkdir -p .tmp/verified-bundles
+          python - <<'PY'
+          import hashlib
+          import json
+          import shutil
+          from pathlib import Path
+
+          root = Path('.tmp/historical-run')
+          summary = json.loads((root / 'summary.json').read_text())
+          manifests = summary.get('manifests') or []
+          if not manifests:
+              raise SystemExit('manifest set is empty')
+          for manifest in manifests:
+              instance = manifest['instance_id']
+              canonical = dict(manifest)
+              declared = canonical.pop('manifest_sha256')
+              body = json.dumps(canonical, sort_keys=True, separators=(',', ':')).encode()
+              if hashlib.sha256(body).hexdigest() != declared:
+                  raise SystemExit(f'manifest hash mismatch: {instance}')
+              destination = Path('.tmp/verified-bundles') / instance
+              destination.mkdir(parents=True)
+              for artifact in manifest['artifacts']:
+                  source = root / artifact['name']
+                  if hashlib.sha256(source.read_bytes()).hexdigest() != artifact['sha256']:
+                      raise SystemExit(f'artifact hash mismatch: {instance}/{artifact["name"]}')
+                  shutil.copy2(source, destination / artifact['name'])
+              (destination / 'manifest.json').write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n')
+          PY
+      - name: Publish verified bundles to Hugging Face
+        if: env.PUBLISH_TO_HUGGINGFACE == 'true'
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          [ "$CONFIRMATION" = "publish-historical-archives" ] || { echo 'Exact publication confirmation is required' >&2; exit 1; }
+          [ -n "${HF_TOKEN:-}" ] || { echo 'HF_TOKEN is required' >&2; exit 1; }
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from fyi_archive.instances import get_instance
+          from huggingface_hub import HfApi
+
+          api = HfApi(token=os.environ['HF_TOKEN'])
+          verification = []
+          for bundle in sorted(Path('.tmp/verified-bundles').iterdir()):
+              repo_id = get_instance(bundle.name).hf_repo_id
+              api.create_repo(repo_id=repo_id, repo_type='dataset', exist_ok=True, token=os.environ['HF_TOKEN'])
+              commit = api.upload_folder(
+                  repo_id=repo_id,
+                  repo_type='dataset',
+                  folder_path=str(bundle),
+                  path_in_repo=f'historical-internet-archive/{bundle.name}',
+                  commit_message=f'data: publish verified historical archive {bundle.name}',
+                  token=os.environ['HF_TOKEN'],
+              )
+              remote = api.repo_info(repo_id=repo_id, repo_type='dataset', token=os.environ['HF_TOKEN'])
+              commit_sha = getattr(commit, 'oid', None)
+              remote_sha = getattr(remote, 'sha', None)
+              if not commit_sha or commit_sha != remote_sha:
+                  raise SystemExit(f'remote commit verification failed: {bundle.name}')
+              verification.append({'instance_id': bundle.name, 'repo_id': repo_id, 'commit_sha': commit_sha})
+              print(f'published and verified {bundle.name} to {repo_id} at {commit_sha}')
+          Path('.tmp/verified-bundles/remote-verification.json').write_text(
+              json.dumps({'schema': 'fyi-archive.huggingface-remote-verification.v1', 'repositories': verification}, indent=2, sort_keys=True) + '\n'
+          )
+          PY
+      - name: Upload verification evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: historical-publication-verification-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          path: .tmp/verified-bundles/

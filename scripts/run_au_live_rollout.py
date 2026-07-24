@@ -21,6 +21,8 @@ from fyi_archive.manifest import (
 from fyi_archive.rollout import load_rollout_config, write_rollout_state
 from fyi_archive.seed import requests_from_jsonl, run_seed
 
+LIVE_CAPTURE_CONFIRMATION = "I_CONFIRM_BOUNDED_READ_ONLY_CAPTURE"
+
 
 def _authority_slug(row: dict[str, Any]) -> str:
     return str(row.get("url_name") or row.get("URL name") or row.get("slug") or "").strip()
@@ -84,6 +86,8 @@ def discover_request_queue(
 
 
 def run_live_rollout(args: argparse.Namespace) -> dict[str, Any]:
+    if args.confirm_live_capture != LIVE_CAPTURE_CONFIRMATION:
+        raise ValueError("explicit live-capture confirmation is required")
     config = load_rollout_config(args.config)
     root = args.output_dir
     root.mkdir(parents=True, exist_ok=True)
@@ -137,15 +141,18 @@ def run_live_rollout(args: argparse.Namespace) -> dict[str, Any]:
             fyi_cli_args=[
                 "--base-url",
                 args.capture_base_url,
-                "--min-interval",
+                "--delay-seconds",
                 str(args.delay_seconds),
-                "--concurrency",
-                "1",
+                "--db",
+                str(args.rate_limit_db),
+                "--rate-limit-name",
+                f"archive-capture-{config['instance_id']}",
             ],
+            min_interval_seconds=args.delay_seconds,
             continue_on_error=args.continue_on_error,
         )
         manifest = build_manifest(
-            load_derived_records(jurisdiction_root / "derived" / "requests"),
+            load_derived_records(jurisdiction_root / "data" / "raw" / "requests"),
             args.fyi_cli_version,
             instance_id="au-rtk",
             jurisdiction=jurisdiction,
@@ -195,14 +202,19 @@ def main() -> int:
     parser.add_argument("--delay-seconds", type=float, default=2.0)
     parser.add_argument("--fyi-cli-version", required=True)
     parser.add_argument("--max-requests", type=int, default=50)
+    parser.add_argument("--max-bytes", type=int)
     parser.add_argument("--max-runtime-minutes", type=float, default=30.0)
+    parser.add_argument("--max-disk-gb", type=float)
+    parser.add_argument("--confirm-live-capture", required=True)
     parser.add_argument("--continue-on-error", action="store_true")
     args = parser.parse_args()
     from fyi_archive.seed import SeedCaps
 
     args.seed_caps = SeedCaps(
         max_requests=args.max_requests,
+        max_bytes=args.max_bytes,
         max_runtime_minutes=args.max_runtime_minutes,
+        max_disk_gb=args.max_disk_gb,
     )
     print(json.dumps(run_live_rollout(args), indent=2, sort_keys=True))
     return 0

@@ -232,17 +232,48 @@ def capture_with_fyi_cli(
         command.extend(["--max-runtime-minutes", str(caps.max_runtime_minutes)])
     if caps.max_disk_gb is not None:
         command.extend(["--max-disk-gb", str(caps.max_disk_gb)])
+    timeout_seconds: float | None = None
+    if caps.max_runtime_minutes is not None:
+        # Keep the parent bounded even when an upstream CLI or HTTP client
+        # ignores its own runtime option.
+        timeout_seconds = max(1.0, caps.max_runtime_minutes * 60 + 30)
+    creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    process = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        creationflags=creationflags,
+    )
     try:
-        completed = subprocess.run(command, check=True, capture_output=True, text=True)
-    except subprocess.CalledProcessError as error:
+        stdout, stderr = process.communicate(timeout=timeout_seconds)
+    except subprocess.TimeoutExpired as error:
+        if sys.platform == "win32":
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        else:
+            process.kill()
+        stdout, stderr = process.communicate()
         raise CaptureError(
             request_id=request.request_id,
             command=command,
-            returncode=error.returncode,
-            stdout=error.stdout or "",
-            stderr=error.stderr or "",
+            returncode=124,
+            stdout=stdout or str(error.stdout or ""),
+            stderr=stderr or str(error.stderr or "capture subprocess timed out"),
         ) from error
-    return json.loads(completed.stdout)
+    if process.returncode:
+        raise CaptureError(
+            request_id=request.request_id,
+            command=command,
+            returncode=process.returncode,
+            stdout=stdout or "",
+            stderr=stderr or "",
+        )
+    return json.loads(stdout)
 
 
 def capture_with_retry(
@@ -264,6 +295,8 @@ def capture_with_retry(
             return capture_with_fyi_cli(request, data_dir, dist_dir, caps, extra_args)
         except CaptureError as error:
             last_error = error
+            if error.returncode == 124:
+                raise
             if attempt >= attempts or not is_transient_capture_error(error):
                 raise
             time.sleep(max(0.0, retry_backoff_seconds) * attempt)

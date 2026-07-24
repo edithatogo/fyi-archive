@@ -5,6 +5,66 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.15.1](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.15.0...fyi_archive-v0.15.1) (2026-07-21)
+
+
+### Bug Fixes
+
+* bound live fyi-cli capture subprocesses ([a2b57a6](https://github.com/edithatogo/fyi-archive/commit/a2b57a646ea4773b582098dd8db08d39cd245591))
+* bound live fyi-cli capture subprocesses ([#220](https://github.com/edithatogo/fyi-archive/issues/220)) ([7d6a2b4](https://github.com/edithatogo/fyi-archive/commit/7d6a2b409397636de1dcbb38ba57f791c7960b63))
+* make capture timeouts terminal ([780a8c3](https://github.com/edithatogo/fyi-archive/commit/780a8c3d584f4f3f7438021c7278c8a50d2c5457))
+* make capture timeouts terminal ([#222](https://github.com/edithatogo/fyi-archive/issues/222)) ([f249df0](https://github.com/edithatogo/fyi-archive/commit/f249df0eb3ad84286f93e12e026b1e15d24a3a80))
+* resolve canonical live request slugs ([79c9cc9](https://github.com/edithatogo/fyi-archive/commit/79c9cc942aa49762099c0d7b35848f006a011305))
+* resolve canonical live request slugs ([#223](https://github.com/edithatogo/fyi-archive/issues/223)) ([090fdfb](https://github.com/edithatogo/fyi-archive/commit/090fdfb3aeef40fc2500dc439bc6bcc8615c7c7d))
+* terminate timed out capture process trees ([ead77ba](https://github.com/edithatogo/fyi-archive/commit/ead77ba6a2313e3e734d17cd2c8127fa1cdf382e))
+
+## [0.15.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.14.0...fyi_archive-v0.15.0) (2026-07-21)
+
+
+### Features
+
+* validate versioned FOI-O derived manifests ([#213](https://github.com/edithatogo/fyi-archive/issues/213)) ([5e835a1](https://github.com/edithatogo/fyi-archive/commit/5e835a1b5195b913a3f6fef260ab7046593cccb8))
+
+## [0.14.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.13.0...fyi_archive-v0.14.0) (2026-07-21)
+
+
+### Features
+
+* refresh HF card from verified sync metadata ([#204](https://github.com/edithatogo/fyi-archive/issues/204)) ([74481da](https://github.com/edithatogo/fyi-archive/commit/74481dab64215a77ae5ee32c722927fddbd26f16))
+
+
+### Bug Fixes
+
+* allow empty process logs in backfill merges ([#209](https://github.com/edithatogo/fyi-archive/issues/209)) ([ed3154c](https://github.com/edithatogo/fyi-archive/commit/ed3154c3ae31a6a62656fd76c1055c251b26dd4b))
+* discover process logs in downloaded artifacts ([#208](https://github.com/edithatogo/fyi-archive/issues/208)) ([16171ba](https://github.com/edithatogo/fyi-archive/commit/16171babd377db9f133defc67918f0c2c1a77156))
+
+## [0.13.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.12.0...fyi_archive-v0.13.0) (2026-07-21)
+
+
+### Features
+
+* add opt-in Sigstore release signing ([#186](https://github.com/edithatogo/fyi-archive/issues/186)) ([a3fdad1](https://github.com/edithatogo/fyi-archive/commit/a3fdad194e08981c1fe4ec41c8b80ffb51bfc2a3))
+* consume fyi-cli process event projections ([#198](https://github.com/edithatogo/fyi-archive/issues/198)) ([a5efdc8](https://github.com/edithatogo/fyi-archive/commit/a5efdc8857291653090b5de30e5a5383140c1ce6))
+
+
+### Bug Fixes
+
+* map fyi-cli logical request ids ([#201](https://github.com/edithatogo/fyi-archive/issues/201)) ([2fe6279](https://github.com/edithatogo/fyi-archive/commit/2fe62791a3ea62842978c86701fb4d5f1f9fa9e3))
+* normalize live capture directory ids ([#199](https://github.com/edithatogo/fyi-archive/issues/199)) ([99b0b2e](https://github.com/edithatogo/fyi-archive/commit/99b0b2ef96b63be824e7e8bfdae4b359f00c257b))
+* pin fyi-cli exporter commit ([#203](https://github.com/edithatogo/fyi-archive/issues/203)) ([5370f92](https://github.com/edithatogo/fyi-archive/commit/5370f92ed6e4a257a9ee52bd06657e117770fdfe))
+
+## [0.12.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.11.1...fyi_archive-v0.12.0) (2026-07-14)
+
+
+### Features
+
+* adopt FOI-O capability declarations ([#191](https://github.com/edithatogo/fyi-archive/issues/191)) ([192b981](https://github.com/edithatogo/fyi-archive/commit/192b9816314fbaaeca4e464215bd2e74bb255f03))
+
+
+### Documentation
+
+* refresh health evidence status ([#184](https://github.com/edithatogo/fyi-archive/issues/184)) ([70d58d5](https://github.com/edithatogo/fyi-archive/commit/70d58d5358b433d42d7fc8e6d7a7a6d6916697d7))
+
 ## [0.11.1](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.11.0...fyi_archive-v0.11.1) (2026-07-13)
 
 
