@@ -5,6 +5,20 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.16.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.15.2...fyi_archive-v0.16.0) (2026-07-24)
+
+
+### Features
+
+* add separate recurring FOI site snapshots ([dfef793](https://github.com/edithatogo/fyi-archive/commit/dfef793b39843aff07598d76d5d09402d8e2c09d))
+* implement remaining archive readiness contracts ([283654a](https://github.com/edithatogo/fyi-archive/commit/283654ae6c1011280771030c7803a883e3d9b859))
+
+
+### Bug Fixes
+
+* **ci:** authenticate Codecov with OIDC ([deef659](https://github.com/edithatogo/fyi-archive/commit/deef659388772b861b70860d84cc000bdb57e20c))
+* type historical archive helpers ([15ee321](https://github.com/edithatogo/fyi-archive/commit/15ee32131751bf51277000783c75b1711ee0b6a3))
+
 ## [0.15.2](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.15.1...fyi_archive-v0.15.2) (2026-07-24)
 
 
