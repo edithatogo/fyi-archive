@@ -56,3 +56,79 @@ def test_matrix_rejects_unknown_instance_or_capture_mode() -> None:
         workflow_matrix(REGISTRY, instance_id="not-configured")
     with pytest.raises(ValueError, match="unsupported CDX capture mode"):
         workflow_matrix(REGISTRY, capture_mode="all")
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (lambda payload: payload.update(schema_version="bad"), "unsupported Internet Archive"),
+        (lambda payload: payload.update(defaults={}), "bounded Alaveteli request path"),
+        (lambda payload: payload.update(targets=[]), "at least one target"),
+        (lambda payload: payload.update(targets=["not-an-object"]), "target must be an object"),
+        (
+            lambda payload: payload.update(
+                targets=[
+                    {"instance_id": "invalid/id", "platform": "alaveteli", "host": "example.test"}
+                ]
+            ),
+            "unique, URL-safe instance_id",
+        ),
+        (
+            lambda payload: payload.update(
+                targets=[{"instance_id": "test", "platform": "other", "host": "example.test"}]
+            ),
+            "explicitly classified as Alaveteli",
+        ),
+        (
+            lambda payload: payload.update(
+                targets=[
+                    {"instance_id": "test", "platform": "alaveteli", "host": "example.test/path"}
+                ]
+            ),
+            "bare hostname",
+        ),
+        (
+            lambda payload: payload.update(
+                targets=[
+                    {
+                        "instance_id": "test",
+                        "platform": "alaveteli",
+                        "host": "example.test",
+                        "tier": 2,
+                    }
+                ]
+            ),
+            "Tier 1",
+        ),
+    ],
+)
+def test_registry_rejects_invalid_automated_target_contracts(
+    tmp_path: Path, mutate: object, message: str
+) -> None:
+    payload = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    mutate(payload)  # type: ignore[operator]
+    path = tmp_path / "registry.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        load_registry(path)
+
+
+def test_registry_rejects_non_alaveteli_target_that_is_capture_eligible(tmp_path: Path) -> None:
+    payload = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    payload["non_alaveteli_targets"] = [
+        {
+            "instance_id": "example",
+            "platform": "portal",
+            "host": "example.test",
+            "adapter_id": "portal-v1",
+            "request_path_pattern": "/requests/*",
+            "rights_review_status": "pending",
+            "capture_eligible": True,
+        }
+    ]
+    path = tmp_path / "registry.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="catalogued only"):
+        load_registry(path)
