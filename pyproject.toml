@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "fyi_archive"
-version = "0.11.1"
+version = "0.15.1"
 description = "Orchestration scaffold for gentle, read-only archival of configurable public information services."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -61,8 +61,8 @@ dependencies = [
   # Publishing
   "huggingface_hub[hf_xet]>=0.27.0",
   # fyi-cli (the source tool) — version-pinned and locked from GitHub by uv.
-  # Pinned at its current 1.1.0; an assertion test guards against silent upstream drift.
-  "fyi-cli==1.2.0",
+  # Pin the capture tool commit explicitly; an assertion test guards against silent drift.
+  "fyi-cli==1.2.1",
 ]
 
 [project.optional-dependencies]
@@ -105,8 +105,8 @@ versioning = "semver"
 logging = "loguru"
 
 [tool.uv.sources]
-# Pin the capture tool to a published release; upgrades are deliberate and lockfile-backed.
-fyi-cli = { git = "https://github.com/edithatogo/fyi-cli", tag = "v1.2.0" }
+# Pin the capture tool fix while its release PR is reviewed; upgrade the rev with the release tag.
+fyi-cli = { git = "https://github.com/edithatogo/fyi-cli", rev = "a93bca3a8272d15eb3d8eacd7a92cacde839dc65" }
 
 # --------------------------------------------------------------------------- #
 # Ruff — mirror the family rule set (corpus-cases-medilegal-nz)
@@ -286,7 +286,7 @@ exclude_lines = [
 # --------------------------------------------------------------------------- #
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "."]
 asyncio_mode = "auto"
 markers = [
   "unit: fast, isolated unit tests",

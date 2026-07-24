@@ -1,0 +1,123 @@
+name: Parallel all-instance Internet Archive indexes
+
+on:
+  workflow_dispatch:
+    inputs:
+      cdx_limit_per_instance:
+        description: Maximum CDX rows per configured instance
+        required: true
+        default: "5000"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  enumerate:
+    runs-on: ubuntu-latest
+    outputs:
+      instances: ${{ steps.instances.outputs.instances }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --extra dev --frozen
+      - id: instances
+        run: |
+          uv run python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from fyi_archive.instances import list_instances
+          print("instances=" + json.dumps([
+              {"id": item.id, "base_url": item.base_url, "status": item.status}
+              for item in list_instances() if "internet_archive" in item.source_modes
+          ], separators=(",", ":")))
+          PY
+
+  capture:
+    needs: enumerate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        instance: ${{ fromJSON(needs.enumerate.outputs.instances) }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --extra dev --frozen
+      - name: Capture and build instance bundle
+        env:
+          INSTANCE_ID: ${{ matrix.instance.id }}
+          BASE_URL: ${{ matrix.instance.base_url }}
+          CDX_LIMIT: ${{ inputs.cdx_limit_per_instance || '5000' }}
+        run: |
+          set -euo pipefail
+          case "$CDX_LIMIT" in ''|*[!0-9]*) exit 1;; esac
+          test "$CDX_LIMIT" -ge 1 && test "$CDX_LIMIT" -le 100000
+          root=.tmp/instance
+          mkdir -p "$root"
+          host="${BASE_URL#https://}"; host="${host#http://}"; host="${host%%/*}"
+          uv run python scripts/fetch_internet_archive_cdx.py \
+            --url-pattern "${host}/request/*" \
+            --limit "${CDX_LIMIT}" \
+            --retries 5 \
+            --backoff 10 \
+            --output "$root/${INSTANCE_ID}.json"
+          uv run python scripts/import_historical_sources.py --internet-archive-cdx "$root/${INSTANCE_ID}.json" --instance-id "$INSTANCE_ID" --output "$root/${INSTANCE_ID}.historical-index.json"
+          uv run python scripts/filter_historical_request_pages.py --input "$root/${INSTANCE_ID}.historical-index.json" --output "$root/${INSTANCE_ID}.request-pages-index.json"
+          uv run python scripts/enrich_historical_core.py --historical-index "$root/${INSTANCE_ID}.request-pages-index.json" --instance-id "$INSTANCE_ID" --limit 25 --delay-seconds 3 --timeout-seconds 15 --output "$root/${INSTANCE_ID}.historical-core.json"
+          uv run python - "$INSTANCE_ID" "$root" <<'PY'
+          import hashlib, json, sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+          instance, root = sys.argv[1:]
+          paths = sorted(Path(root).glob(f"{instance}.*"))
+          status = {"schema": "fyi-archive.historical-core-status.v1", "instance_id": instance, "generated_at": datetime.now(timezone.utc).isoformat(), "replay_limit_per_instance": 25, "replay_delay_seconds": 3, "replay_timeout_seconds": 15, "artifacts": {p.name: {"byte_count": p.stat().st_size, "sha256": hashlib.sha256(p.read_bytes()).hexdigest()} for p in paths}}
+          Path(root, f"{instance}.status.json").write_text(json.dumps(status, indent=2, sort_keys=True) + "\n")
+          PY
+          uv run python scripts/build_historical_archive_manifest.py --root "$root" --instance-id "$INSTANCE_ID" --output "$root/${INSTANCE_ID}.manifest.json"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: historical-instance-${{ matrix.instance.id }}
+          retention-days: 90
+          path: .tmp/instance/
+
+  aggregate:
+    needs: capture
+    if: ${{ always() && needs.capture.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --extra dev --frozen
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
+        with:
+          pattern: historical-instance-*
+          path: .tmp/parallel
+          merge-multiple: true
+      - name: Build manifest set
+        run: |
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+          manifests = [json.loads(p.read_text()) for p in sorted(Path('.tmp/parallel').glob('*.manifest.json'))]
+          if not manifests: raise SystemExit('no instance manifests')
+          Path('.tmp/parallel/summary.json').write_text(json.dumps({'schema': 'fyi-archive.immutable-historical-manifest-set.v1', 'manifests': manifests}, indent=2, sort_keys=True) + '\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: all-instance-internet-archive-cdx-${{ github.run_id }}
+          retention-days: 90
+          path: .tmp/parallel/

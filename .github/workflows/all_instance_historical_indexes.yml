@@ -1,0 +1,191 @@
+name: All-instance Internet Archive indexes
+
+on:
+  workflow_dispatch:
+    inputs:
+      cdx_limit_per_instance:
+        description: Maximum CDX rows per configured instance
+        required: true
+        default: "5000"
+        type: string
+  schedule:
+    - cron: "37 19 * * 0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: all-instance-historical-indexes
+  cancel-in-progress: false
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CDX_LIMIT_PER_INSTANCE: ${{ inputs.cdx_limit_per_instance || '5000' }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install locked runtime
+        run: uv sync --extra dev --frozen
+      - name: Enumerate configured instances
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY' > .tmp-instances.tsv
+          from fyi_archive.instances import list_instances
+          for instance in list_instances():
+              if "internet_archive" in instance.source_modes:
+                  print(instance.id, instance.base_url, instance.status, sep="\t")
+          PY
+          test -s .tmp-instances.tsv
+          mkdir -p .tmp/all-instance-cdx
+      - name: Download bounded CDX inventories
+        run: |
+          set -euo pipefail
+          case "$CDX_LIMIT_PER_INSTANCE" in
+            ''|*[!0-9]*) echo 'CDX_LIMIT_PER_INSTANCE must be an integer' >&2; exit 1 ;;
+          esac
+          if [ "$CDX_LIMIT_PER_INSTANCE" -lt 1 ] || [ "$CDX_LIMIT_PER_INSTANCE" -gt 100000 ]; then
+            echo 'CDX_LIMIT_PER_INSTANCE must be between 1 and 100000' >&2
+            exit 1
+          fi
+          while IFS=$'\t' read -r instance_id base_url status; do
+            host="${base_url#https://}"
+            host="${host#http://}"
+            host="${host%%/*}"
+            output=".tmp/all-instance-cdx/${instance_id}.json"
+            source_status=".tmp/all-instance-cdx/${instance_id}.status.json"
+            query_url="https://web.archive.org/cdx/search/cdx?url=${host}/request&matchType=prefix&output=json&filter=statuscode:200&fl=original,timestamp,digest,statuscode,length&collapse=urlkey&limit=${CDX_LIMIT_PER_INSTANCE}"
+            if curl --fail-with-body --location --silent --show-error \
+              --retry 1 --retry-delay 30 --max-time 300 \
+              -A "fyi-archive-all-instance-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
+              --get "https://web.archive.org/cdx/search/cdx" \
+              --data-urlencode "url=${host}/request" \
+              --data-urlencode "matchType=prefix" \
+              --data-urlencode "output=json" \
+              --data-urlencode "filter=statuscode:200" \
+              --data-urlencode "fl=original,timestamp,digest,statuscode,length" \
+              --data-urlencode "collapse=urlkey" \
+              --data-urlencode "limit=${CDX_LIMIT_PER_INSTANCE}" \
+              --output "$output"; then
+              result="retrieved"
+            else
+              printf '[]\n' > "$output"
+              result="retrieval_failed"
+            fi
+            uv run python - "$instance_id" "$base_url" "$status" "$query_url" "$output" "$source_status" "$result" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          instance_id, base_url, status, query_url, output, status_path, result = sys.argv[1:]
+          path = Path(output)
+          payload = json.loads(path.read_text(encoding="utf-8"))
+          rows = max(0, len(payload) - 1) if isinstance(payload, list) else 0
+          record = {
+              "schema": "fyi-archive.internet-archive-cdx-status.v1",
+              "instance_id": instance_id,
+              "base_url": base_url,
+              "registry_status": status,
+              "query_url": query_url,
+              "retrieved_at": datetime.now(timezone.utc).isoformat(),
+              "result": result,
+              "record_count": rows,
+              "byte_count": path.stat().st_size,
+              "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+          }
+          Path(status_path).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          print(f"{instance_id}: {result}, rows={rows}")
+          PY
+          done < .tmp-instances.tsv
+      - name: Build inventory summary
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          statuses = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(Path(".tmp/all-instance-cdx").glob("*.status.json"))]
+          summary = {
+              "schema": "fyi-archive.all-instance-internet-archive-index.v1",
+              "generated_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
+              "instance_count": len(statuses),
+              "retrieved_count": sum(item["result"] == "retrieved" for item in statuses),
+              "total_cdx_rows": sum(item["record_count"] for item in statuses),
+              "instances": statuses,
+          }
+          Path(".tmp/all-instance-cdx/summary.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+      - name: Import, filter, and enrich canonical request pages
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/all-instance-core
+          while IFS=$'\t' read -r instance_id base_url status; do
+            cdx=".tmp/all-instance-cdx/${instance_id}.json"
+            imported=".tmp/all-instance-core/${instance_id}.historical-index.json"
+            filtered=".tmp/all-instance-core/${instance_id}.request-pages-index.json"
+            core=".tmp/all-instance-core/${instance_id}.historical-core.json"
+            uv run python scripts/import_historical_sources.py --internet-archive-cdx "$cdx" --instance-id "$instance_id" --output "$imported"
+            uv run python scripts/filter_historical_request_pages.py --input "$imported" --output "$filtered"
+            uv run python scripts/enrich_historical_core.py --historical-index "$filtered" --instance-id "$instance_id" --limit 25 --delay-seconds 3 --timeout-seconds 15 --user-agent "fyi-archive-all-instance-replay/1.0 (+https://github.com/${GITHUB_REPOSITORY})" --output "$core"
+            uv run python - "$instance_id" "$cdx" "$imported" "$filtered" "$core" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          instance_id, cdx, imported, filtered, core = sys.argv[1:]
+          paths = [Path(item) for item in (cdx, imported, filtered, core)]
+          status = {
+              "schema": "fyi-archive.historical-core-status.v1",
+              "instance_id": instance_id,
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "replay_limit_per_instance": 25,
+              "replay_delay_seconds": 3,
+              "replay_timeout_seconds": 15,
+              "artifacts": {path.name: {"byte_count": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()} for path in paths},
+          }
+          Path(f".tmp/all-instance-core/{instance_id}.status.json").write_text(json.dumps(status, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+          PY
+          done < .tmp-instances.tsv
+      - name: Create immutable manifests
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/all-instance-manifests
+          while IFS=$'\t' read -r instance_id base_url status; do
+            uv run python scripts/build_historical_archive_manifest.py \
+              --root .tmp/all-instance-core \
+              --instance-id "$instance_id" \
+              --output ".tmp/all-instance-manifests/${instance_id}.manifest.json"
+          done < .tmp-instances.tsv
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifests = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(Path(".tmp/all-instance-manifests").glob("*.manifest.json"))]
+          if not manifests:
+              raise SystemExit("no immutable manifests created")
+          Path(".tmp/all-instance-manifests/summary.json").write_text(
+              json.dumps({"schema": "fyi-archive.immutable-historical-manifest-set.v1", "manifests": manifests}, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Retain all-instance CDX evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: all-instance-internet-archive-cdx-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          path: |
+            .tmp/all-instance-cdx/
+            .tmp/all-instance-core/
+            .tmp/all-instance-manifests/

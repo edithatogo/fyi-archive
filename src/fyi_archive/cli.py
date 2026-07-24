@@ -14,6 +14,7 @@ from fyi_archive.commands.backfill import app as backfill_app
 from fyi_archive.commands.discover import app as discover_app
 from fyi_archive.commands.doctor import app as doctor_app
 from fyi_archive.commands.manifest import app as manifest_app
+from fyi_archive.commands.process import app as process_app
 from fyi_archive.commands.publish import app as publish_app
 from fyi_archive.commands.seed import app as seed_app
 from fyi_archive.commands.sync import app as sync_app
@@ -40,6 +41,7 @@ app.add_typer(discover_app, name="discover")
 app.add_typer(backfill_app, name="backfill")
 app.add_typer(manifest_app, name="manifest")
 app.add_typer(publish_app, name="publish")
+app.add_typer(process_app, name="process")
 app.add_typer(seed_app, name="seed")
 app.add_typer(sync_app, name="sync")
 

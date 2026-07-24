@@ -5,12 +5,13 @@ items into a concrete track when ready to act.
 
 ## Candidates
 
-- [ ] Review and enable optional Sigstore/cosign keyless signing for release artifacts
+- [~] Review and enable optional Sigstore/cosign keyless signing for release artifacts
       after `publish_archives.yml` and the Zenodo production gate are stable. See
       `docs/sigstore-signing.md`.
-      **Status (2026-07-13):** intentionally not promoted. Release `0.11.1`
-      attaches SBOM/provenance evidence and production Zenodo DOI publication
-      is now verified, but release payload signing has not yet been exercised.
+      **Status (2026-07-13):** opt-in workflow implemented and pinned, but not
+      dispatched. Release `0.11.1` attaches SBOM/provenance evidence and
+      production Zenodo DOI publication is verified; signing remains gated by
+      the `sigstore-production` environment and explicit confirmation.
 
 ## Operational (active)
 

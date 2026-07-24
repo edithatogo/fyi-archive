@@ -1,0 +1,73 @@
+name: Sign Release Artifacts (Opt-In)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing GitHub release tag whose evidence assets should be signed
+        required: true
+        type: string
+      confirm:
+        description: Type sign-release-artifacts to enable keyless signing
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  sign:
+    if: inputs.confirm == 'sign-release-artifacts'
+    runs-on: ubuntu-latest
+    environment: sigstore-production
+    permissions:
+      contents: write
+      id-token: write
+    env:
+      GH_TOKEN: ${{ secrets.WORKFLOW_PAT }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+    steps:
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+
+      - name: Download and validate release evidence
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp/release-assets
+          gh release download "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern 'provenance.json' \
+            --pattern 'sbom.cdx.json' \
+            --dir .tmp/release-assets
+          test -s .tmp/release-assets/provenance.json
+          test -s .tmp/release-assets/sbom.cdx.json
+          find .tmp/release-assets -maxdepth 1 -type f -printf '%f\n' | sort
+
+      - name: Sign release evidence with keyless Sigstore
+        run: |
+          set -euo pipefail
+          for artifact in .tmp/release-assets/provenance.json .tmp/release-assets/sbom.cdx.json; do
+            cosign sign-blob --yes \
+              --bundle "$artifact.sigstore.json" \
+              "$artifact"
+          done
+
+      - name: Verify signatures before publication
+        run: |
+          set -euo pipefail
+          for artifact in .tmp/release-assets/provenance.json .tmp/release-assets/sbom.cdx.json; do
+            cosign verify-blob \
+              --bundle "$artifact.sigstore.json" \
+              --certificate-identity-regexp "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/.*" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              "$artifact"
+          done
+
+      - name: Attach verified Sigstore bundles
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          token: ${{ secrets.WORKFLOW_PAT }}
+          tag_name: ${{ inputs.release_tag }}
+          files: |
+            .tmp/release-assets/provenance.json.sigstore.json
+            .tmp/release-assets/sbom.cdx.json.sigstore.json
