@@ -5,6 +5,7 @@
 
 [![CI](https://github.com/edithatogo/fyi-archive/actions/workflows/tests.yml/badge.svg)](https://github.com/edithatogo/fyi-archive/actions/workflows/tests.yml)
 [![Quality](https://github.com/edithatogo/fyi-archive/actions/workflows/code_quality.yml/badge.svg)](https://github.com/edithatogo/fyi-archive/actions/workflows/code_quality.yml)
+[![Codecov](https://codecov.io/gh/edithatogo/fyi-archive/branch/main/graph/badge.svg)](https://codecov.io/gh/edithatogo/fyi-archive)
 [![Python 3.12](https://img.shields.io/badge/python-3.12+-blue)](https://www.python.org/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
