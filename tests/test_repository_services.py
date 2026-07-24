@@ -29,3 +29,5 @@ def test_codecov_policy_matches_repository_coverage_floor() -> None:
     assert "disable_search: true" in workflow
     assert "fail_ci_if_error: true" in workflow
     assert "flags: unit" in workflow
+    assert "id-token: write" in workflow
+    assert "use_oidc: true" in workflow

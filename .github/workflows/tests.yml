@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   tests:
@@ -46,6 +47,7 @@ jobs:
           files: ./coverage.xml
           flags: unit
           name: python-3.12
+          use_oidc: true
       - name: Check version and release consistency
         run: |
           set -euo pipefail
