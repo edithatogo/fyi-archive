@@ -29,6 +29,13 @@ reconciliation report. It classifies URLs as `live_captured` or
 `archive_only_candidate`; it does not treat Wayback evidence as a substitute
 for `fyi-cli` live capture.
 
+`alaveteli_historical_indexes.yml` obtains the bounded `url_index` view for
+routine discovery. `alaveteli_historical_all_captures.yml` is manual-only and
+requires an exact confirmation before exporting uncollapsed capture metadata.
+The latter is an index export, not replayed page content: an immutable manifest
+still requires independent rights review, recovered-content provenance, source
+validation, and a hash-bound human approval.
+
 ## GitHub Actions
 
 The `Historical source indexes` workflow refreshes both inputs weekly and can

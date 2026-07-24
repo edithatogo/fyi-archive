@@ -1,22 +1,38 @@
-name: Alaveteli historical indexes
+name: Alaveteli historical all-captures export
 
 on:
-  schedule:
-    # Monthly refresh from Internet Archive only; no origin-site traffic.
-    - cron: "27 3 1 * *"
   workflow_dispatch:
     inputs:
-      cdx_limit:
-        description: Maximum archived request URLs per deployment
+      instance_id:
+        description: Configured Alaveteli instance ID, or all for every configured instance
+        required: true
+        default: au-rtk
+        type: string
+      page_size:
+        description: CDX records per page
         required: true
         default: "1000"
+        type: string
+      max_pages:
+        description: Hard cap on CDX pages; the export fails rather than becoming partial
+        required: true
+        default: "100"
+        type: string
+      max_runtime_seconds:
+        description: Whole-run CDX deadline per instance
+        required: true
+        default: "600"
+        type: string
+      confirm:
+        description: Enter EXPORT_ALL_CAPTURE_METADATA to retrieve complete capture metadata
+        required: true
         type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: alaveteli-historical-indexes
+  group: alaveteli-historical-all-captures
   cancel-in-progress: false
 
 jobs:
@@ -34,27 +50,37 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: uv sync --extra dev --frozen
-      - name: Validate registry and build bounded matrix
+      - name: Validate explicit full-capture confirmation
+        run: |
+          set -euo pipefail
+          test "${{ inputs.confirm }}" = "EXPORT_ALL_CAPTURE_METADATA"
+      - name: Validate registry and build all-captures matrix
         id: matrix
+        env:
+          INSTANCE_ID: ${{ inputs.instance_id }}
         run: |
           set -euo pipefail
           uv run python scripts/build_internet_archive_matrix.py --validate
-          matrix="$(uv run python scripts/build_internet_archive_matrix.py)"
+          args=(--capture-mode all_captures)
+          if [ "$INSTANCE_ID" != "all" ]; then args+=(--instance-id "$INSTANCE_ID"); fi
+          matrix="$(uv run python scripts/build_internet_archive_matrix.py "${args[@]}")"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
-  index:
+  export:
     needs: prepare-matrix
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix: ${{ fromJSON(needs.prepare-matrix.outputs.matrix) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     env:
-      CDX_LIMIT: ${{ inputs.cdx_limit || '1000' }}
-      INSTANCE: ${{ matrix.instance }}
-      HOST: ${{ matrix.host }}
-      REQUEST_PATH: ${{ matrix.request_path }}
       CAPTURE_MODE: ${{ matrix.capture_mode }}
+      HOST: ${{ matrix.host }}
+      INSTANCE: ${{ matrix.instance }}
+      MAX_PAGES: ${{ inputs.max_pages }}
+      MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds }}
+      PAGE_SIZE: ${{ inputs.page_size }}
+      REQUEST_PATH: ${{ matrix.request_path }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -65,7 +91,7 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: uv sync --extra dev --frozen
-      - name: Download Internet Archive CDX index
+      - name: Export complete capture metadata only
         run: |
           set -euo pipefail
           mkdir -p ".tmp/$INSTANCE"
@@ -74,22 +100,16 @@ jobs:
             --host "$HOST" \
             --url-pattern "$HOST$REQUEST_PATH" \
             --capture-mode "$CAPTURE_MODE" \
-            --page-size "$CDX_LIMIT" \
-            --max-pages 100 \
-            --output ".tmp/$INSTANCE/internet_archive_cdx.json" \
+            --page-size "$PAGE_SIZE" \
+            --max-pages "$MAX_PAGES" \
+            --max-runtime-seconds "$MAX_RUNTIME_SECONDS" \
+            --output ".tmp/$INSTANCE/internet_archive_all_captures_cdx.json" \
             --evidence ".tmp/$INSTANCE/retrieval.json"
-      - name: Build provenance-preserving index
-        run: |
-          set -euo pipefail
-          uv run python scripts/import_historical_sources.py \
-            --internet-archive-cdx ".tmp/$INSTANCE/internet_archive_cdx.json" \
-            --instance-id "$INSTANCE" \
-            --output ".tmp/$INSTANCE/historical-source-index.json"
-      - name: Upload historical evidence
+      - name: Upload complete-capture evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: alaveteli-historical-${{ matrix.instance }}-${{ github.run_id }}
+          name: alaveteli-all-captures-${{ matrix.instance }}-${{ github.run_id }}
           retention-days: 90
           if-no-files-found: error
           path: .tmp/${{ matrix.instance }}/

@@ -23,8 +23,14 @@ bounded ID queue is only a safety fallback when request-feed discovery is not
 available; it is never expanded automatically.
 
 For deployments whose live API is unavailable, the monthly `Alaveteli historical
-indexes` workflow queries Internet Archive CDX indexes only. Its artifacts are
-historical evidence and do not imply complete coverage or successful live
-capture. Operator-supplied Atom/JSON exports can be imported with
+indexes` workflow queries Internet Archive CDX in `url_index` mode only: one
+record per archived URL. Its artifacts are historical evidence and do not imply
+complete capture-version coverage or successful live capture. The manual-only
+`Alaveteli historical all-captures export` workflow removes URL collapsing and
+requires the `EXPORT_ALL_CAPTURE_METADATA` confirmation. It records every
+reported timestamped CDX record or fails without producing a partial export;
+it does not replay pages, publish, or create an empirical manifest.
+
+Operator-supplied Atom/JSON exports can be imported with
 `scripts/import_historical_sources.py`; the importer records input checksums,
 instance identity, and source mode.

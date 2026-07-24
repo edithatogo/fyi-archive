@@ -58,18 +58,16 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .tmp/historical-source-inputs
-          curl --fail-with-body --location --silent --show-error \
-            --retry 1 --retry-delay 60 --max-time 300 \
-            -A "fyi-archive-historical-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
-            --get "https://web.archive.org/cdx/search/cdx" \
-            --data-urlencode "url=www.righttoknow.org.au/request" \
-            --data-urlencode "output=json" \
-            --data-urlencode "filter=statuscode:200" \
-            --data-urlencode "fl=original,timestamp,digest" \
-            --data-urlencode "collapse=urlkey" \
-            --data-urlencode "limit=${CDX_LIMIT}" \
-            --output .tmp/historical-source-inputs/internet_archive_cdx.json
-          test -s .tmp/historical-source-inputs/internet_archive_cdx.json
+          uv run python scripts/fetch_complete_internet_archive_cdx.py \
+            --instance-id au-rtk \
+            --host www.righttoknow.org.au \
+            --url-pattern "www.righttoknow.org.au/request" \
+            --capture-mode url_index \
+            --page-size "$CDX_LIMIT" \
+            --max-pages 100 \
+            --max-runtime-seconds 300 \
+            --output .tmp/historical-source-inputs/internet_archive_cdx.json \
+            --evidence .tmp/historical-source-inputs/internet_archive_retrieval.json
       - name: Record source-input provenance
         run: |
           set -euo pipefail
@@ -80,13 +78,12 @@ jobs:
           from pathlib import Path
 
           inputs = {}
-          for name in ("morph.csv", "internet_archive_cdx.json"):
+          for name in ("morph.csv", "internet_archive_cdx.json", "internet_archive_retrieval.json"):
               path = Path(".tmp/historical-source-inputs") / name
-              digest = hashlib.sha256(path.read_bytes()).hexdigest()
               inputs[name] = {
                   "path": path.as_posix(),
                   "byte_count": path.stat().st_size,
-                  "sha256": digest,
+                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
               }
           provenance = {
               "schema": "fyi-archive.historical-source-input-provenance.v1",
@@ -97,8 +94,7 @@ jobs:
               "secret_values_recorded": False,
           }
           Path(".tmp/historical-source-inputs/provenance.json").write_text(
-              json.dumps(provenance, indent=2, sort_keys=True) + "\n",
-              encoding="utf-8",
+              json.dumps(provenance, indent=2, sort_keys=True) + "\n", encoding="utf-8"
           )
           PY
       - name: Build provenance-preserving historical index
@@ -121,6 +117,7 @@ jobs:
           print(f"historical records={payload['record_count']}")
           PY
       - name: Retain historical source evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: historical-source-index-${{ github.run_id }}
@@ -129,5 +126,6 @@ jobs:
           path: |
             .tmp/historical-source-inputs/morph.csv
             .tmp/historical-source-inputs/internet_archive_cdx.json
+            .tmp/historical-source-inputs/internet_archive_retrieval.json
             .tmp/historical-source-inputs/provenance.json
             .tmp/historical-source-index.json

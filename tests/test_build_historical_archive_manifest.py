@@ -7,7 +7,7 @@ from scripts.build_historical_archive_manifest import build_manifest
 
 
 def test_manifest_hashes_declared_artifacts(tmp_path: Path) -> None:
-    (tmp_path / "au.json").write_text("{}\n", encoding="utf-8")
+    (tmp_path / "au.json").write_bytes(b"{}\n")
     import hashlib
 
     digest = hashlib.sha256(b"{}\n").hexdigest()
