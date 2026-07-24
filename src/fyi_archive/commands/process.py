@@ -8,7 +8,10 @@ from typing import Annotated
 
 import typer
 
+from fyi_archive.au_corpus_readiness import load_sampling_frame
 from fyi_archive.derived_layer import validate_derived_manifest
+from fyi_archive.derived_publication import package_derived_layer, verify_derived_bundle
+from fyi_archive.jurisdiction_archive import load_target_registry
 from fyi_archive.process_projection import (
     build_process_projection,
     merge_process_event_logs,
@@ -94,3 +97,79 @@ def validate_derived(
     typer.echo(json.dumps(result, indent=2, sort_keys=True))
     if not result["ok"]:
         raise typer.Exit(code=1)
+
+
+@app.command("package-derived")
+def package_derived(
+    manifest: Annotated[Path, typer.Option(help="Pinned FOI-O derived manifest JSON.")],
+    candidates: Annotated[Path, typer.Option(help="Candidate-only NDJSON records.")],
+    output_dir: Annotated[Path, typer.Option()] = Path("dist/foi-o-derived"),
+    baseline: Annotated[
+        Path | None, typer.Option(help="Optional prior candidate NDJSON for delta reporting.")
+    ] = None,
+) -> None:
+    """Build a deterministic local bundle without publishing it."""
+    try:
+        result = package_derived_layer(
+            manifest_path=manifest,
+            candidates_path=candidates,
+            output_dir=output_dir,
+            baseline_path=baseline,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(json.dumps(result, indent=2, sort_keys=True))
+
+
+@app.command("verify-derived-bundle")
+def verify_derived(
+    output_dir: Annotated[Path, typer.Option()] = Path("dist/foi-o-derived"),
+) -> None:
+    """Verify local bundle digests, candidate count, and manifest contract."""
+    try:
+        result = verify_derived_bundle(output_dir)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(json.dumps(result, indent=2, sort_keys=True))
+
+
+@app.command("validate-au-sampling-frame")
+def validate_au_sampling_frame(
+    path: Annotated[Path, typer.Option()] = Path("configs/au/corpus_sampling_frame.json"),
+) -> None:
+    """Validate the fail-closed Australian pilot sampling contract."""
+    try:
+        document = load_sampling_frame(path)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(
+        json.dumps(
+            {
+                "valid": True,
+                "capture_authorized": document["capture_authorized"],
+                "publication_authorized": document["publication_authorized"],
+            },
+            sort_keys=True,
+        )
+    )
+
+
+@app.command("validate-jurisdiction-targets")
+def validate_jurisdiction_targets(
+    path: Annotated[Path, typer.Option()] = Path("configs/jurisdiction_archive_targets.json"),
+) -> None:
+    """Validate explicit archive status and evidence for every roadmap target."""
+    try:
+        document = load_target_registry(path)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(
+        json.dumps(
+            {
+                "valid": True,
+                "target_count": len(document["targets"]),
+                "publication_allowed": document["publication_allowed"],
+            },
+            sort_keys=True,
+        )
+    )

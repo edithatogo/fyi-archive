@@ -1,0 +1,56 @@
+{
+  "schema": "fyi-archive.au-sampling-frame.v1",
+  "version": "2026-07-24",
+  "capture_authorized": false,
+  "publication_authorized": false,
+  "selection": {
+    "time_window": {"status": "pending_human_approval", "start": null, "end": null},
+    "agency_categories": ["central", "portfolio", "independent", "unknown"],
+    "correspondence_classes": ["request", "acknowledgement", "decision", "review", "unknown"],
+    "attachment_classes": ["document", "spreadsheet", "image", "archive", "unknown"],
+    "unknown_categories_are_explicit": true
+  },
+  "strata": [
+    {
+      "jurisdiction": "FEDERAL",
+      "request_cap": 25,
+      "outcomes": [
+        "access",
+        "partial_access",
+        "refusal",
+        "transfer",
+        "extension",
+        "fees",
+        "invalid",
+        "information_not_held",
+        "review",
+        "unknown"
+      ]
+    },
+    {
+      "jurisdiction": "NSW",
+      "request_cap": 25,
+      "outcomes": [
+        "access",
+        "partial_access",
+        "refusal",
+        "transfer",
+        "extension",
+        "fees",
+        "invalid",
+        "information_not_held",
+        "review",
+        "unknown"
+      ]
+    }
+  ],
+  "rights_gates": {
+    "source_terms_recorded": true,
+    "takedown_route_recorded": true,
+    "sensitive_data_review_required": true,
+    "permitted_use_recorded": true
+  },
+  "permitted_use": "policy research and reproducible FOI-O evaluation only",
+  "prohibited_claims": ["AI training approval", "legal completeness", "certified legal findings"],
+  "capture_command_status": "not_authorized"
+}

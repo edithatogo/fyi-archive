@@ -1,6 +1,6 @@
 # Project Tracks
 
-## [ ] Track: archive_registry_readiness_20260721
+## [~] Track: archive_registry_readiness_20260721
 
 [Specification and plan](./tracks/archive_registry_readiness_20260721/)
 
@@ -47,7 +47,7 @@ Goal: Consume the pinned fyi-cli process-event contract and emit deterministic,
 public-safe Parquet resources with coverage, lineage, and checksum evidence.
 Link: [./tracks/full_corpus_process_projection_20260721/](./tracks/full_corpus_process_projection_20260721/)
 
-## [ ] Track: FOI-O derived re-extraction publication
+## [~] Track: FOI-O derived re-extraction publication
 Track ID: `foio_derived_reextraction_20260714`
 Goal: Publish ontology-pinned candidate annotations as a separately versioned
 derived layer while preserving immutable archive records.
@@ -58,7 +58,7 @@ Link: [./tracks/foio_derived_reextraction_20260714/](./tracks/foio_derived_reext
 Track ID: `maximal_quality_profile_20260714`
 Link: [./tracks/maximal_quality_profile_20260714/](./tracks/maximal_quality_profile_20260714/)
 
-## [ ] Track: Australian FOI corpus readiness
+## [~] Track: Australian FOI corpus readiness
 Track ID: `au_foi_corpus_readiness_20260714`
 Goal: Produce pinned, rights-aware, jurisdiction-stratified public examples for
 FOI-O validation, beginning with Commonwealth and NSW.
@@ -247,7 +247,7 @@ calls for (R-05). Registered there in parallel.
 | `archive-health-doctor` | observability_quality | R-23 |
 | `cross-worker-rate-limiter` | archive discovery and backfill jobs with bounded aggregate pacing | safer concurrent request rate across workers; archived in [./archive/cross_worker_rate_limiter_20260701/](./archive/cross_worker_rate_limiter_20260701/) |
 
-### [ ] Track: Incremental jurisdiction archive completion
+### [~] Track: Incremental jurisdiction archive completion
 Track ID: `jurisdiction_archive_completion_20260721`
 Goal: Preserve immutable, replayable and public-safe archive evidence for every FOI-O roadmap target.
 Link: [./tracks/jurisdiction_archive_completion_20260721/](./tracks/jurisdiction_archive_completion_20260721/)

@@ -5,6 +5,7 @@
 
 [![CI](https://github.com/edithatogo/fyi-archive/actions/workflows/tests.yml/badge.svg)](https://github.com/edithatogo/fyi-archive/actions/workflows/tests.yml)
 [![Quality](https://github.com/edithatogo/fyi-archive/actions/workflows/code_quality.yml/badge.svg)](https://github.com/edithatogo/fyi-archive/actions/workflows/code_quality.yml)
+[![Codecov](https://codecov.io/gh/edithatogo/fyi-archive/branch/main/graph/badge.svg)](https://codecov.io/gh/edithatogo/fyi-archive)
 [![Python 3.12](https://img.shields.io/badge/python-3.12+-blue)](https://www.python.org/)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -92,6 +93,7 @@ Archive publication versions are dynamic monthly identifiers of the form
 | `validate_metadata.yml` | metadata parity-count check |
 | `automated_historical_backfill.yml` | scheduled controller that dispatches bounded historical backfill workers and persists progress in a GitHub issue |
 | `historical_seed.yml` / `merge_backfill_artifacts.yml` | manual/automated historical backfill workers and merged manifest artifacts |
+| `foi_site_internet_archive.yml` | weekly, origin-free Wayback snapshots stored separately for every registered Alaveteli and additional/non-Alaveteli FOI site |
 | `hf_sync.yml` | daily incremental sync to HF, with SHA-256 verify |
 | `publish_archives.yml` | monthly multi-mirror publish (HF/Zenodo/OSF), verification, versioned evidence, build provenance |
 | `zenodo_publish.yml` | gated Zenodo DOI citation update (`environment: zenodo-production`) |

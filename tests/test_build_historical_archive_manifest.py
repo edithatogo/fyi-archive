@@ -7,13 +7,14 @@ from scripts.build_historical_archive_manifest import build_manifest
 
 
 def test_manifest_hashes_declared_artifacts(tmp_path: Path) -> None:
-    (tmp_path / "au.json").write_bytes(b"{}\n")
+    artifact = tmp_path / "au.json"
+    artifact.write_bytes(b"{}\n")
     import hashlib
 
-    digest = hashlib.sha256(b"{}\n").hexdigest()
+    digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
     (tmp_path / "au.status.json").write_text(
         json.dumps({
-            "artifacts": {"au.json": {"byte_count": 3, "sha256": digest}},
+            "artifacts": {"au.json": {"byte_count": artifact.stat().st_size, "sha256": digest}},
             "replay_limit_per_instance": 25,
             "replay_delay_seconds": 3,
             "replay_timeout_seconds": 15,
