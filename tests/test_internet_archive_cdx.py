@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from email.message import Message
+from io import BytesIO
 from typing import Self
 from urllib.error import HTTPError
 from urllib.request import Request
@@ -180,7 +182,9 @@ def test_fetch_rejects_deadlines_and_bounded_retries(monkeypatch: pytest.MonkeyP
     monkeypatch.setattr(internet_archive_cdx.time, "sleep", lambda _: None)
 
     def unavailable(request: Request, timeout: int) -> _Response:
-        raise HTTPError(request.full_url, 503, "unavailable", hdrs=None, fp=None)
+        raise HTTPError(
+            request.full_url, 503, "unavailable", hdrs=Message(), fp=BytesIO(b"unavailable")
+        )
 
     with pytest.raises(RuntimeError, match="bounded retries"):
         internet_archive_cdx._fetch([], unavailable, deadline=10.0)
