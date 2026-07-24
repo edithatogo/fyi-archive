@@ -1,0 +1,133 @@
+name: Separate FOI site Internet Archive snapshots
+
+on:
+  schedule:
+    # Weekly cumulative Wayback index refresh; never contacts origin sites.
+    - cron: "17 5 * * 2"
+  workflow_dispatch:
+    inputs:
+      cdx_limit_per_pattern:
+        description: Maximum Wayback rows retained for each URL pattern
+        required: true
+        default: "10000"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: separate-foi-site-internet-archive
+  cancel-in-progress: false
+
+jobs:
+  enumerate:
+    runs-on: ubuntu-latest
+    outputs:
+      sites: ${{ steps.sites.outputs.sites }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --extra dev --frozen
+      - id: sites
+        run: |
+          uv run python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from fyi_archive.internet_archive_sites import internet_archive_matrix
+          print("sites=" + json.dumps(internet_archive_matrix(), separators=(",", ":")))
+          PY
+
+  snapshot:
+    needs: enumerate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        site: ${{ fromJSON(needs.enumerate.outputs.sites) }}
+    env:
+      SITE_ID: ${{ matrix.site.id }}
+      SITE_KIND: ${{ matrix.site.kind }}
+      SITE_COUNTRY: ${{ matrix.site.country }}
+      URL_PATTERNS: ${{ toJSON(matrix.site.url_patterns) }}
+      CDX_LIMIT: ${{ inputs.cdx_limit_per_pattern || '10000' }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --extra dev --frozen
+      - name: Build separate cumulative Wayback snapshot
+        run: |
+          set -euo pipefail
+          case "$CDX_LIMIT" in ''|*[!0-9]*) exit 1;; esac
+          test "$CDX_LIMIT" -ge 1 && test "$CDX_LIMIT" -le 100000
+          root=".tmp/sites/$SITE_ID"
+          mkdir -p "$root"
+          uv run python - "$root" <<'PY'
+          import hashlib
+          import json
+          import os
+          import subprocess
+          import sys
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          root = Path(sys.argv[1])
+          patterns = json.loads(os.environ["URL_PATTERNS"])
+          artifacts = []
+          failures = []
+          for index, pattern in enumerate(patterns):
+              output = root / f"cdx-{index:02d}.json"
+              command = [
+                  sys.executable,
+                  "scripts/fetch_internet_archive_cdx.py",
+                  "--url-pattern", pattern,
+                  "--limit", os.environ["CDX_LIMIT"],
+                  "--transport", "curl",
+                  "--timeout", "60",
+                  "--retries", "2",
+                  "--backoff", "10",
+                  "--output", str(output),
+              ]
+              completed = subprocess.run(command, check=False)
+              if completed.returncode:
+                  failures.append({"pattern": pattern, "returncode": completed.returncode})
+                  output.write_text("[]\n", encoding="utf-8")
+              artifacts.append({
+                  "path": output.name,
+                  "url_pattern": pattern,
+                  "bytes": output.stat().st_size,
+                  "sha256": hashlib.sha256(output.read_bytes()).hexdigest(),
+              })
+          manifest = {
+              "schema": "fyi-archive.separate-foi-site-wayback.v1",
+              "site_id": os.environ["SITE_ID"],
+              "site_kind": os.environ["SITE_KIND"],
+              "country": os.environ["SITE_COUNTRY"],
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "source": "https://web.archive.org/cdx/search/cdx",
+              "origin_contacted": False,
+              "snapshot_semantics": "cumulative-refresh",
+              "artifacts": artifacts,
+              "failures": failures,
+          }
+          (root / "manifest.json").write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+      - name: Retain independent site archive
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: foi-site-wayback-${{ matrix.site.id }}-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          path: .tmp/sites/${{ matrix.site.id }}/
