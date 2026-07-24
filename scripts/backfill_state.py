@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 
 
 def iso_now() -> str:
@@ -28,15 +28,21 @@ def state_batches(state: dict[str, Any] | None) -> list[dict[str, Any]]:
     """Return the controller's recorded batch list."""
     if not state:
         return []
-    batches = state.get("batches") or []
+    batches = state.get("batches")
+    if batches is None:
+        return []
     if not isinstance(batches, list):
         msg = "state batches must be a list"
         raise ValueError(msg)
-    normalized: list[dict[str, Any]] = []
-    for batch in batches:
-        if isinstance(batch, dict):
-            normalized.append(batch)
-    return normalized
+    return _dict_entries(cast("list[object]", batches))
+
+
+def _dict_entries(value: object) -> list[dict[str, Any]]:
+    """Return dictionary entries from an untrusted state value."""
+    if not isinstance(value, list):
+        return []
+    entries = cast("list[object]", value)
+    return [cast("dict[str, Any]", entry) for entry in entries if isinstance(entry, dict)]
 
 
 def has_pending_batches(state: dict[str, Any] | None) -> bool:
@@ -105,7 +111,7 @@ def refresh_summary(state: dict[str, Any], *, id_to: int | None = None) -> dict[
     """Recompute summary counters from the live controller state."""
     updated = deepcopy(state)
     batches = state_batches(updated)
-    dispatched = [entry for entry in updated.get("dispatched") or [] if isinstance(entry, dict)]
+    dispatched = _dict_entries(updated.get("dispatched"))
     pending_batches = [
         batch for batch in batches if str(batch.get("status") or "pending") == "pending"
     ]

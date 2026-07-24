@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -103,10 +105,10 @@ def test_matrix_rejects_unknown_instance_or_capture_mode() -> None:
     ],
 )
 def test_registry_rejects_invalid_automated_target_contracts(
-    tmp_path: Path, mutate: object, message: str
+    tmp_path: Path, mutate: Callable[[dict[str, object]], None], message: str
 ) -> None:
-    payload = json.loads(REGISTRY.read_text(encoding="utf-8"))
-    mutate(payload)  # type: ignore[operator]
+    payload = cast(dict[str, object], json.loads(REGISTRY.read_text(encoding="utf-8")))
+    mutate(payload)
     path = tmp_path / "registry.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
 
