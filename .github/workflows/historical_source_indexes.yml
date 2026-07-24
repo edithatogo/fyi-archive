@@ -49,7 +49,9 @@ jobs:
           curl --fail-with-body --location --silent --show-error \
             --retry 1 --retry-delay 60 --max-time 180 \
             -A "fyi-archive-historical-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
-            "https://api.morph.io/openaustralia/right_to_know_requests/data.csv?key=${MORPH_API_KEY}&query=SELECT%20*%20FROM%20data" \
+            --get "https://api.morph.io/openaustralia/right_to_know_requests/data.csv" \
+            --data-urlencode "key=${MORPH_API_KEY}" \
+            --data-urlencode "query=SELECT * FROM data" \
             --output .tmp/historical-source-inputs/morph.csv
           test -s .tmp/historical-source-inputs/morph.csv
       - name: Download Internet Archive CDX index
@@ -59,13 +61,42 @@ jobs:
           uv run python scripts/fetch_complete_internet_archive_cdx.py \
             --instance-id au-rtk \
             --host www.righttoknow.org.au \
-            --url-pattern "www.righttoknow.org.au/request/*" \
+            --url-pattern "www.righttoknow.org.au/request" \
             --capture-mode url_index \
             --page-size "$CDX_LIMIT" \
             --max-pages 100 \
             --max-runtime-seconds 300 \
             --output .tmp/historical-source-inputs/internet_archive_cdx.json \
             --evidence .tmp/historical-source-inputs/internet_archive_retrieval.json
+      - name: Record source-input provenance
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          inputs = {}
+          for name in ("morph.csv", "internet_archive_cdx.json", "internet_archive_retrieval.json"):
+              path = Path(".tmp/historical-source-inputs") / name
+              inputs[name] = {
+                  "path": path.as_posix(),
+                  "byte_count": path.stat().st_size,
+                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+              }
+          provenance = {
+              "schema": "fyi-archive.historical-source-input-provenance.v1",
+              "retrieved_at": datetime.now(timezone.utc).isoformat(),
+              "morph_source": "https://api.morph.io/openaustralia/right_to_know_requests",
+              "internet_archive_cdx_scope": "https://www.righttoknow.org.au/request (prefix match)",
+              "inputs": inputs,
+              "secret_values_recorded": False,
+          }
+          Path(".tmp/historical-source-inputs/provenance.json").write_text(
+              json.dumps(provenance, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
       - name: Build provenance-preserving historical index
         run: |
           set -euo pipefail
@@ -96,4 +127,5 @@ jobs:
             .tmp/historical-source-inputs/morph.csv
             .tmp/historical-source-inputs/internet_archive_cdx.json
             .tmp/historical-source-inputs/internet_archive_retrieval.json
+            .tmp/historical-source-inputs/provenance.json
             .tmp/historical-source-index.json
