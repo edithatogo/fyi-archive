@@ -5,6 +5,17 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.15.2](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.15.1...fyi_archive-v0.15.2) (2026-07-24)
+
+
+### Bug Fixes
+
+* align CDX paginator with archive query shape ([42208c1](https://github.com/edithatogo/fyi-archive/commit/42208c133aabe1595dd778686fd65d9d157aba0f))
+* fall back when CDX page count is null ([a78fc17](https://github.com/edithatogo/fyi-archive/commit/a78fc1750b733f1bb41f047f97ffd6aff4bf93b8))
+* paginate Internet Archive CDX inventories ([fe354e2](https://github.com/edithatogo/fyi-archive/commit/fe354e27441ca53770b0ac497712d97c31eeee8b))
+* use compatible CDX wildcard query ([ec18937](https://github.com/edithatogo/fyi-archive/commit/ec189379ce17d04ae5d3b23b718f04a58988d4e5))
+* use wildcard CDX scope for pagination ([1a34a24](https://github.com/edithatogo/fyi-archive/commit/1a34a24e363d537bf1d49dd3621626ff94fb7c1d))
+
 ## [0.15.1](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.15.0...fyi_archive-v0.15.1) (2026-07-21)
 
 
