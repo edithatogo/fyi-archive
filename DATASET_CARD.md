@@ -22,6 +22,13 @@ configs:
 
 # fyi-archive-nz
 
+## Derived FOI-O candidate layer
+
+Any separately versioned FOI-O/NLP output is an inferred candidate layer for
+research evaluation. It is not a gold label set, a certified legal finding,
+legal advice, or a replacement for the immutable raw archive. Candidate
+publication requires a separately approved dataset identity and target.
+
 Dataset card for a faithful, read-only full-site archive of
 **[fyi.org.nz](https://fyi.org.nz/)** — the New Zealand Official Information Act
 (OIA) request register, running on [Alaveteli](https://alaveteli.org/).

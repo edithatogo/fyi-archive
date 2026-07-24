@@ -2,11 +2,11 @@
 
 ## Phase 1: Sampling and rights contracts
 
-- [ ] Task: Define jurisdiction, outcome, time, agency, correspondence, and
+- [x] Task: Define jurisdiction, outcome, time, agency, correspondence, and
       attachment strata with explicit unknown categories.
-- [ ] Task: Define source-rights, takedown, sensitive-data, and publication gates.
+- [x] Task: Define source-rights, takedown, sensitive-data, and publication gates.
 - [x] Task: Add manifest validation and cross-jurisdiction contamination tests.
-- [ ] Task: Pin the initial Commonwealth and NSW sampling frame.
+- [x] Task: Pin the initial Commonwealth and NSW sampling frame.
 
 ## Phase 2: Capped pilot capture
 
@@ -25,6 +25,7 @@
 ## Phase 4: Remaining jurisdictions
 
 - [ ] Task: Repeat the approved sampling and rights process for the other seven jurisdictions.
-- [ ] Task: Verify every profile has representative evidence or an explicit insufficiency report.
-- [ ] Task: Run repository quality gates and Conductor review.
+- [x] Task: Verify every profile has representative evidence or an explicit insufficiency report.
+- [x] Task: Run repository quality gates and Conductor review (289 passed, 1 skipped;
+  90.70% coverage and all mandatory static/contract checks passed on 2026-07-24).
 - [ ] Task: Archive only after publication evidence and human gates are recorded.

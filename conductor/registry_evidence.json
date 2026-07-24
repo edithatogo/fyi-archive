@@ -1,0 +1,21 @@
+{
+  "schema": "fyi-archive.registry-evidence.v1",
+  "reviewed_at": "2026-07-24T03:50:00Z",
+  "zenodo": {
+    "status": "published_verified",
+    "record_id": 21338285,
+    "doi": "10.5281/zenodo.21338285",
+    "publication_date": "2026-06-27",
+    "file_count": 9,
+    "updated": "2026-07-13T22:18:44.617617+10:00",
+    "api_url": "https://zenodo.org/api/records/21338285"
+  },
+  "fairsharing": {
+    "status": "candidate_not_submitted",
+    "candidate_record_type": "database",
+    "submission_authorized": false,
+    "acceptance_claimed": false,
+    "assessment": "Persistent DOI, public documentation, versioned metadata, and searchable mirror surfaces make the archive a plausible candidate. FAIRsharing authentication and curator review remain external gates.",
+    "policy_url": "https://fairsharing.org/policies/"
+  }
+}

@@ -13,14 +13,15 @@ still requires real source and Hugging Face digests.
 
 ## Phase 2: Publication and verification
 
-- [ ] Accept `nlp-policy-nz` candidate outputs without embedding NLP logic here.
-- [ ] Generate provenance, checksums, dataset-card disclosures, and a baseline-delta report.
-- [ ] Add dry-run and round-trip tests for derived publication.
+- [x] Accept `nlp-policy-nz` candidate outputs without embedding NLP logic here.
+- [x] Generate provenance, checksums, dataset-card disclosures, and a baseline-delta report.
+- [x] Add dry-run and round-trip tests for derived publication.
 - [ ] Verify the remote derived manifest independently after publication.
 
 ## Phase 3: Human gates and closeout
 
 - [ ] `[HUMAN]` Approve the dataset identity and publication target.
 - [ ] `[HUMAN]` Approve any promotion from candidate to reviewed or gold status.
-- [ ] Run repository quality gates and Conductor review.
+- [x] Run repository quality gates and Conductor review (289 passed, 1 skipped;
+  90.70% coverage and all mandatory static/contract checks passed on 2026-07-24).
 - [ ] Archive the track only after local verification and remote evidence are recorded.
