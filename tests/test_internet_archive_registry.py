@@ -56,3 +56,27 @@ def test_matrix_rejects_unknown_instance_or_capture_mode() -> None:
         workflow_matrix(REGISTRY, instance_id="not-configured")
     with pytest.raises(ValueError, match="unsupported CDX capture mode"):
         workflow_matrix(REGISTRY, capture_mode="all")
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (lambda payload: payload.update(schema_version="unsupported"), "unsupported"),
+        (lambda payload: payload["defaults"].update(path_suffix="/anything/*"), "bounded"),
+        (lambda payload: payload.update(targets=[]), "at least one"),
+        (lambda payload: payload["targets"][0].update(instance_id="invalid_id"), "URL-safe"),
+        (lambda payload: payload["targets"][0].update(platform="custom"), "Alaveteli"),
+        (lambda payload: payload["targets"][0].update(host="example.test/path"), "bare hostname"),
+        (lambda payload: payload["targets"][0].update(tier=2), "Tier 1"),
+    ],
+)
+def test_registry_rejects_unsafe_automatic_target_contracts(
+    tmp_path: Path, mutation, message: str
+) -> None:
+    payload = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    mutation(payload)
+    path = tmp_path / "registry.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=message):
+        load_registry(path)
