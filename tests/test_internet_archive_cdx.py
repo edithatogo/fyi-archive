@@ -156,6 +156,30 @@ def test_rejects_resume_when_reported_page_count_changes() -> None:
         )
 
 
+def test_rejects_invalid_resume_page_boundaries() -> None:
+    with pytest.raises(ValueError, match="start_page"):
+        fetch_complete_cdx(
+            "example.test/request/*",
+            page_size=10,
+            max_pages=2,
+            start_page=3,
+        )
+
+    def opener(request: Request, timeout: int) -> _Response:
+        if "showNumPages" in request.full_url:
+            return _Response([["blocks"], ["1"]])
+        return _Response([])
+
+    with pytest.raises(RuntimeError, match="beyond reported"):
+        fetch_complete_cdx(
+            "example.test/request/*",
+            page_size=10,
+            max_pages=2,
+            start_page=2,
+            opener=opener,
+        )
+
+
 def test_rejects_unknown_capture_mode() -> None:
     with pytest.raises(ValueError, match="unsupported CDX capture mode"):
         fetch_complete_cdx("example.test/request/*", page_size=10, max_pages=2, capture_mode="all")

@@ -25,6 +25,9 @@ def test_writes_failure_evidence_without_a_partial_export(
 
     output = tmp_path / "nested" / "cdx.json"
     evidence = tmp_path / "nested" / "retrieval.json"
+    stale_checkpoint = tmp_path / "nested" / "cdx.pages"
+    stale_checkpoint.mkdir(parents=True)
+    (stale_checkpoint / "stale").write_text("discard me")
     monkeypatch.setattr(fetch_script, "fetch_complete_cdx", fail)
     monkeypatch.setattr(
         sys,
@@ -64,6 +67,7 @@ def test_writes_failure_evidence_without_a_partial_export(
     }
     assert payload["retrieved_at"].endswith("Z")
     assert not output.exists()
+    assert not (stale_checkpoint / "stale").exists()
 
 
 def test_resumes_hash_verified_page_checkpoint(
@@ -169,4 +173,94 @@ def test_rejects_tampered_checkpoint_page(tmp_path: Path, monkeypatch: pytest.Mo
     )
 
     with pytest.raises(RuntimeError, match="fingerprint validation"):
+        fetch_script.main()
+
+
+def test_checkpoint_loader_rejects_incompatible_or_incomplete_state(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "pages"
+    checkpoint.mkdir()
+    state = checkpoint / "checkpoint.json"
+    state.write_text(
+        json.dumps({
+            "config_sha256": "other",
+            "completed_pages": 1,
+            "page_count": 2,
+        })
+    )
+    with pytest.raises(RuntimeError, match="configuration does not match"):
+        fetch_script._load_checkpoint(checkpoint, config_sha256="expected")  # noqa: SLF001
+
+    state.write_text(
+        json.dumps({
+            "config_sha256": "expected",
+            "completed_pages": 1,
+            "page_count": 2,
+        })
+    )
+    with pytest.raises(RuntimeError, match="page 0 is missing"):
+        fetch_script._load_checkpoint(checkpoint, config_sha256="expected")  # noqa: SLF001
+
+
+def test_checkpoint_loader_rejects_bad_index_and_changed_header(tmp_path: Path) -> None:
+    checkpoint = tmp_path / "pages"
+    checkpoint.mkdir()
+    (checkpoint / "checkpoint.json").write_text(
+        json.dumps({
+            "config_sha256": "expected",
+            "completed_pages": 2,
+            "page_count": 2,
+        })
+    )
+    rows = [["https://example.test/request/1"]]
+    fingerprint = fetch_script.hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
+    first_page = {
+        "page": 1,
+        "header": ["original"],
+        "rows": rows,
+        "fingerprint": fingerprint,
+    }
+    (checkpoint / "page-000000.json").write_text(json.dumps(first_page))
+    with pytest.raises(RuntimeError, match="invalid index"):
+        fetch_script._load_checkpoint(checkpoint, config_sha256="expected")  # noqa: SLF001
+
+    first_page["page"] = 0
+    (checkpoint / "page-000000.json").write_text(json.dumps(first_page))
+    second_rows = [["https://example.test/request/2"]]
+    second_fingerprint = fetch_script.hashlib.sha256(
+        json.dumps(second_rows, sort_keys=True).encode()
+    ).hexdigest()
+    (checkpoint / "page-000001.json").write_text(
+        json.dumps({
+            "page": 1,
+            "header": ["timestamp"],
+            "rows": second_rows,
+            "fingerprint": second_fingerprint,
+        })
+    )
+    with pytest.raises(RuntimeError, match="headers are inconsistent"):
+        fetch_script._load_checkpoint(checkpoint, config_sha256="expected")  # noqa: SLF001
+
+
+def test_resume_arguments_must_be_supplied_together(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "fetch_complete_internet_archive_cdx.py",
+            "--url-pattern",
+            "example.test/request/*",
+            "--instance-id",
+            "example",
+            "--host",
+            "example.test",
+            "--output",
+            str(tmp_path / "cdx.json"),
+            "--evidence",
+            str(tmp_path / "retrieval.json"),
+            "--resume",
+        ],
+    )
+    with pytest.raises(SystemExit, match="2"):
         fetch_script.main()
