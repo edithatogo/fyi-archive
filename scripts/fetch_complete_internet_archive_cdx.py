@@ -5,8 +5,10 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import shutil
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from fyi_archive.internet_archive_cdx import CAPTURE_MODES, CDX_ENDPOINT, fetch_complete_cdx
 
@@ -14,7 +16,63 @@ from fyi_archive.internet_archive_cdx import CAPTURE_MODES, CDX_ENDPOINT, fetch_
 def _write_json(path: Path, value: dict[str, object]) -> None:
     """Write an evidence record, creating only its requested parent directory."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temporary = path.with_suffix(f"{path.suffix}.tmp")
+    temporary.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temporary.replace(path)
+
+
+def _config_hash(args: argparse.Namespace) -> str:
+    config = {
+        "url_pattern": args.url_pattern,
+        "instance_id": args.instance_id,
+        "host": args.host,
+        "page_size": args.page_size,
+        "max_pages": args.max_pages,
+        "capture_mode": args.capture_mode,
+        "endpoint": CDX_ENDPOINT,
+    }
+    return hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
+
+
+def _checkpoint_dir(output: Path) -> Path:
+    return output.with_name(f"{output.stem}.pages")
+
+
+def _load_checkpoint(
+    directory: Path, *, config_sha256: str
+) -> tuple[int, int | None, list[str] | None, list[list[str]], set[str]]:
+    state_path = directory / "checkpoint.json"
+    if not state_path.exists():
+        return 0, None, None, [], set()
+    state = json.loads(state_path.read_text(encoding="utf-8"))
+    if state.get("config_sha256") != config_sha256:
+        raise RuntimeError("checkpoint configuration does not match this export")
+    completed_pages = int(state["completed_pages"])
+    page_count = state.get("page_count")
+    if page_count is not None:
+        page_count = int(page_count)
+    header: list[str] | None = None
+    rows: list[list[str]] = []
+    fingerprints: set[str] = set()
+    for page in range(completed_pages):
+        page_path = directory / f"page-{page:06d}.json"
+        if not page_path.exists():
+            raise RuntimeError(f"checkpoint page {page} is missing")
+        payload: dict[str, Any] = json.loads(page_path.read_text(encoding="utf-8"))
+        if payload.get("page") != page:
+            raise RuntimeError(f"checkpoint page {page} has an invalid index")
+        current_header = [str(value) for value in payload["header"]]
+        page_rows = [[str(value) for value in row] for row in payload["rows"]]
+        fingerprint = hashlib.sha256(json.dumps(page_rows, sort_keys=True).encode()).hexdigest()
+        if payload.get("fingerprint") != fingerprint or fingerprint in fingerprints:
+            raise RuntimeError(f"checkpoint page {page} failed fingerprint validation")
+        if header is None:
+            header = current_header
+        elif header != current_header:
+            raise RuntimeError("checkpoint page headers are inconsistent")
+        rows.extend(page_rows)
+        fingerprints.add(fingerprint)
+    return completed_pages, page_count, header, rows, fingerprints
 
 
 def main() -> int:
@@ -28,7 +86,15 @@ def main() -> int:
     parser.add_argument("--max-pages", type=int, default=100)
     parser.add_argument("--capture-mode", choices=sorted(CAPTURE_MODES), default="url_index")
     parser.add_argument("--max-runtime-seconds", type=float, default=180.0)
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Resume from hash-verified page evidence beside the output path",
+    )
+    parser.add_argument("--resume-source-run-id")
     args = parser.parse_args()
+    if bool(args.resume_source_run_id) != args.resume:
+        parser.error("--resume and --resume-source-run-id must be supplied together")
     retrieved_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     base_evidence: dict[str, object] = {
         "provider": "Internet Archive CDX",
@@ -41,7 +107,49 @@ def main() -> int:
         "eligible_for_empirical_freeze": False,
         "publication": False,
         "redistribution": False,
+        "resume_source_run_id": args.resume_source_run_id,
     }
+    checkpoint_dir = _checkpoint_dir(args.output)
+    config_sha256 = _config_hash(args)
+    if not args.resume and checkpoint_dir.exists():
+        shutil.rmtree(checkpoint_dir)
+    start_page, reported_page_count, header, existing_rows, fingerprints = _load_checkpoint(
+        checkpoint_dir,
+        config_sha256=config_sha256,
+    )
+    checkpoint_record_count = len(existing_rows)
+
+    def save_page(
+        page: int,
+        page_count: int | None,
+        current_header: list[str],
+        page_rows: list[list[str]],
+        fingerprint: str,
+    ) -> None:
+        nonlocal checkpoint_record_count
+        checkpoint_dir.mkdir(parents=True, exist_ok=True)
+        _write_json(
+            checkpoint_dir / f"page-{page:06d}.json",
+            {
+                "page": page,
+                "header": current_header,
+                "rows": page_rows,
+                "fingerprint": fingerprint,
+            },
+        )
+        checkpoint_record_count += len(page_rows)
+        _write_json(
+            checkpoint_dir / "checkpoint.json",
+            {
+                "schema_version": "1.0",
+                "config_sha256": config_sha256,
+                "completed_pages": page + 1,
+                "next_page": page + 1,
+                "page_count": page_count,
+                "record_count": checkpoint_record_count,
+            },
+        )
+
     try:
         rows = fetch_complete_cdx(
             args.url_pattern,
@@ -49,8 +157,16 @@ def main() -> int:
             max_pages=args.max_pages,
             capture_mode=args.capture_mode,
             max_runtime_seconds=args.max_runtime_seconds,
+            start_page=start_page,
+            existing_rows=existing_rows,
+            expected_header=header,
+            expected_page_count=reported_page_count,
+            existing_fingerprints=fingerprints,
+            page_callback=save_page,
         )
     except Exception as error:
+        checkpoint = _load_checkpoint(checkpoint_dir, config_sha256=config_sha256)
+        completed_pages, page_count, _, partial_rows, _ = checkpoint
         _write_json(
             args.evidence,
             {
@@ -58,7 +174,14 @@ def main() -> int:
                 "retrieval_status": "failed",
                 "pagination_complete": False,
                 "response_sha256": None,
-                "record_count": None,
+                "record_count": len(partial_rows),
+                "checkpoint": {
+                    "config_sha256": config_sha256,
+                    "completed_pages": completed_pages,
+                    "next_page": completed_pages,
+                    "page_count": page_count if page_count is not None else reported_page_count,
+                    "resumable": completed_pages > 0,
+                },
                 "failure": {"type": type(error).__name__, "message": str(error)},
             },
         )
@@ -72,6 +195,12 @@ def main() -> int:
         "response_sha256": hashlib.sha256(raw.encode()).hexdigest(),
         "record_count": len(rows) - 1,
         "pagination_complete": True,
+        "checkpoint": {
+            "config_sha256": config_sha256,
+            "completed_pages": len(list(checkpoint_dir.glob("page-*.json"))),
+            "page_count": len(list(checkpoint_dir.glob("page-*.json"))),
+            "resumable": False,
+        },
     }
     _write_json(args.evidence, evidence)
     return 0

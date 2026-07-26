@@ -23,10 +23,18 @@ def fetch_complete_cdx(
     capture_mode: str = "url_index",
     max_runtime_seconds: float = 180.0,
     opener: Callable[..., Any] = urllib.request.urlopen,  # noqa: S310
+    start_page: int = 0,
+    existing_rows: list[list[str]] | None = None,
+    expected_header: list[str] | None = None,
+    expected_page_count: int | None = None,
+    existing_fingerprints: set[str] | None = None,
+    page_callback: Callable[[int, int | None, list[str], list[list[str]], str], None] | None = None,
 ) -> list[list[str]]:
-    """Retrieve a complete CDX view or raise without producing a partial result."""
+    """Retrieve a complete CDX view, optionally resuming verified page evidence."""
     if capture_mode not in CAPTURE_MODES:
         raise ValueError(f"unsupported CDX capture mode: {capture_mode}")
+    if start_page < 0 or start_page > max_pages:
+        raise ValueError("start_page must be within the configured page cap")
     deadline = time.monotonic() + max_runtime_seconds
     base = [
         ("url", url_pattern),
@@ -45,11 +53,16 @@ def fetch_complete_cdx(
         raise RuntimeError("CDX returned an invalid page count") from error
     if page_count is not None and (page_count < 0 or page_count > max_pages):
         raise RuntimeError(f"CDX page count {page_count} exceeds configured cap {max_pages}")
+    if expected_page_count is not None and page_count != expected_page_count:
+        raise RuntimeError("CDX reported page count changed since the checkpoint was created")
 
-    header: list[str] | None = None
-    rows: list[list[str]] = []
-    fingerprints: set[str] = set()
-    page = 0
+    if page_count is not None and start_page > page_count:
+        raise RuntimeError("checkpoint starts beyond reported CDX coverage")
+
+    header = list(expected_header) if expected_header is not None else None
+    rows = [list(row) for row in existing_rows] if existing_rows is not None else []
+    fingerprints = set(existing_fingerprints or ())
+    page = start_page
     while page_count is None or page < page_count:
         if page >= max_pages:
             raise RuntimeError(
@@ -71,6 +84,8 @@ def fetch_complete_cdx(
             raise RuntimeError("CDX page repeated during acquisition")
         fingerprints.add(fingerprint)
         rows.extend(page_rows)
+        if page_callback is not None:
+            page_callback(page, page_count, current_header, page_rows, fingerprint)
         page += 1
     return [header or ["original", "timestamp", "digest", "statuscode", "length"], *rows]
 

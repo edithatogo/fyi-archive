@@ -20,6 +20,9 @@ def test_all_capture_export_requires_manual_confirmation_and_does_not_replay() -
     assert "--capture-mode all_captures" in workflow
     assert "import_historical_sources.py" not in workflow
     assert "if: always()" in workflow
+    assert "resume_run_id:" in workflow
+    assert "Restore prior page checkpoint" in workflow
+    assert "actions: read" in workflow
 
 
 def test_historical_source_index_uses_fail_closed_paginator() -> None:
