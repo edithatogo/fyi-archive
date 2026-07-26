@@ -12,7 +12,8 @@
   support explicit prior-run resume without weakening completeness gates
   (`16d4236`; 335 passed, 1 skipped; focused resume suite 18 passed).
 - [x] Review fixes: apply the repository's CI preview formatter to the two
-  changed tests (`821fbb9`; preview Ruff and focused resume suite passed).
+  changed tests and type the mocked checkpoint callback (`821fbb9`, `6227d19`;
+  preview Ruff, ty and focused resume suite passed).
 - [ ] Foundation archive refresh.
 - [ ] Australian pilot, contrast and remaining-jurisdiction archive increments.
 - [ ] UK and European English increments.
