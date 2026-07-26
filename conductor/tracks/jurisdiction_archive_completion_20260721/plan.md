@@ -8,6 +8,9 @@
   programme sites; durable publication and live completion evidence remain gated.
 - [x] Validate the separate-site lane (300 passed, 1 skipped; 90.87% coverage;
   ruff stable/preview, preview formatting, lock, registry and version checks passed).
+- [x] Preserve configuration-bound, hash-verified CDX page checkpoints and
+  support explicit prior-run resume without weakening completeness gates
+  (`16d4236`; 334 passed, 1 skipped; focused resume suite 18 passed).
 - [ ] Foundation archive refresh.
 - [ ] Australian pilot, contrast and remaining-jurisdiction archive increments.
 - [ ] UK and European English increments.

@@ -11,3 +11,6 @@ Archive readiness does not imply capture authorization, legal completeness, NLP 
 - Every target has an archived, blocked or unsupported status with evidence and no silent fallback.
 - Supported increments pass integrity, replay, privacy and downstream-contract checks.
 - Manifests cross-reference the exact capture adapter/version and downstream extraction/modelling run.
+- Bounded CDX metadata runs retain hash-verified, configuration-bound page
+  checkpoints and resume only through an explicit prior-run reference; partial
+  evidence remains ineligible for empirical freezing.
