@@ -10,10 +10,13 @@
   ruff stable/preview, preview formatting, lock, registry and version checks passed).
 - [x] Preserve configuration-bound, hash-verified CDX page checkpoints and
   support explicit prior-run resume without weakening completeness gates
-  (`16d4236`; 335 passed, 1 skipped; focused resume suite 18 passed).
+  (`16d4236`; 339 passed, 1 skipped; focused resume suite 22 passed).
 - [x] Review fixes: apply the repository's CI preview formatter to the two
   changed tests and type the mocked checkpoint callback (`821fbb9`, `6227d19`;
   preview Ruff, ty and focused resume suite passed).
+- [x] Review fixes: cover checkpoint mismatch, missing-page, invalid-index,
+  header-drift and argument-pairing failures (`9128038`; focused module coverage
+  97.39%; full suite 339 passed, 1 skipped).
 - [ ] Foundation archive refresh.
 - [ ] Australian pilot, contrast and remaining-jurisdiction archive increments.
 - [ ] UK and European English increments.
