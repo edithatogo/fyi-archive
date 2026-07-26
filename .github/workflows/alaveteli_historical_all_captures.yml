@@ -23,12 +23,18 @@ on:
         required: true
         default: "600"
         type: string
+      resume_run_id:
+        description: Optional prior failed run ID containing a compatible page checkpoint
+        required: false
+        default: ""
+        type: string
       confirm:
         description: Enter EXPORT_ALL_CAPTURE_METADATA to retrieve complete capture metadata
         required: true
         type: string
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -51,9 +57,14 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev --frozen
       - name: Validate explicit full-capture confirmation
+        env:
+          RESUME_RUN_ID: ${{ inputs.resume_run_id }}
         run: |
           set -euo pipefail
           test "${{ inputs.confirm }}" = "EXPORT_ALL_CAPTURE_METADATA"
+          if [ -n "$RESUME_RUN_ID" ]; then
+            [[ "$RESUME_RUN_ID" =~ ^[0-9]+$ ]]
+          fi
       - name: Validate registry and build all-captures matrix
         id: matrix
         env:
@@ -81,6 +92,7 @@ jobs:
       MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds }}
       PAGE_SIZE: ${{ inputs.page_size }}
       REQUEST_PATH: ${{ matrix.request_path }}
+      RESUME_RUN_ID: ${{ inputs.resume_run_id }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -91,10 +103,22 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: uv sync --extra dev --frozen
+      - name: Restore prior page checkpoint
+        if: inputs.resume_run_id != ''
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
+        with:
+          name: ${{ format('alaveteli-all-captures-{0}-{1}', matrix.instance, inputs.resume_run_id) }}
+          path: .tmp/${{ matrix.instance }}
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.resume_run_id }}
       - name: Export complete capture metadata only
         run: |
           set -euo pipefail
           mkdir -p ".tmp/$INSTANCE"
+          resume_args=()
+          if [ -n "$RESUME_RUN_ID" ]; then
+            resume_args+=(--resume --resume-source-run-id "$RESUME_RUN_ID")
+          fi
           uv run python scripts/fetch_complete_internet_archive_cdx.py \
             --instance-id "$INSTANCE" \
             --host "$HOST" \
@@ -103,6 +127,7 @@ jobs:
             --page-size "$PAGE_SIZE" \
             --max-pages "$MAX_PAGES" \
             --max-runtime-seconds "$MAX_RUNTIME_SECONDS" \
+            "${resume_args[@]}" \
             --output ".tmp/$INSTANCE/internet_archive_all_captures_cdx.json" \
             --evidence ".tmp/$INSTANCE/retrieval.json"
       - name: Upload complete-capture evidence

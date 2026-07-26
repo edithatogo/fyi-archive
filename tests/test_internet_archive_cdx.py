@@ -78,11 +78,13 @@ def test_all_captures_mode_preserves_versions_without_url_collapse() -> None:
         requests.append(request.full_url)
         if "showNumPages" in request.full_url:
             return _Response([["blocks"], ["1"]])
-        return _Response([
-            ["original", "timestamp"],
-            ["https://example.test/request/1", "20200101000000"],
-            ["https://example.test/request/1", "20210101000000"],
-        ])
+        return _Response(
+            [
+                ["original", "timestamp"],
+                ["https://example.test/request/1", "20200101000000"],
+                ["https://example.test/request/1", "20210101000000"],
+            ]
+        )
 
     rows = fetch_complete_cdx(
         "example.test/request/*",
@@ -97,6 +99,63 @@ def test_all_captures_mode_preserves_versions_without_url_collapse() -> None:
         ["https://example.test/request/1", "20210101000000"],
     ]
     assert all("collapse=urlkey" not in request for request in requests)
+
+
+def test_resumes_from_next_page_and_reports_new_page() -> None:
+    requests: list[str] = []
+    reported: list[tuple[int, int | None, list[str], list[list[str]], str]] = []
+
+    def opener(request: Request, timeout: int) -> _Response:
+        requests.append(request.full_url)
+        if "showNumPages" in request.full_url:
+            return _Response([["blocks"], ["2"]])
+        return _Response([["original"], ["https://example.test/request/2"]])
+
+    prior_rows = [["https://example.test/request/1"]]
+    prior_fingerprint = internet_archive_cdx.hashlib.sha256(
+        json.dumps(prior_rows, sort_keys=True).encode()
+    ).hexdigest()
+    rows = fetch_complete_cdx(
+        "example.test/request/*",
+        page_size=10,
+        max_pages=2,
+        start_page=1,
+        existing_rows=prior_rows,
+        expected_header=["original"],
+        expected_page_count=2,
+        existing_fingerprints={prior_fingerprint},
+        page_callback=lambda *values: reported.append(values),
+        opener=opener,
+    )
+
+    assert rows[1:] == [
+        ["https://example.test/request/1"],
+        ["https://example.test/request/2"],
+    ]
+    assert "page=1" in requests[-1]
+    assert reported[0][:4] == (
+        1,
+        2,
+        ["original"],
+        [["https://example.test/request/2"]],
+    )
+
+
+def test_rejects_resume_when_reported_page_count_changes() -> None:
+    def opener(request: Request, timeout: int) -> _Response:
+        if "showNumPages" in request.full_url:
+            return _Response([["blocks"], ["3"]])
+        return _Response([])
+
+    with pytest.raises(RuntimeError, match="page count changed"):
+        fetch_complete_cdx(
+            "example.test/request/*",
+            page_size=10,
+            max_pages=3,
+            start_page=1,
+            expected_page_count=2,
+            opener=opener,
+        )
 
 
 def test_rejects_unknown_capture_mode() -> None:
