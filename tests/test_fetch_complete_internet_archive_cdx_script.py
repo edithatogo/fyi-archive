@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -92,8 +93,11 @@ def test_resumes_hash_verified_page_checkpoint(
     rows = [["https://example.test/request/1"]]
     fingerprint = fetch_script.hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
 
-    def first_fetch(*_: object, page_callback: object, **__: object) -> list[list[str]]:
-        assert callable(page_callback)
+    def first_fetch(
+        *_: object,
+        page_callback: Callable[[int, int | None, list[str], list[list[str]], str], None],
+        **__: object,
+    ) -> list[list[str]]:
         page_callback(0, 2, ["original"], rows, fingerprint)
         raise RuntimeError("deadline")
 
