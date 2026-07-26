@@ -11,6 +11,8 @@
 - [x] Preserve configuration-bound, hash-verified CDX page checkpoints and
   support explicit prior-run resume without weakening completeness gates
   (`16d4236`; 335 passed, 1 skipped; focused resume suite 18 passed).
+- [x] Review fixes: apply the repository's CI preview formatter to the two
+  changed tests (`821fbb9`; preview Ruff and focused resume suite passed).
 - [ ] Foundation archive refresh.
 - [ ] Australian pilot, contrast and remaining-jurisdiction archive increments.
 - [ ] UK and European English increments.
