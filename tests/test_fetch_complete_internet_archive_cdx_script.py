@@ -149,23 +149,19 @@ def test_rejects_tampered_checkpoint_page(tmp_path: Path, monkeypatch: pytest.Mo
     checkpoint = tmp_path / "cdx.pages"
     checkpoint.mkdir()
     (checkpoint / "checkpoint.json").write_text(
-        json.dumps(
-            {
-                "config_sha256": config_sha256,
-                "completed_pages": 1,
-                "page_count": 2,
-            }
-        )
+        json.dumps({
+            "config_sha256": config_sha256,
+            "completed_pages": 1,
+            "page_count": 2,
+        })
     )
     (checkpoint / "page-000000.json").write_text(
-        json.dumps(
-            {
-                "page": 0,
-                "header": ["original"],
-                "rows": [["https://example.test/request/1"]],
-                "fingerprint": "tampered",
-            }
-        )
+        json.dumps({
+            "page": 0,
+            "header": ["original"],
+            "rows": [["https://example.test/request/1"]],
+            "fingerprint": "tampered",
+        })
     )
 
     with pytest.raises(RuntimeError, match="fingerprint validation"):
