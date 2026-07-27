@@ -17,18 +17,21 @@
       implemented and tested.
 - [x] Task: Phase verification and checkpoint per `conductor/workflow.md`.
 
-## Phase 3: Full backfill and continuation
+## Phase 3: Verified full backfill and continuation
 
-- [x] Task: Add resumable full-corpus orchestration using existing historical backfill state.
-- [x] Task: Add deterministic incremental merge, compaction, correction, and tombstone handling.
-- [x] Task: Reconcile request/event/attachment coverage to pinned source revisions.
-- [x] Task: Benchmark representative and complete archive runs.
-- [x] Task: Phase verification and checkpoint per `conductor/workflow.md`.
+- [ ] Task: Replace the public dry-run placeholder manifest with a reliable authoritative or explicitly reconciled archive snapshot.
+- [ ] Task: Regenerate fyi-cli event and attachment sidecars for every captured request, with resumable continuation.
+- [x] Task: Preserve deterministic incremental merge, compaction, correction, and tombstone handling.
+- [ ] Task: Require exact request/case/event/attachment parity to a pinned live source revision, with reviewed exclusions only.
+- [x] Task: Reject dry-run manifests from full-corpus process projections and publication artifacts.
+- [ ] Task: Benchmark a representative live slice and the reconciled complete archive run.
+- [ ] Task: Phase verification and checkpoint per `conductor/workflow.md`.
 
 ## Phase 4: Dataset integration and downstream acceptance
 
 - [x] Task: Add Dataset Viewer configs, metadata, provenance, and local publication dry-run.
-- [ ] Task: Verify remote rows and shards only after the separate publication gate is authorized.
+- [ ] Task: Publish a versioned takedown inventory digest and carry its revision into downstream acceptance evidence.
+- [ ] Task: Verify remote rows and shards only after the separate publication gate is authorized and full-corpus parity passes.
 
 The local live benchmark runner is `scripts/benchmark_process_projection.py`.
 It requires an explicitly supplied manifest, revision, and event input, verifies
@@ -36,4 +39,4 @@ the generated checksums, and performs no publication.
 - [x] Task: Supply pinned fixtures and digests to `foi-process` T10.
 - [x] Task: Record acceptance evidence in GitHub issue #196 and parent epic #36.
 - [x] Task: Phase verification and checkpoint per `conductor/workflow.md`.
-- [x] Local contract tests and checksum verification pass; 204 tests pass, 1 skipped.
+- [x] Local contract tests and checksum verification pass; this does not satisfy the reopened live full-corpus parity gate.

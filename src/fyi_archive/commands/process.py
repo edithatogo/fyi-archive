@@ -34,6 +34,9 @@ def project(
         Path | None, typer.Option(help="Historical candidate reconciliation JSON.")
     ] = None,
     snapshot_revision: Annotated[str | None, typer.Option()] = None,
+    require_live_manifest: Annotated[
+        bool, typer.Option(help="Reject dry-run rows when building a full-corpus projection.")
+    ] = False,
 ) -> None:
     """Validate and materialize process events for archive publication."""
     try:
@@ -45,6 +48,7 @@ def project(
             takedown_path=takedown,
             source_reconciliation_path=source_reconciliation,
             snapshot_revision=snapshot_revision,
+            require_live_manifest=require_live_manifest,
         )
     except (OSError, ValueError, json.JSONDecodeError) as error:
         raise typer.BadParameter(str(error)) from error

@@ -172,6 +172,7 @@ def build_process_projection(
     takedown_path: Path | None = None,
     source_reconciliation_path: Path | None = None,
     snapshot_revision: str | None = None,
+    require_live_manifest: bool = False,
 ) -> dict[str, Any]:
     """Validate and materialize a process-event projection into Parquet files."""
     event_inputs = sorted(events_path.glob("*.jsonl")) if events_path.is_dir() else [events_path]
@@ -199,6 +200,15 @@ def build_process_projection(
             raise ValueError("unsupported attachment contract version")
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8")) if manifest_path else {}
+    manifest_requests = cast(
+        "list[dict[str, object]]",
+        manifest.get("requests") if isinstance(manifest.get("requests"), list) else [],
+    )
+    dry_run_request_count = sum(request.get("state") == "dry-run" for request in manifest_requests)
+    if require_live_manifest and dry_run_request_count:
+        raise ValueError(
+            "manifest contains dry-run rows and cannot be used for a full-corpus projection"
+        )
     source_reconciliation = {}
     if source_reconciliation_path and source_reconciliation_path.exists():
         source_reconciliation = json.loads(source_reconciliation_path.read_text(encoding="utf-8"))
@@ -226,10 +236,6 @@ def build_process_projection(
     pl.DataFrame(revisions).write_parquet(revision_path)
 
     expected_requests = manifest.get("meta", {}).get("record_count")
-    manifest_requests = cast(
-        "list[dict[str, object]]",
-        manifest.get("requests") if isinstance(manifest.get("requests"), list) else [],
-    )
     expected_attachments = sum(
         len(cast("list[object]", request["attachments"]))
         for request in manifest_requests
@@ -253,6 +259,8 @@ def build_process_projection(
         ),
         "takedown_ids": sorted(takedown_ids),
         "manifest_request_count": expected_requests,
+        "manifest_dry_run_request_count": dry_run_request_count,
+        "require_live_manifest": require_live_manifest,
         "request_count_reconciles": expected_requests is None
         or expected_requests == len({row["case_id"] for row in events}),
     }

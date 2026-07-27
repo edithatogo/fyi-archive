@@ -231,7 +231,8 @@ jobs:
             --manifest manifests/latest_manifest.json \
             "${attachment_args[@]}" \
             --output-dir dist/process-events/projection \
-            --snapshot-revision "historical-backfill-merge-${GITHUB_RUN_ID}"
+            --snapshot-revision "historical-backfill-merge-${GITHUB_RUN_ID}" \
+            --require-live-manifest
           uv run fyi-archive process verify \
             --output-dir dist/process-events/projection
 
