@@ -1,0 +1,7 @@
+{
+  "track_id": "wayback_resume_reliability_20260727",
+  "type": "bug",
+  "status": "in_progress",
+  "created_at": "2026-07-27",
+  "description": "Make Wayback inventories converge through verified checkpoint restoration and bounded transient retries."
+}

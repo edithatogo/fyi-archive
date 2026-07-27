@@ -78,11 +78,13 @@ def test_all_captures_mode_preserves_versions_without_url_collapse() -> None:
         requests.append(request.full_url)
         if "showNumPages" in request.full_url:
             return _Response([["blocks"], ["1"]])
-        return _Response([
-            ["original", "timestamp"],
-            ["https://example.test/request/1", "20200101000000"],
-            ["https://example.test/request/1", "20210101000000"],
-        ])
+        return _Response(
+            [
+                ["original", "timestamp"],
+                ["https://example.test/request/1", "20200101000000"],
+                ["https://example.test/request/1", "20210101000000"],
+            ]
+        )
 
     rows = fetch_complete_cdx(
         "example.test/request/*",
@@ -269,3 +271,44 @@ def test_fetch_rejects_deadlines_and_bounded_retries(monkeypatch: pytest.MonkeyP
 
     with pytest.raises(RuntimeError, match="bounded retries"):
         internet_archive_cdx._fetch([], unavailable, deadline=10.0)
+
+
+def test_retries_page_level_http_400_but_not_count_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(internet_archive_cdx.time, "sleep", lambda _: None)
+    page_attempts = 0
+
+    def transient_page(request: Request, timeout: int) -> _Response:
+        nonlocal page_attempts
+        if "showNumPages" in request.full_url:
+            return _Response([["blocks"], ["1"]])
+        page_attempts += 1
+        if page_attempts == 1:
+            raise HTTPError(
+                request.full_url,
+                400,
+                "transient CDX page failure",
+                hdrs=Message(),
+                fp=BytesIO(b""),
+            )
+        return _Response([["original"], ["https://example.test/request/1"]])
+
+    rows = fetch_complete_cdx(
+        "example.test/request/*", page_size=10, max_pages=2, opener=transient_page
+    )
+    assert len(rows) == 2
+    assert page_attempts == 2
+
+    count_attempts = 0
+
+    def invalid_count_query(request: Request, timeout: int) -> _Response:
+        nonlocal count_attempts
+        count_attempts += 1
+        raise HTTPError(request.full_url, 400, "bad query", hdrs=Message(), fp=BytesIO(b""))
+
+    with pytest.raises(HTTPError, match="HTTP Error 400"):
+        fetch_complete_cdx(
+            "example.test/request/*", page_size=10, max_pages=2, opener=invalid_count_query
+        )
+    assert count_attempts == 1
