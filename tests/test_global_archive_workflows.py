@@ -76,3 +76,6 @@ def test_nz_source_index_uses_resumable_complete_cdx_export() -> None:
     assert "Fail closed on incomplete snapshot" in workflow
     assert "if: always()" in workflow
     assert "path: .tmp\n          github-token:" in workflow
+    assert "--attachments-output dist/process-events/attachments.jsonl" in (
+        WORKFLOWS / "historical_backfill_batch.yml"
+    ).read_text(encoding="utf-8")
