@@ -57,6 +57,24 @@ def test_existing_raw_json_is_reparsed_without_network() -> None:
     assert result["authority_tags"] == ["federal"]
 
 
+def test_html_request_key_uses_canonical_slug_not_tracking_query() -> None:
+    selected = {
+        "source_url": "https://www.righttoknow.org.au/request/example?utm_source=right-to-know",
+        "archive_timestamp": "20200101",
+        "archive_digest": "ABC",
+        "canonical_slug": "example",
+        "media_kind": "html",
+        "selection_reason": "latest_successful_primary_html_fallback",
+    }
+    result = record_from_raw(
+        selected,
+        b"<html><h1>Example</h1><a href='/body/agency'>Agency</a></html>",
+        replay_url="https://web.archive.org/example",
+        content_type="text/html",
+    )
+    assert result["request_key"] == "example"
+
+
 def test_sequential_mode_opens_circuit_after_bounded_failures(tmp_path, monkeypatch) -> None:
     records = [
         {

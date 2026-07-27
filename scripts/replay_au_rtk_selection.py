@@ -141,6 +141,7 @@ def record_from_raw(
             archive_digest=selected["archive_digest"],
             instance_id="au-rtk",
         )
+        record["request_key"] = selected["canonical_slug"]
         record["media_kind"] = "html"
         body_link = BeautifulSoup(html, "html.parser").select_one("a[href*='/body/']")
         body_path = urlsplit(str(body_link.get("href") or "")).path if body_link else ""
