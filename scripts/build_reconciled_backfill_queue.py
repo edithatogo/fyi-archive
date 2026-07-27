@@ -17,7 +17,9 @@ def request_slug(url: object) -> str:
     return slug if slug and "/" not in slug else ""
 
 
-def build_queue(index: dict[str, object], retrieval: dict[str, object]) -> list[dict[str, str]]:
+def build_queue(
+    index: Mapping[str, object], retrieval: Mapping[str, object]
+) -> list[dict[str, str]]:
     if retrieval.get("retrieval_status") != "complete" or not retrieval.get("pagination_complete"):
         raise ValueError("reconciled source inventory is incomplete")
     records = index.get("records")
