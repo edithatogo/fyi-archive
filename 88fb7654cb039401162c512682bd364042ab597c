@@ -1,0 +1,1 @@
+Commit notes: Classification now rejects partial, extra, failed, stale-parser, or provenance-mismatched replay inputs before producing jurisdiction candidates. Full verification: 368 passed, 1 skipped; ruff and ty passed.
