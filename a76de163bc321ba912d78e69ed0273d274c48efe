@@ -1,0 +1,1 @@
+Commit notes: Archived HTML authority extraction now rejects navigation links and binds name/slug to one authority anchor. Empirical partial audit: 253/253 valid, no list slugs. Verification: 377 passed, 1 skipped; ruff and ty passed.
