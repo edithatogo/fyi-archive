@@ -1,0 +1,1 @@
+Commit notes: Completion replay proposals are now schema-validated for exact canonical URL scope, full 858-slug accounting, and authorization boundaries before hash presentation. Verification: 383 passed, 1 skipped; ruff and ty passed.
