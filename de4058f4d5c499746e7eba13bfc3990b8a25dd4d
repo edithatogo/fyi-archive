@@ -1,0 +1,5 @@
+Task: Preserve successful replay checkpoints during parser upgrades.
+
+Summary: Existing raw bodies are reparsed locally to parser v2 without network access. Failed refresh attempts no longer overwrite successful captures. Exact CDX sequential mode now delays post-request and opens a bounded circuit.
+
+Verification: 365 passed, 1 skipped; ruff and ty passed. Runtime check restored all 44 available raw captures to successful parser-v2 checkpoints.
