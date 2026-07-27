@@ -243,11 +243,6 @@ jobs:
                   "capture_mode": os.environ["CAPTURE_MODE"],
                   "pagination_complete": retrieval["pagination_complete"],
                   "record_count": retrieval["record_count"],
-              "pagination": {
-                  "mode": "resume_key",
-                  "continuation": "showResumeKey/resumeKey",
-                  "chunk_limit": int(os.environ["MAX_PAGES"]),
-              },
                   "evidence_sha256": hashlib.sha256(evidence.read_bytes()).hexdigest(),
               }
               if output.exists():
@@ -267,6 +262,11 @@ jobs:
                   "source_run_id": os.environ["RESUME_SOURCE_RUN_ID"] or None,
                   "reason": os.environ["RESUME_REASON"],
                   "checkpoint_hash_validation": "required-by-fetch-wrapper",
+              },
+              "pagination": {
+                  "mode": "resume_key",
+                  "continuation": "showResumeKey/resumeKey",
+                  "chunk_limit": int(os.environ["MAX_PAGES"]),
               },
               "capture_mode": os.environ["CAPTURE_MODE"],
               "complete": not failures and all(

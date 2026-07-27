@@ -60,5 +60,9 @@ def test_separate_site_workflow_auto_restores_latest_checkpoint() -> None:
     capture_guard = workflow.index('grep -qx "capture-match=true"')
     pagination_guard = workflow.index('grep -qx "pagination-match=true"')
     complete_guard = workflow.index('if grep -qx "complete=true"')
+    artifact_manifest = workflow.index("artifact = {")
+    top_level_manifest = workflow.index("manifest = {")
+    pagination_manifest = workflow.index('"pagination": {')
     assert pagination_print < python_close
     assert capture_guard < pagination_guard < complete_guard
+    assert artifact_manifest < top_level_manifest < pagination_manifest
