@@ -95,6 +95,7 @@ def _fetch(params: list[tuple[str, str]], opener: Callable[..., Any], *, deadlin
         f"{CDX_ENDPOINT}?{urllib.parse.urlencode(params)}",
         headers={"User-Agent": "fyi-archive-cdx-paginator/1.0"},
     )
+    page_query = any(key == "page" for key, _ in params)
     last_error: Exception | None = None
     for attempt in range(3):
         remaining = deadline - time.monotonic()
@@ -104,7 +105,8 @@ def _fetch(params: list[tuple[str, str]], opener: Callable[..., Any], *, deadlin
             with opener(request, timeout=min(60, remaining)) as response:  # noqa: S310
                 return json.loads(response.read().decode("utf-8"))
         except HTTPError as error:
-            if error.code not in {429, 500, 502, 503, 504}:
+            retryable_page_error = page_query and error.code == 400
+            if error.code not in {429, 500, 502, 503, 504} and not retryable_page_error:
                 raise
             last_error = error
         except (TimeoutError, URLError, OSError) as error:

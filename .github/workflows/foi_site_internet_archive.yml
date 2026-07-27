@@ -81,7 +81,7 @@ jobs:
       MAX_PAGES: ${{ inputs.max_pages || '1000' }}
       MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds || '900' }}
       PAGE_SIZE: ${{ inputs.page_size || '1000' }}
-      RESUME_RUN_ID: ${{ inputs.resume_run_id || '' }}
+      REQUESTED_RESUME_RUN_ID: ${{ inputs.resume_run_id || '' }}
       SITE_COUNTRY: ${{ matrix.site.country }}
       SITE_ID: ${{ matrix.site.id }}
       SITE_KIND: ${{ matrix.site.kind }}
@@ -105,16 +105,62 @@ jobs:
           test "$MAX_PAGES" -ge 1 && test "$MAX_PAGES" -le 10000
           test "$MAX_RUNTIME_SECONDS" -ge 30 && test "$MAX_RUNTIME_SECONDS" -le 2400
           case "$CAPTURE_MODE" in url_index|all_captures) ;; *) exit 1;; esac
-          if [ -n "$RESUME_RUN_ID" ]; then [[ "$RESUME_RUN_ID" =~ ^[0-9]+$ ]]; fi
-      - name: Restore prior site checkpoint
-        if: env.RESUME_RUN_ID != ''
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
-        with:
-          name: ${{ format('foi-site-wayback-{0}-{1}', matrix.site.id, inputs.resume_run_id) }}
-          path: .tmp/sites/${{ matrix.site.id }}
-          github-token: ${{ github.token }}
-          run-id: ${{ inputs.resume_run_id }}
+          if [ -n "$REQUESTED_RESUME_RUN_ID" ]; then
+            [[ "$REQUESTED_RESUME_RUN_ID" =~ ^[0-9]+$ ]]
+          fi
+      - name: Resolve prior site checkpoint
+        id: resume
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          root=".tmp/sites/$SITE_ID"
+          restore=".tmp/restore-$SITE_ID"
+          mkdir -p "$root" "$restore"
+          if [ -n "$REQUESTED_RESUME_RUN_ID" ]; then
+            candidates=("$REQUESTED_RESUME_RUN_ID")
+            reason="explicit-resume-run"
+          else
+            mapfile -t candidates < <(
+              gh run list --repo "$GITHUB_REPOSITORY" \
+                --workflow foi_site_internet_archive.yml \
+                --branch "$GITHUB_REF_NAME" \
+                --status completed \
+                --limit 50 \
+                --json databaseId \
+                --jq '.[].databaseId'
+            )
+            reason="latest-compatible-checkpoint"
+          fi
+          for run_id in "${candidates[@]}"; do
+            candidate="$restore/$run_id"
+            rm -rf "$candidate"
+            mkdir -p "$candidate"
+            if ! gh run download "$run_id" \
+              --repo "$GITHUB_REPOSITORY" \
+              --name "foi-site-wayback-$SITE_ID-$run_id" \
+              --dir "$candidate" >/dev/null 2>&1; then
+              continue
+            fi
+            checkpoint="$(find "$candidate" -type f -path '*/cdx-*.pages/checkpoint.json' -print -quit)"
+            [ -n "$checkpoint" ] || continue
+            cp -a "$candidate/." "$root/"
+            echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+            echo "reason=$reason" >> "$GITHUB_OUTPUT"
+            echo "Restored $SITE_ID checkpoint from run $run_id ($reason)"
+            exit 0
+          done
+          if [ -n "$REQUESTED_RESUME_RUN_ID" ]; then
+            echo "Explicit resume run has no compatible checkpoint for $SITE_ID" >&2
+            exit 1
+          fi
+          echo "run_id=" >> "$GITHUB_OUTPUT"
+          echo "reason=no-compatible-checkpoint" >> "$GITHUB_OUTPUT"
+          echo "No compatible prior checkpoint found for $SITE_ID"
       - name: Build complete cumulative Wayback snapshot
+        env:
+          RESUME_SOURCE_RUN_ID: ${{ steps.resume.outputs.run_id }}
+          RESUME_REASON: ${{ steps.resume.outputs.reason }}
         run: |
           set -euo pipefail
           root=".tmp/sites/$SITE_ID"
@@ -133,7 +179,7 @@ jobs:
           patterns = json.loads(os.environ["URL_PATTERNS"])
           artifacts = []
           failures = []
-          resumed = bool(os.environ["RESUME_RUN_ID"])
+          resumed = bool(os.environ["RESUME_SOURCE_RUN_ID"])
           for index, pattern in enumerate(patterns):
               output = root / f"cdx-{index:02d}.json"
               evidence = root / f"retrieval-{index:02d}.json"
@@ -156,7 +202,7 @@ jobs:
               if resumed and output.with_name(f"{output.stem}.pages").exists():
                   command.extend([
                       "--resume",
-                      "--resume-source-run-id", os.environ["RESUME_RUN_ID"],
+                      "--resume-source-run-id", os.environ["RESUME_SOURCE_RUN_ID"],
                   ])
               completed = subprocess.run(command, check=False)
               retrieval = json.loads(evidence.read_text(encoding="utf-8"))
@@ -189,6 +235,11 @@ jobs:
               "source": "https://web.archive.org/cdx/search/cdx",
               "origin_contacted": False,
               "snapshot_semantics": "complete-paginated-cumulative-refresh",
+              "resume": {
+                  "source_run_id": os.environ["RESUME_SOURCE_RUN_ID"] or None,
+                  "reason": os.environ["RESUME_REASON"],
+                  "checkpoint_hash_validation": "required-by-fetch-wrapper",
+              },
               "capture_mode": os.environ["CAPTURE_MODE"],
               "complete": not failures and all(
                   artifact["pagination_complete"] for artifact in artifacts

@@ -7,6 +7,12 @@ Internet Archive, and additional preservation sources with transparent
 provenance and evidence-based completeness.
 Link: [./tracks/global_archive_completeness_20260727/](./tracks/global_archive_completeness_20260727/)
 
+## [~] Track: Wayback resume reliability
+Track ID: `wayback_resume_reliability_20260727`
+Goal: Make separate-site Wayback inventories converge through verified
+automatic checkpoint restoration and bounded transient-CDX retries.
+Link: [./tracks/wayback_resume_reliability_20260727/](./tracks/wayback_resume_reliability_20260727/)
+
 ## [~] Track: archive_registry_readiness_20260721
 
 [Specification and plan](./tracks/archive_registry_readiness_20260721/)
