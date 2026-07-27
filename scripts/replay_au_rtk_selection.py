@@ -167,6 +167,7 @@ def replay_one(
     output_root: Path,
     timeout_seconds: float,
     retries: int,
+    client: httpx.Client | None = None,
 ) -> dict[str, Any]:
     """Replay and checkpoint one exact selected capture."""
     slug = selected["canonical_slug"]
@@ -177,7 +178,12 @@ def replay_one(
     last_error = ""
     for attempt in range(retries + 1):
         try:
-            with httpx.Client(follow_redirects=False) as client:
+            if client is None:
+                with httpx.Client(follow_redirects=False) as owned_client:
+                    raw, content_type, final_url = fetch_archive_only(
+                        owned_client, replay_url, timeout_seconds=timeout_seconds
+                    )
+            else:
                 raw, content_type, final_url = fetch_archive_only(
                     client, replay_url, timeout_seconds=timeout_seconds
                 )
@@ -258,22 +264,24 @@ def run(
     circuit_open = False
     if workers == 1:
         consecutive_failures = 0
-        for selected in pending:
-            result = replay_one(
-                selected,
-                output_root=output_root,
-                timeout_seconds=timeout_seconds,
-                retries=retries,
-            )
-            complete.append(result)
-            if result.get("status") == "captured":
-                consecutive_failures = 0
-            else:
-                consecutive_failures += 1
-                if consecutive_failures >= max(1, circuit_breaker_failures):
-                    circuit_open = True
-                    break
-            time.sleep(max(0.0, launch_delay_seconds))
+        with httpx.Client(follow_redirects=False) as client:
+            for selected in pending:
+                result = replay_one(
+                    selected,
+                    output_root=output_root,
+                    timeout_seconds=timeout_seconds,
+                    retries=retries,
+                    client=client,
+                )
+                complete.append(result)
+                if result.get("status") == "captured":
+                    consecutive_failures = 0
+                else:
+                    consecutive_failures += 1
+                    if consecutive_failures >= max(1, circuit_breaker_failures):
+                        circuit_open = True
+                        break
+                time.sleep(max(0.0, launch_delay_seconds))
     else:
         with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
             futures = []
