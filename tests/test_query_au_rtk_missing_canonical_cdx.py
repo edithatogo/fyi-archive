@@ -147,6 +147,10 @@ def test_completion_replay_selection_prefers_latest_json_and_remains_unauthorize
     assert selection["no_capture_slug_count"] == completion.EXPECTED_MISSING_SLUGS - 1
     assert selection["replay_authorized"] is False
     assert selection["manifest_finalization_authorized"] is False
+    completion.validate_completion_replay_selection(selection)
+    selection["records"][0]["source_url"] += "?expanded=true"
+    with pytest.raises(ValueError, match="escaped its exact canonical URL"):
+        completion.validate_completion_replay_selection(selection)
 
 
 def test_sequential_completion_opens_circuit(tmp_path, monkeypatch) -> None:

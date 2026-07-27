@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 import httpx
+import jsonschema
 
 from scripts.prepare_au_rtk_replay_selection import (
     APPROVED_CDX_SHA256,
@@ -24,6 +25,11 @@ from scripts.prepare_au_rtk_replay_selection import (
 CDX_ENDPOINT = "https://web.archive.org/cdx/search/cdx"
 EXPECTED_MISSING_SLUGS = 858
 EXPECTED_QUERY_COUNT = 1_716
+COMPLETION_SELECTION_SCHEMA = (
+    Path(__file__).resolve().parents[1]
+    / "schemas"
+    / "au-rtk-canonical-completion-replay-selection.schema.json"
+)
 
 
 def build_queries(cdx_rows: list[Any]) -> dict[str, Any]:
@@ -205,6 +211,43 @@ def build_completion_replay_selection(
     }
 
 
+def validate_completion_replay_selection(selection: dict[str, Any]) -> None:
+    """Validate exact membership and authorization boundaries of a replay proposal."""
+    jsonschema.validate(
+        selection,
+        json.loads(COMPLETION_SELECTION_SCHEMA.read_text(encoding="utf-8")),
+    )
+    records = selection["records"]
+    missing = selection["no_capture_slugs"]
+    selected_slugs = [record["canonical_slug"] for record in records]
+    if len(set(selected_slugs)) != len(selected_slugs):
+        raise ValueError("completion replay selection contains duplicate slugs")
+    if len(set(missing)) != len(missing) or set(selected_slugs) & set(missing):
+        raise ValueError("selected and no-capture slug membership overlaps or duplicates")
+    if len(selected_slugs) + len(missing) != EXPECTED_MISSING_SLUGS:
+        raise ValueError("completion replay selection does not cover all queried slugs")
+    if (
+        selection["selected_slug_count"] != len(records)
+        or selection["no_capture_slug_count"] != len(missing)
+        or selection["json_count"] != sum(record["media_kind"] == "json" for record in records)
+        or selection["html_fallback_count"]
+        != sum(record["media_kind"] == "html" for record in records)
+    ):
+        raise ValueError("completion replay selection counts are inconsistent")
+    for record in records:
+        slug = record["canonical_slug"]
+        suffix = ".json" if record["media_kind"] == "json" else ""
+        parsed = urlsplit(record["source_url"])
+        if (
+            parsed.scheme not in {"http", "https"}
+            or (parsed.hostname or "").lower() != "www.righttoknow.org.au"
+            or parsed.path != f"/request/{slug}{suffix}"
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("completion replay record escaped its exact canonical URL")
+
+
 def query_one(
     query: dict[str, str],
     *,
@@ -361,6 +404,7 @@ def run(
             candidate,
             completion_candidate_sha256=summary["candidate_sha256"],
         )
+        validate_completion_replay_selection(selection)
         selection_path = output_root / "completion-replay-selection.candidate.json"
         selection_path.write_text(json.dumps(selection, indent=2, sort_keys=True) + "\n")
         summary.update(

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AU RightToKnow canonical completion replay proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "source_cdx_sha256",
+    "completion_candidate_sha256",
+    "queried_slug_count",
+    "selected_slug_count",
+    "json_count",
+    "html_fallback_count",
+    "no_capture_slug_count",
+    "no_capture_slugs",
+    "records",
+    "replay_authorized",
+    "publication",
+    "redistribution",
+    "manifest_finalization_authorized"
+  ],
+  "properties": {
+    "schema": {
+      "const": "fyi-archive.au-rtk-canonical-completion-replay-selection.v1"
+    },
+    "status": {"const": "candidate_pending_replay_approval"},
+    "source_cdx_sha256": {
+      "const": "954b0f80ad2a44038f364d240cc9baac815f252a43535c8403dec060ddb730bd"
+    },
+    "completion_candidate_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "queried_slug_count": {"const": 858},
+    "selected_slug_count": {"type": "integer", "minimum": 0, "maximum": 858},
+    "json_count": {"type": "integer", "minimum": 0, "maximum": 858},
+    "html_fallback_count": {"type": "integer", "minimum": 0, "maximum": 858},
+    "no_capture_slug_count": {"type": "integer", "minimum": 0, "maximum": 858},
+    "no_capture_slugs": {
+      "type": "array",
+      "maxItems": 858,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "records": {
+      "type": "array",
+      "maxItems": 858,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "canonical_slug",
+          "media_kind",
+          "source_url",
+          "archive_timestamp",
+          "archive_digest",
+          "statuscode",
+          "length",
+          "selection_reason"
+        ],
+        "properties": {
+          "canonical_slug": {"type": "string", "minLength": 1},
+          "media_kind": {"enum": ["json", "html"]},
+          "source_url": {"type": "string", "format": "uri"},
+          "archive_timestamp": {"type": "string", "pattern": "^[0-9]{14}$"},
+          "archive_digest": {"type": "string", "minLength": 1},
+          "statuscode": {"const": "200"},
+          "length": {"type": "string", "pattern": "^[0-9]+$"},
+          "selection_reason": {
+            "enum": [
+              "latest_successful_canonical_json",
+              "latest_successful_canonical_html_fallback"
+            ]
+          }
+        }
+      }
+    },
+    "replay_authorized": {"const": false},
+    "publication": {"const": false},
+    "redistribution": {"const": false},
+    "manifest_finalization_authorized": {"const": false}
+  }
+}
