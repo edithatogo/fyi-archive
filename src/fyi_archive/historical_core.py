@@ -112,6 +112,19 @@ def extract_authority_identity(soup: BeautifulSoup) -> tuple[str, str]:
     return "", ""
 
 
+def extract_law_used(soup: BeautifulSoup) -> str:
+    """Extract Alaveteli's explicit regime label from the request header."""
+    subtitle = _first_text(soup, (".request-header__subtitle", ".request-header .subtitle"))
+    lowered = subtitle.lower()
+    if "made this government information (public access) request" in lowered:
+        return "gipa"
+    if "made this right to information request" in lowered:
+        return "rti"
+    if "made this freedom of information request" in lowered:
+        return "foi"
+    return ""
+
+
 def parse_archived_request(
     html: str,
     *,
@@ -127,6 +140,7 @@ def parse_archived_request(
     authority, authority_slug = extract_authority_identity(soup)
     if not authority:
         authority = _first_text(soup, (".request-authority", ".public-body"))
+    law_used = extract_law_used(soup)
     state_text = _first_text(soup, (".request-status", ".request-state", ".status", ".state"))
     if not state_text:
         match = _STATUS_PATTERN.search(clean_text(soup.get_text(" ", strip=True)))
@@ -144,6 +158,7 @@ def parse_archived_request(
         "title": title,
         "authority": authority,
         "authority_slug": authority_slug,
+        "law_used": law_used,
         "state": state,
         "state_text": state_text,
         "first_seen": first_seen,

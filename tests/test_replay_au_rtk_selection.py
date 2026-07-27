@@ -77,6 +77,30 @@ def test_html_request_key_uses_canonical_slug_not_tracking_query() -> None:
     assert result["authority_slug"] == "agency"
 
 
+def test_html_parser_extracts_explicit_gipa_regime_from_request_header() -> None:
+    selected = {
+        "source_url": "https://www.righttoknow.org.au/request/example",
+        "archive_timestamp": "20200101",
+        "archive_digest": "ABC",
+        "canonical_slug": "example",
+        "media_kind": "html",
+        "selection_reason": "latest_successful_primary_html_fallback",
+    }
+    result = record_from_raw(
+        selected,
+        b"""
+        <h1>Example</h1>
+        <p class="request-header__subtitle">
+          Requester made this Government Information (Public Access) request to
+          <a href="/body/nsw-agency">NSW Agency</a>
+        </p>
+        """,
+        replay_url="https://web.archive.org/example",
+        content_type="text/html",
+    )
+    assert result["law_used"] == "gipa"
+
+
 def test_sequential_mode_opens_circuit_after_bounded_failures(tmp_path, monkeypatch) -> None:
     records = [
         {

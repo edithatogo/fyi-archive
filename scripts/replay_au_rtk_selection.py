@@ -143,7 +143,6 @@ def record_from_raw(
         record["request_key"] = selected["canonical_slug"]
         record["media_kind"] = "html"
         record["authority_tags"] = []
-        record["law_used"] = ""
         record["parser_version"] = PARSER_VERSION
     record.update(
         {

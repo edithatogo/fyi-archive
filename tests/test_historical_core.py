@@ -24,6 +24,7 @@ def test_archived_request_core_fields_are_extracted() -> None:
     assert record["title"] == "Road safety records"
     assert record["authority"] == "Example Agency"
     assert record["authority_slug"] == "example-agency"
+    assert record["law_used"] == ""
     assert record["state"] == "successful"
     assert record["state_text"] == "Successful"
     assert record["first_seen"] == "2024-01-02"
@@ -90,3 +91,19 @@ def test_authority_extraction_skips_body_list_navigation() -> None:
     )
     assert record["authority"] == "Actual Agency"
     assert record["authority_slug"] == "actual-agency"
+
+
+def test_law_used_comes_only_from_structured_request_header() -> None:
+    record = parse_archived_request(
+        """
+        <h1>Request mentioning the Freedom of Information Act</h1>
+        <p class="request-header__subtitle">
+          Requester made this Government Information (Public Access) request to
+          <a href="/body/nsw-agency">NSW Agency</a>
+        </p>
+        """,
+        source_url="https://example.test/request/example",
+        archive_url="https://web.archive.org/example",
+        archive_timestamp="20200101000000",
+    )
+    assert record["law_used"] == "gipa"
