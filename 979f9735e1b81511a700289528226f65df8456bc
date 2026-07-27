@@ -1,0 +1,1 @@
+Commit notes: Candidate artifact validation now rejects traversal, absolute paths, and symlink escapes before hash/content checks. Verification: 382 passed, 1 skipped; focused ruff, format, and ty passed.
