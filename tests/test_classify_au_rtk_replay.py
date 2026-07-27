@@ -34,6 +34,22 @@ def test_gipa_is_explicit_nsw_evidence_and_conflicts_abstain() -> None:
     assert result[1]["jurisdiction"] == "AU-NSW"
 
 
+def test_explicit_non_target_jurisdictions_are_excluded_not_unresolved() -> None:
+    records = [
+        {"authority_slug": "vic", "authority_tags": ["victoria"], "law_used": "foi"},
+        {"authority_slug": "qld", "authority_tags": [], "law_used": "rti"},
+        {"authority_slug": "vic", "authority_tags": [], "law_used": "foi"},
+    ]
+    result = classify(records)
+    assert [record["jurisdiction"] for record in result] == [
+        "OUT_OF_SCOPE",
+        "OUT_OF_SCOPE",
+        "OUT_OF_SCOPE",
+    ]
+    assert result[0]["jurisdiction_evidence"] == ["authority_tag:VIC"]
+    assert result[1]["jurisdiction_evidence"] == ["request_regime:RTI"]
+
+
 def test_complete_replay_validation_fails_closed_on_partial_membership(
     tmp_path, monkeypatch
 ) -> None:
@@ -146,11 +162,17 @@ def test_candidate_schema_requires_complete_bounded_non_final_packet() -> None:
         "source_cdx_sha256": classifier.APPROVED_CDX_SHA256,
         "selection_sha256": classifier.SELECTION_SHA256,
         "captured_record_count": classifier.EXPECTED_SLUGS,
-        "counts": {"AU-CTH": 0, "AU-NSW": 0, "UNRESOLVED": classifier.EXPECTED_SLUGS},
+        "counts": {
+            "AU-CTH": 0,
+            "AU-NSW": 0,
+            "OUT_OF_SCOPE": 0,
+            "UNRESOLVED": classifier.EXPECTED_SLUGS,
+        },
         "replay_index": {**artifact, "record_count": classifier.EXPECTED_SLUGS},
         "jurisdiction_outputs": {
             "AU-CTH": artifact,
             "AU-NSW": artifact,
+            "OUT_OF_SCOPE": artifact,
             "UNRESOLVED": {**artifact, "record_count": classifier.EXPECTED_SLUGS},
         },
         "publication": False,

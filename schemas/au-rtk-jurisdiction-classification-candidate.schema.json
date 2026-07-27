@@ -31,10 +31,11 @@
     "counts": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["AU-CTH", "AU-NSW", "UNRESOLVED"],
+      "required": ["AU-CTH", "AU-NSW", "OUT_OF_SCOPE", "UNRESOLVED"],
       "properties": {
         "AU-CTH": {"type": "integer", "minimum": 0},
         "AU-NSW": {"type": "integer", "minimum": 0},
+        "OUT_OF_SCOPE": {"type": "integer", "minimum": 0},
         "UNRESOLVED": {"type": "integer", "minimum": 0}
       }
     },
@@ -42,10 +43,11 @@
     "jurisdiction_outputs": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["AU-CTH", "AU-NSW", "UNRESOLVED"],
+      "required": ["AU-CTH", "AU-NSW", "OUT_OF_SCOPE", "UNRESOLVED"],
       "properties": {
         "AU-CTH": {"$ref": "#/$defs/artifact"},
         "AU-NSW": {"$ref": "#/$defs/artifact"},
+        "OUT_OF_SCOPE": {"$ref": "#/$defs/artifact"},
         "UNRESOLVED": {"$ref": "#/$defs/artifact"}
       }
     },

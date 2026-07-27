@@ -39,15 +39,28 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _direct_profile(record: dict[str, Any], rules: dict[str, Any]) -> str | None:
-    profiles = {
-        PROFILE_MAP[jurisdiction]
-        for tag in record.get("authority_tags") or []
-        if (jurisdiction := jurisdiction_for_body_tag(str(tag), rules)) in PROFILE_MAP
-    }
-    if str(record.get("law_used") or "").lower() == "gipa":
+def _direct_profile(
+    record: dict[str, Any],
+    rules: dict[str, Any],
+) -> tuple[str | None, list[str]]:
+    profiles: set[str] = set()
+    evidence = []
+    for tag in record.get("authority_tags") or []:
+        jurisdiction = jurisdiction_for_body_tag(str(tag), rules)
+        if jurisdiction in PROFILE_MAP:
+            profiles.add(PROFILE_MAP[jurisdiction])
+            evidence.append(f"authority_tag:{jurisdiction}")
+        elif jurisdiction != "OTHER":
+            profiles.add("OUT_OF_SCOPE")
+            evidence.append(f"authority_tag:{jurisdiction}")
+    law_used = str(record.get("law_used") or "").lower()
+    if law_used == "gipa":
         profiles.add("AU-NSW")
-    return next(iter(profiles)) if len(profiles) == 1 else None
+        evidence.append("request_regime:GIPA")
+    elif law_used == "rti":
+        profiles.add("OUT_OF_SCOPE")
+        evidence.append("request_regime:RTI")
+    return (next(iter(profiles)) if len(profiles) == 1 else None, sorted(set(evidence)))
 
 
 def classify(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -55,14 +68,14 @@ def classify(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     rules = load_jurisdiction_rules()
     authority_profiles: dict[str, set[str]] = defaultdict(set)
     for record in records:
-        profile = _direct_profile(record, rules)
+        profile, _evidence = _direct_profile(record, rules)
         authority_slug = str(record.get("authority_slug") or "")
         if profile and authority_slug:
             authority_profiles[authority_slug].add(profile)
 
     output = []
     for record in records:
-        direct = _direct_profile(record, rules)
+        direct, evidence = _direct_profile(record, rules)
         authority_slug = str(record.get("authority_slug") or "")
         propagated = authority_profiles.get(authority_slug, set()) if authority_slug else set()
         if direct:
@@ -71,6 +84,7 @@ def classify(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         elif len(propagated) == 1:
             jurisdiction = next(iter(propagated))
             basis = "unanimous_authority_slug_cross_record_evidence"
+            evidence = [f"authority_slug_cross_record:{authority_slug}"]
         else:
             jurisdiction = "UNRESOLVED"
             basis = "insufficient_or_conflicting_authority_evidence"
@@ -79,6 +93,7 @@ def classify(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 **record,
                 "jurisdiction": jurisdiction,
                 "jurisdiction_basis": basis,
+                "jurisdiction_evidence": evidence,
             }
         )
     return output
@@ -215,6 +230,7 @@ def main() -> int:
     paths = {
         "AU-CTH": args.output_root / "au-cth.candidate.jsonl",
         "AU-NSW": args.output_root / "au-nsw.candidate.jsonl",
+        "OUT_OF_SCOPE": args.output_root / "out-of-scope.candidate.jsonl",
         "UNRESOLVED": args.output_root / "unresolved.candidate.jsonl",
     }
     counts = {}
