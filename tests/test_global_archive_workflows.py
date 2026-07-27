@@ -48,3 +48,16 @@ def test_nz_historical_replay_pilot_is_bounded_and_non_publishing() -> None:
     assert "enrich_historical_core.py" in workflow
     assert '"origin_contacted": False' in workflow
     assert '"publication": "none"' in workflow
+
+
+def test_nz_historical_replay_batch_is_resumable_and_bounded() -> None:
+    workflow = (WORKFLOWS / "nz_historical_replay_batch.yml").read_text(encoding="utf-8")
+
+    assert "start_offset:" in workflow
+    assert 'test "$REPLAY_LIMIT" -le 10' in workflow
+    assert 'test "$RETRIES" -le 1' in workflow
+    assert '--start-offset "$START_OFFSET"' in workflow
+    assert '--retries "$RETRIES"' in workflow
+    assert '"failed_record_count"' in workflow
+    assert '"origin_contacted": False' in workflow
+    assert '"publication": "none"' in workflow
