@@ -1,0 +1,1 @@
+Commit notes: Explicit non-target AU jurisdictions are now separated from genuinely unresolved CTH/NSW records, with exact evidence preserved. Partial split: 565 CTH, 38 NSW, 38 out of scope, 94 unresolved. Verification: 380 passed, 1 skipped; ruff and ty passed.
