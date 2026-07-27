@@ -70,6 +70,7 @@ def query_one(
     output_root: Path,
     timeout_seconds: float,
     retries: int,
+    client: httpx.Client | None = None,
 ) -> dict[str, Any]:
     """Fetch one exact-URL CDX response and checkpoint it."""
     key = f"{query['canonical_slug']}.{query['media_kind']}"
@@ -84,7 +85,15 @@ def query_one(
     }
     for attempt in range(retries + 1):
         try:
-            with httpx.Client(follow_redirects=False) as client:
+            if client is None:
+                with httpx.Client(follow_redirects=False) as owned_client:
+                    response = owned_client.get(
+                        CDX_ENDPOINT,
+                        params=params,
+                        timeout=timeout_seconds,
+                        headers={"User-Agent": "fyi-archive-au-rtk-cdx-completion/1.0"},
+                    )
+            else:
                 response = client.get(
                     CDX_ENDPOINT,
                     params=params,
@@ -146,22 +155,24 @@ def run(
     circuit_open = False
     if workers == 1:
         consecutive_failures = 0
-        for query in pending:
-            result = query_one(
-                query,
-                output_root=output_root,
-                timeout_seconds=timeout_seconds,
-                retries=retries,
-            )
-            results.append(result)
-            if result.get("status") == "complete":
-                consecutive_failures = 0
-            else:
-                consecutive_failures += 1
-                if consecutive_failures >= max(1, circuit_breaker_failures):
-                    circuit_open = True
-                    break
-            time.sleep(max(0.0, launch_delay_seconds))
+        with httpx.Client(follow_redirects=False) as client:
+            for query in pending:
+                result = query_one(
+                    query,
+                    output_root=output_root,
+                    timeout_seconds=timeout_seconds,
+                    retries=retries,
+                    client=client,
+                )
+                results.append(result)
+                if result.get("status") == "complete":
+                    consecutive_failures = 0
+                else:
+                    consecutive_failures += 1
+                    if consecutive_failures >= max(1, circuit_breaker_failures):
+                        circuit_open = True
+                        break
+                time.sleep(max(0.0, launch_delay_seconds))
     else:
         with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
             futures = []
