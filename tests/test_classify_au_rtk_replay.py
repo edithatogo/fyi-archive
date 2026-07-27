@@ -187,3 +187,59 @@ def test_candidate_schema_requires_complete_bounded_non_final_packet() -> None:
     candidate["manifest_finalization_authorized"] = True
     with pytest.raises(jsonschema.ValidationError):
         classifier.validate_candidate_summary(candidate)
+
+
+def test_candidate_output_validator_requires_exact_partition_and_provenance(tmp_path) -> None:
+    index_records = [
+        {
+            "canonical_slug": "cth",
+            "media_kind": "json",
+            "source_url": "https://example.test/request/cth.json",
+            "archive_timestamp": "20200101000000",
+            "archive_digest": "A",
+            "raw_sha256": "a" * 64,
+        },
+        {
+            "canonical_slug": "nsw",
+            "media_kind": "html",
+            "source_url": "https://example.test/request/nsw",
+            "archive_timestamp": "20200102000000",
+            "archive_digest": "B",
+            "raw_sha256": "b" * 64,
+        },
+    ]
+    index_path = tmp_path / "index.jsonl"
+    index_path.write_text("".join(json.dumps(row) + "\n" for row in index_records))
+
+    outputs = {}
+    for jurisdiction, record in (("AU-CTH", index_records[0]), ("AU-NSW", index_records[1])):
+        path = tmp_path / f"{jurisdiction}.jsonl"
+        path.write_text(json.dumps({**record, "jurisdiction": jurisdiction}) + "\n")
+        outputs[jurisdiction] = {
+            "path": path.name,
+            "record_count": 1,
+            "byte_count": path.stat().st_size,
+            "sha256": classifier.sha256_file(path),
+        }
+    for jurisdiction in ("OUT_OF_SCOPE", "UNRESOLVED"):
+        path = tmp_path / f"{jurisdiction}.jsonl"
+        path.write_text("")
+        outputs[jurisdiction] = {
+            "path": path.name,
+            "record_count": 0,
+            "byte_count": 0,
+            "sha256": classifier.sha256_file(path),
+        }
+    summary = {
+        "replay_index": {
+            "path": index_path.name,
+            "record_count": 2,
+            "byte_count": index_path.stat().st_size,
+            "sha256": classifier.sha256_file(index_path),
+        },
+        "jurisdiction_outputs": outputs,
+    }
+    classifier.validate_candidate_outputs(tmp_path, summary)
+    outputs["AU-NSW"]["record_count"] = 0
+    with pytest.raises(ValueError, match="record count mismatch"):
+        classifier.validate_candidate_outputs(tmp_path, summary)

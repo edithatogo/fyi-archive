@@ -213,6 +213,69 @@ def validate_candidate_summary(summary: dict[str, Any]) -> None:
         raise ValueError("replay index count does not match captured replay")
 
 
+def _read_jsonl(path: Path) -> list[dict[str, Any]]:
+    records = []
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if not line.strip():
+            continue
+        value = json.loads(line)
+        if not isinstance(value, dict):
+            raise ValueError(f"{path.name}:{line_number} is not a JSON object")
+        records.append(value)
+    return records
+
+
+def validate_candidate_outputs(output_root: Path, summary: dict[str, Any]) -> None:
+    """Verify candidate JSONL content, hashes, provenance, and exact membership."""
+    index_metadata = summary["replay_index"]
+    index_path = output_root / index_metadata["path"]
+    if (
+        not index_path.is_file()
+        or index_path.stat().st_size != index_metadata["byte_count"]
+        or sha256_file(index_path) != index_metadata["sha256"]
+    ):
+        raise ValueError("replay index integrity mismatch")
+    index_records = _read_jsonl(index_path)
+    index = {record.get("canonical_slug"): record for record in index_records}
+    if len(index) != len(index_records) or None in index:
+        raise ValueError("replay index canonical slugs are missing or duplicated")
+
+    seen: set[str] = set()
+    provenance_fields = (
+        "canonical_slug",
+        "media_kind",
+        "source_url",
+        "archive_timestamp",
+        "archive_digest",
+        "raw_sha256",
+    )
+    for jurisdiction, metadata in summary["jurisdiction_outputs"].items():
+        path = output_root / metadata["path"]
+        if (
+            not path.is_file()
+            or path.stat().st_size != metadata["byte_count"]
+            or sha256_file(path) != metadata["sha256"]
+        ):
+            raise ValueError(f"{jurisdiction} output integrity mismatch")
+        records = _read_jsonl(path)
+        if len(records) != metadata["record_count"]:
+            raise ValueError(f"{jurisdiction} output record count mismatch")
+        for record in records:
+            slug = str(record.get("canonical_slug") or "")
+            if record.get("jurisdiction") != jurisdiction:
+                raise ValueError(f"{jurisdiction} output contains wrong jurisdiction")
+            if not slug or slug in seen or slug not in index:
+                raise ValueError("candidate output membership is missing, duplicated, or unknown")
+            if any(key.startswith("_") for key in record):
+                raise ValueError("candidate output leaked an internal field")
+            expected = index[slug]
+            if any(record.get(field) != expected.get(field) for field in provenance_fields):
+                raise ValueError(f"candidate output provenance mismatch: {slug}")
+            seen.add(slug)
+    if seen != set(index):
+        raise ValueError("candidate outputs do not exactly partition the replay index")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--records-dir", type=Path, required=True)
@@ -266,6 +329,7 @@ def main() -> int:
         "manifest_finalization_authorized": False,
     }
     validate_candidate_summary(summary)
+    validate_candidate_outputs(args.output_root, summary)
     (args.output_root / "classification-summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n"
     )
