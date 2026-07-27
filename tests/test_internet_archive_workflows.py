@@ -51,3 +51,7 @@ def test_separate_site_workflow_auto_restores_latest_checkpoint() -> None:
     assert 'p.get("complete") is True' in workflow
     assert "latest-complete-refresh" in workflow
     assert 'grep -qx "complete=true"' in workflow
+    assert 'p.get("pagination", {}).get("mode") == "resume_key"' in workflow
+    assert 'grep -qx "pagination-match=true"' in workflow
+    assert '"mode": "resume_key"' in workflow
+    assert '"continuation": "showResumeKey/resumeKey"' in workflow

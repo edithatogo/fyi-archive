@@ -13,6 +13,13 @@ responses, or the deadline. This evidence requires patient retries and reduced
 request concurrency, without weakening completeness semantics.
 
 
+Run `30252925334` retained all 29 artifacts and advanced 11 sites by 88,004
+records. New Zealand advanced from 27,564 to 53,564 records but remained
+incomplete at the whole-run deadline. Eight sites encountered page-level HTTP
+400 responses. The hosted evidence therefore supports sequential CDX resumption
+keys as the primary completeness mechanism while retaining the legacy page
+paginator for compatibility.
+
 ## Requirements
 
 - Retry observed transient page failures within the existing deadline.
@@ -25,6 +32,10 @@ request concurrency, without weakening completeness semantics.
 - Refresh from scratch when the newest compatible inventory is already complete.
 - Keep site evidence separate and fail closed until pagination completes.
 - Record the selected resume source in provenance.
+- Use `showResumeKey` and `resumeKey` for complete snapshot traversal.
+- Persist each cursor chunk, next key, fingerprint, and configuration hash.
+- Reject legacy page checkpoints when the workflow requires cursor semantics.
+- Retain the legacy page paginator for other callers.
 - Never contact origin FOI sites or broaden GitHub token permissions.
 
 ## Acceptance criteria
