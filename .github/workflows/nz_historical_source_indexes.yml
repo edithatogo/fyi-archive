@@ -70,7 +70,7 @@ jobs:
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
         with:
           name: ${{ format('nz-historical-source-index-{0}', inputs.resume_run_id) }}
-          path: .tmp/nz-historical-source-inputs
+          path: .tmp
           github-token: ${{ github.token }}
           run-id: ${{ inputs.resume_run_id }}
       - name: Export complete Internet Archive CDX inventory

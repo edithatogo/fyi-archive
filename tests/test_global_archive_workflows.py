@@ -75,3 +75,4 @@ def test_nz_source_index_uses_resumable_complete_cdx_export() -> None:
     assert "--capture-mode url_index" in workflow
     assert "Fail closed on incomplete snapshot" in workflow
     assert "if: always()" in workflow
+    assert "path: .tmp\n          github-token:" in workflow
