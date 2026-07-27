@@ -417,19 +417,27 @@ def test_retries_malformed_json_with_patient_bounded_backoff(
 
 
 @pytest.mark.parametrize(
-    ("kwargs", "message"),
+    ("capture_mode", "start_chunk", "resume_key", "message"),
     [
-        ({"capture_mode": "invalid"}, "unsupported CDX capture mode"),
-        ({"start_chunk": -1}, "start_chunk"),
-        ({"start_chunk": 1}, "resume_key is required"),
+        ("invalid", 0, None, "unsupported CDX capture mode"),
+        ("url_index", -1, None, "start_chunk"),
+        ("url_index", 1, None, "resume_key is required"),
     ],
 )
 def test_resume_key_paginator_rejects_invalid_configuration(
-    kwargs: dict[str, object], message: str
+    capture_mode: str,
+    start_chunk: int,
+    resume_key: str | None,
+    message: str,
 ) -> None:
     with pytest.raises(ValueError, match=message):
         fetch_complete_cdx_with_resume_key(
-            "example.test/request/*", page_size=1, max_pages=2, **kwargs
+            "example.test/request/*",
+            page_size=1,
+            max_pages=2,
+            capture_mode=capture_mode,
+            start_chunk=start_chunk,
+            resume_key=resume_key,
         )
 
 
