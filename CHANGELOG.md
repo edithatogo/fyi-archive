@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.17.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.16.0...fyi_archive-v0.17.0) (2026-07-27)
+
+
+### Features
+
+* add global archive completeness framework ([#253](https://github.com/edithatogo/fyi-archive/issues/253)) ([5493317](https://github.com/edithatogo/fyi-archive/commit/549331738015e6ef6efa1719c67faf7de48c28ca))
+
 ## [0.16.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.15.2...fyi_archive-v0.16.0) (2026-07-24)
 
 
