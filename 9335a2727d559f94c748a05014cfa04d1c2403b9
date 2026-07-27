@@ -1,0 +1,1 @@
+Commit notes: Exact-URL CDX completion now fails closed if Internet Archive returns malformed, unsuccessful, or out-of-scope rows. Full verification: 370 passed, 1 skipped; ruff and ty passed.
