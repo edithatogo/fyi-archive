@@ -16,5 +16,11 @@
 - [x] Reduce hosted CDX concurrency and extend the per-pattern deadline.
 - [x] Fresh-start refreshes after the newest compatible complete inventory.
 - [x] Re-run focused and repository quality gates for the follow-up.
-- [ ] Record the follow-up hosted continuation evidence.
+- [x] Record run `30252925334`: all 29 artifacts retained, 88,004 additional
+  records across 11 sites, NZ at 53,564 records, and 24 fail-closed targets.
+- [x] Add a bounded sequential resume-key paginator with regression tests.
+- [x] Persist hash-verified cursor checkpoints and explicit pagination provenance.
+- [x] Reject incompatible legacy page checkpoints in cursor workflows.
+- [~] Run the repository and hosted quality gates for cursor pagination.
+- [ ] Record a cursor-based hosted continuation and compare all 29 artifacts.
 - [ ] Complete the track only after hosted evidence passes.

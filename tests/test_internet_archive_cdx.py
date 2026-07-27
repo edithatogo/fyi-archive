@@ -10,7 +10,7 @@ from urllib.request import Request
 import pytest
 
 from fyi_archive import internet_archive_cdx
-from fyi_archive.internet_archive_cdx import fetch_complete_cdx
+from fyi_archive.internet_archive_cdx import fetch_complete_cdx, fetch_complete_cdx_with_resume_key
 
 
 class _Response:
@@ -324,6 +324,73 @@ def test_retries_page_level_http_400_but_not_count_query(
             "example.test/request/*", page_size=10, max_pages=2, opener=invalid_count_query
         )
     assert count_attempts == 1
+
+
+def test_resume_key_paginator_follows_cursor_and_reports_chunks() -> None:
+    requests: list[str] = []
+    chunks: list[tuple[int, str | None, list[str], list[list[str]], str]] = []
+
+    def opener(request: Request, timeout: int) -> _Response:
+        requests.append(request.full_url)
+        if "resumeKey" not in request.full_url:
+            return _Response([
+                ["original"],
+                ["https://example.test/request/1"],
+                [],
+                ["next%21"],
+            ])
+        return _Response([["original"], ["https://example.test/request/2"]])
+
+    rows = fetch_complete_cdx_with_resume_key(
+        "example.test/request/*",
+        page_size=1,
+        max_pages=3,
+        chunk_callback=lambda *values: chunks.append(values),
+        opener=opener,
+    )
+
+    assert rows[1:] == [
+        ["https://example.test/request/1"],
+        ["https://example.test/request/2"],
+    ]
+    assert "showResumeKey=true" in requests[0]
+    assert "resumeKey=next%2521" in requests[1]
+    assert [chunk[:2] for chunk in chunks] == [(0, "next%21"), (1, None)]
+
+
+def test_resume_key_paginator_resumes_verified_rows() -> None:
+    prior = [["https://example.test/request/1"]]
+    fingerprint = internet_archive_cdx.hashlib.sha256(
+        json.dumps(prior, sort_keys=True).encode()
+    ).hexdigest()
+
+    def opener(request: Request, timeout: int) -> _Response:
+        assert "resumeKey=cursor" in request.full_url
+        return _Response([["original"], ["https://example.test/request/2"]])
+
+    rows = fetch_complete_cdx_with_resume_key(
+        "example.test/request/*",
+        page_size=1,
+        max_pages=3,
+        start_chunk=1,
+        resume_key="cursor",
+        existing_rows=prior,
+        expected_header=["original"],
+        existing_fingerprints={fingerprint},
+        opener=opener,
+    )
+    assert len(rows) == 3
+
+
+def test_resume_key_paginator_rejects_repeated_cursor() -> None:
+    def opener(request: Request, timeout: int) -> _Response:
+        row = "two" if "resumeKey" in request.full_url else "one"
+        return _Response([["original"], [row], [], ["same"]])
+
+    with pytest.raises(RuntimeError, match="resumption key repeated"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*", page_size=1, max_pages=3, opener=opener
+        )
 
 
 def test_retries_malformed_json_with_patient_bounded_backoff(

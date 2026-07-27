@@ -90,6 +90,90 @@ def fetch_complete_cdx(
     return [header or ["original", "timestamp", "digest", "statuscode", "length"], *rows]
 
 
+def fetch_complete_cdx_with_resume_key(
+    url_pattern: str,
+    *,
+    page_size: int,
+    max_pages: int,
+    capture_mode: str = "url_index",
+    max_runtime_seconds: float = 180.0,
+    opener: Callable[..., Any] = urllib.request.urlopen,  # noqa: S310
+    start_chunk: int = 0,
+    resume_key: str | None = None,
+    existing_rows: list[list[str]] | None = None,
+    expected_header: list[str] | None = None,
+    existing_fingerprints: set[str] | None = None,
+    chunk_callback: Callable[[int, str | None, list[str], list[list[str]], str], None]
+    | None = None,
+) -> list[list[str]]:
+    """Retrieve a complete CDX view through sequential resumption keys."""
+    if capture_mode not in CAPTURE_MODES:
+        raise ValueError(f"unsupported CDX capture mode: {capture_mode}")
+    if start_chunk < 0 or start_chunk > max_pages:
+        raise ValueError("start_chunk must be within the configured chunk cap")
+    if start_chunk and not resume_key:
+        raise ValueError("resume_key is required when resuming completed chunks")
+    deadline = time.monotonic() + max_runtime_seconds
+    base = [
+        ("url", url_pattern),
+        ("output", "json"),
+        ("filter", "statuscode:200"),
+        ("fl", "original,timestamp,digest,statuscode,length"),
+        ("limit", str(page_size)),
+        ("showResumeKey", "true"),
+    ]
+    if capture_mode == "url_index":
+        base.append(("collapse", "urlkey"))
+    header = list(expected_header) if expected_header is not None else None
+    rows = [list(row) for row in existing_rows] if existing_rows is not None else []
+    fingerprints = set(existing_fingerprints or ())
+    current_key = resume_key
+    seen_keys = {current_key} if current_key else set()
+
+    for chunk in range(start_chunk, max_pages):
+        params = [*base]
+        if current_key:
+            params.append(("resumeKey", current_key))
+        payload = _fetch(params, opener, deadline=deadline)
+        if not isinstance(payload, list) or not payload or not isinstance(payload[0], list):
+            raise RuntimeError("CDX returned an invalid resume-key payload")
+        next_key: str | None = None
+        data_end = len(payload)
+        if len(payload) >= 2 and payload[-2] == []:
+            marker = payload[-1]
+            if not isinstance(marker, list) or len(marker) != 1 or not marker[0]:
+                raise RuntimeError("CDX returned an invalid resumption key")
+            next_key = str(marker[0])
+            data_end -= 2
+        elif any(value == [] for value in payload[1:]):
+            raise RuntimeError("CDX returned a malformed resumption-key separator")
+        current_header = [str(value) for value in payload[0]]
+        if header is None:
+            header = current_header
+        elif current_header != header:
+            raise RuntimeError("CDX chunk header changed during acquisition")
+        chunk_rows = [[str(value) for value in row] for row in payload[1:data_end]]
+        if not chunk_rows and next_key is not None:
+            raise RuntimeError("CDX returned a resumption key without records")
+        if chunk_rows:
+            fingerprint = hashlib.sha256(
+                json.dumps(chunk_rows, sort_keys=True).encode()
+            ).hexdigest()
+            if fingerprint in fingerprints:
+                raise RuntimeError("CDX chunk repeated during acquisition")
+            fingerprints.add(fingerprint)
+            rows.extend(chunk_rows)
+            if chunk_callback is not None:
+                chunk_callback(chunk, next_key, current_header, chunk_rows, fingerprint)
+        if next_key is None:
+            return [header or ["original", "timestamp", "digest", "statuscode", "length"], *rows]
+        if next_key in seen_keys:
+            raise RuntimeError("CDX resumption key repeated during acquisition")
+        seen_keys.add(next_key)
+        current_key = next_key
+    raise RuntimeError(f"CDX traversal reached configured chunk cap {max_pages}")
+
+
 def _fetch(params: list[tuple[str, str]], opener: Callable[..., Any], *, deadline: float) -> Any:  # noqa: ANN401
     request = urllib.request.Request(  # noqa: S310
         f"{CDX_ENDPOINT}?{urllib.parse.urlencode(params)}",

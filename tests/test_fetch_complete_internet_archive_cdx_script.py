@@ -28,7 +28,7 @@ def test_writes_failure_evidence_without_a_partial_export(
     stale_checkpoint = tmp_path / "nested" / "cdx.pages"
     stale_checkpoint.mkdir(parents=True)
     (stale_checkpoint / "stale").write_text("discard me")
-    monkeypatch.setattr(fetch_script, "fetch_complete_cdx", fail)
+    monkeypatch.setattr(fetch_script, "fetch_complete_cdx_with_resume_key", fail)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -99,13 +99,13 @@ def test_resumes_hash_verified_page_checkpoint(
 
     def first_fetch(
         *_: object,
-        page_callback: Callable[[int, int | None, list[str], list[list[str]], str], None],
+        chunk_callback: Callable[[int, str | None, list[str], list[list[str]], str], None],
         **__: object,
     ) -> list[list[str]]:
-        page_callback(0, 2, ["original"], rows, fingerprint)
+        chunk_callback(0, "cursor-1", ["original"], rows, fingerprint)
         raise RuntimeError("deadline")
 
-    monkeypatch.setattr(fetch_script, "fetch_complete_cdx", first_fetch)
+    monkeypatch.setattr(fetch_script, "fetch_complete_cdx_with_resume_key", first_fetch)
     with pytest.raises(RuntimeError, match="deadline"):
         fetch_script.main()
 
@@ -115,9 +115,10 @@ def test_resumes_hash_verified_page_checkpoint(
         observed.update(kwargs)
         return [["original"], ["https://example.test/request/1"]]
 
-    monkeypatch.setattr(fetch_script, "fetch_complete_cdx", resumed_fetch)
+    monkeypatch.setattr(fetch_script, "fetch_complete_cdx_with_resume_key", resumed_fetch)
     assert fetch_script.main() == 0
-    assert observed["start_page"] == 1
+    assert observed["start_chunk"] == 1
+    assert observed["resume_key"] == "cursor-1"
     assert observed["existing_rows"] == [["https://example.test/request/1"]]
     assert json.loads(evidence.read_text())["resume_source_run_id"] == "12345"
 
