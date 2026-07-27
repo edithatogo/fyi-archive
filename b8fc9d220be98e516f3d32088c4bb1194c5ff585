@@ -1,0 +1,1 @@
+Commit notes: Persistent sequential CDX client prevents per-query connection churn observed during Wayback throttling. Full verification: 366 passed, 1 skipped; ruff and ty passed.
