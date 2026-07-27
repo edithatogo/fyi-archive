@@ -1,5 +1,12 @@
 # Project Tracks
 
+## [x] Track: Global archive completeness and redundancy
+Track ID: `global_archive_completeness_20260727`
+Goal: Reconcile every configured site and jurisdiction across primary,
+Internet Archive, and additional preservation sources with transparent
+provenance and evidence-based completeness.
+Link: [./tracks/global_archive_completeness_20260727/](./tracks/global_archive_completeness_20260727/)
+
 ## [~] Track: archive_registry_readiness_20260721
 
 [Specification and plan](./tracks/archive_registry_readiness_20260721/)

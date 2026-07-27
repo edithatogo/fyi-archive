@@ -17,10 +17,6 @@ on:
         required: true
         default: true
         type: boolean
-      live_confirmation:
-        description: Required only when dry_run is false
-        required: false
-        type: string
       catalog_url:
         description: Optional exact authority catalog URL override
         required: false
@@ -82,7 +78,7 @@ jobs:
       MAX_REQUESTS: ${{ github.event_name == 'schedule' && '5' || inputs.max_requests }}
       MIN_INTERVAL: ${{ github.event_name == 'schedule' && '60' || inputs.min_interval }}
       DISCOVERY_MAX_PAGES: ${{ github.event_name == 'schedule' && '10' || '2' }}
-      LIVE_CONFIRMATION: ${{ github.event_name == 'schedule' && 'RUN_LIVE_ALAVETELI_CAPTURE' || inputs.live_confirmation }}
+      AUTONOMOUS_LIVE_CAPTURE_ENABLED: ${{ vars.AUTONOMOUS_LIVE_CAPTURE_ENABLED || 'false' }}
       CATALOG_URL_OVERRIDE: ${{ inputs.catalog_url }}
       CAPTURE_BASE_URL_OVERRIDE: ${{ inputs.capture_base_url }}
     steps:
@@ -147,7 +143,10 @@ jobs:
         if: ${{ (github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance) && env.DRY_RUN != 'true' }}
         run: |
           set -euo pipefail
-          test "$LIVE_CONFIRMATION" = "RUN_LIVE_ALAVETELI_CAPTURE"
+          if [ "$AUTONOMOUS_LIVE_CAPTURE_ENABLED" != "true" ]; then
+            echo "Set repository variable AUTONOMOUS_LIVE_CAPTURE_ENABLED=true after recording readiness evidence." >&2
+            exit 1
+          fi
           case "$INSTANCE" in
             se-handlingar) tz="Europe/Stockholm" ;;
             ua-dostup) tz="Europe/Kyiv" ;;

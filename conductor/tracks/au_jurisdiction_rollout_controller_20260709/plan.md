@@ -25,7 +25,7 @@
 ## Evidence
 
 - Ordered controller dry-run [29144873699](https://github.com/edithatogo/fyi-archive/actions/runs/29144873699) produced a complete 10-record national manifest.
-- Live execution is protected by explicit confirmation and the `au-live-capture` environment; no production completion is claimed here.
+- Live execution is protected by recorded readiness, the `AUTONOMOUS_AU_CAPTURE_ENABLED` repository variable, and the `au-live-capture` environment; no production completion is claimed here.
 
 ## Notes
 

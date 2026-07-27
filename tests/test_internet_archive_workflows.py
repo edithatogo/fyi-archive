@@ -11,12 +11,12 @@ def test_scheduled_indexes_are_explicitly_url_level_only() -> None:
     assert "schedule:" in workflow
 
 
-def test_all_capture_export_requires_manual_confirmation_and_does_not_replay() -> None:
+def test_all_capture_export_is_scheduled_bounded_and_does_not_replay() -> None:
     workflow = (WORKFLOWS / "alaveteli_historical_all_captures.yml").read_text(encoding="utf-8")
 
     assert "workflow_dispatch:" in workflow
-    assert "schedule:" not in workflow
-    assert "EXPORT_ALL_CAPTURE_METADATA" in workflow
+    assert "schedule:" in workflow
+    assert "EXPORT_ALL_CAPTURE_METADATA" not in workflow
     assert "--capture-mode all_captures" in workflow
     assert "import_historical_sources.py" not in workflow
     assert "if: always()" in workflow

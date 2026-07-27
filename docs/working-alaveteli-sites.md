@@ -11,9 +11,12 @@ instances whose public authority catalogs were verified as downloadable:
 | `ge-askgov` | Georgia | `body/all-authorities.csv` |
 
 Each scheduled run is sequential across sites and runs at 01:00 UTC, overnight
-in all four countries. Manual dispatch defaults to a deterministic dry run;
-manual live capture requires the explicit confirmation string. Live capture is
-restricted to each country's local overnight hours, caps each site at five
+in all four countries. Manual dispatch defaults to a deterministic dry run.
+Live operation is enabled once with the repository variable
+`AUTONOMOUS_LIVE_CAPTURE_ENABLED=true`, after rate, rights, privacy, and
+integrity readiness evidence has been recorded. It does not require a
+per-dispatch confirmation. Live capture is restricted to each country's local
+overnight hours, caps each site at five
 requests, uses one in-flight request, and waits at least 60 seconds between
 requests. A failed request is recorded and does not trigger an unbounded retry.
 
@@ -25,13 +28,13 @@ available; it is never expanded automatically.
 For deployments whose live API is unavailable, the monthly `Alaveteli historical
 indexes` workflow queries Internet Archive CDX in `url_index` mode only: one
 record per archived URL. Its artifacts are historical evidence and do not imply
-complete capture-version coverage or successful live capture. The manual-only
+complete capture-version coverage or successful live capture. The monthly
 `Alaveteli historical all-captures export` workflow removes URL collapsing and
-requires the `EXPORT_ALL_CAPTURE_METADATA` confirmation. It records every
+records every
 reported timestamped CDX record or fails without producing a complete export.
 Each completed CDX page is stored as hash-verified checkpoint evidence, so a
 deadline failure preserves bounded progress without becoming eligible for an
-empirical freeze. A later, separately authorized dispatch can supply the failed
+empirical freeze. A later dispatch can supply the failed
 `resume_run_id`; the workflow restores only the matching same-repository
 artifact, verifies its configuration, page sequence, headers, fingerprints and
 reported page count, and continues at the next page. It fails closed if any
