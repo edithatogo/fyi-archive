@@ -10,8 +10,17 @@ from pathlib import Path
 from typing import Any
 
 from fyi_archive.jurisdictions import jurisdiction_for_body_tag, load_jurisdiction_rules
+from scripts.prepare_au_rtk_replay_selection import EXPECTED_SLUGS
+from scripts.replay_au_rtk_selection import SELECTION_SHA256
 
 PROFILE_MAP = {"FEDERAL": "AU-CTH", "NSW": "AU-NSW"}
+SELECTION_FIELDS = (
+    "source_url",
+    "archive_timestamp",
+    "archive_digest",
+    "media_kind",
+    "selection_reason",
+)
 
 
 def sha256_file(path: Path) -> str:
@@ -68,16 +77,52 @@ def classify(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return output
 
 
+def load_complete_replay(records_dir: Path, selection_path: Path) -> list[dict[str, Any]]:
+    """Load replay records only when they exactly cover the authorized selection."""
+    selection_digest = sha256_file(selection_path)
+    if selection_digest != SELECTION_SHA256:
+        raise ValueError(f"selection SHA-256 mismatch: {selection_digest}")
+    selection = json.loads(selection_path.read_text(encoding="utf-8"))
+    selected = {
+        str(item["canonical_slug"]): item
+        for item in selection.get("records", [])
+        if isinstance(item, dict) and item.get("canonical_slug")
+    }
+    if (
+        selection.get("record_count") != EXPECTED_SLUGS
+        or len(selected) != EXPECTED_SLUGS
+    ):
+        raise ValueError("authorized selection membership/count mismatch")
+
+    paths = sorted(records_dir.glob("*.json"))
+    actual_slugs = {path.stem for path in paths}
+    if len(paths) != EXPECTED_SLUGS or actual_slugs != set(selected):
+        missing = sorted(set(selected) - actual_slugs)
+        extra = sorted(actual_slugs - set(selected))
+        raise ValueError(
+            f"replay membership mismatch: records={len(paths)} "
+            f"missing={missing[:3]} extra={extra[:3]}"
+        )
+
+    records = []
+    for path in paths:
+        record = json.loads(path.read_text(encoding="utf-8"))
+        expected = selected[path.stem]
+        if record.get("status") != "captured" or record.get("parser_version") != 2:
+            raise ValueError(f"replay is not complete parser-v2 capture: {path.name}")
+        if any(record.get(field) != expected.get(field) for field in SELECTION_FIELDS):
+            raise ValueError(f"replay selection provenance mismatch: {path.name}")
+        records.append({"canonical_slug": path.stem, **record})
+    return records
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--records-dir", type=Path, required=True)
+    parser.add_argument("--selection", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     args = parser.parse_args()
-    records = []
-    for path in sorted(args.records_dir.glob("*.json")):
-        record = json.loads(path.read_text(encoding="utf-8"))
-        if record.get("status") == "captured":
-            records.append(record)
+    records = load_complete_replay(args.records_dir, args.selection)
     classified = classify(records)
     args.output_root.mkdir(parents=True, exist_ok=True)
     paths = {
@@ -98,6 +143,7 @@ def main() -> int:
     summary = {
         "schema": "fyi-archive.au-rtk-jurisdiction-classification-candidate.v1",
         "status": "candidate_non_final",
+        "selection_sha256": SELECTION_SHA256,
         "captured_record_count": len(records),
         "counts": counts,
         "sha256": hashes,
