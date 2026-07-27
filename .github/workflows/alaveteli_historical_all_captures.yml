@@ -1,12 +1,14 @@
 name: Alaveteli historical all-captures export
 
 on:
+  schedule:
+    - cron: "17 2 1 * *"
   workflow_dispatch:
     inputs:
       instance_id:
         description: Configured Alaveteli instance ID, or all for every configured instance
         required: true
-        default: au-rtk
+        default: all
         type: string
       page_size:
         description: CDX records per page
@@ -27,10 +29,6 @@ on:
         description: Optional prior failed run ID containing a compatible page checkpoint
         required: false
         default: ""
-        type: string
-      confirm:
-        description: Enter EXPORT_ALL_CAPTURE_METADATA to retrieve complete capture metadata
-        required: true
         type: string
 
 permissions:
@@ -56,19 +54,18 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: uv sync --extra dev --frozen
-      - name: Validate explicit full-capture confirmation
+      - name: Validate bounded autonomous export settings
         env:
-          RESUME_RUN_ID: ${{ inputs.resume_run_id }}
+          RESUME_RUN_ID: ${{ github.event_name == 'schedule' && '' || inputs.resume_run_id }}
         run: |
           set -euo pipefail
-          test "${{ inputs.confirm }}" = "EXPORT_ALL_CAPTURE_METADATA"
           if [ -n "$RESUME_RUN_ID" ]; then
             [[ "$RESUME_RUN_ID" =~ ^[0-9]+$ ]]
           fi
       - name: Validate registry and build all-captures matrix
         id: matrix
         env:
-          INSTANCE_ID: ${{ inputs.instance_id }}
+          INSTANCE_ID: ${{ github.event_name == 'schedule' && 'all' || inputs.instance_id }}
         run: |
           set -euo pipefail
           uv run python scripts/build_internet_archive_matrix.py --validate
@@ -88,11 +85,11 @@ jobs:
       CAPTURE_MODE: ${{ matrix.capture_mode }}
       HOST: ${{ matrix.host }}
       INSTANCE: ${{ matrix.instance }}
-      MAX_PAGES: ${{ inputs.max_pages }}
-      MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds }}
-      PAGE_SIZE: ${{ inputs.page_size }}
+      MAX_PAGES: ${{ github.event_name == 'schedule' && '100' || inputs.max_pages }}
+      MAX_RUNTIME_SECONDS: ${{ github.event_name == 'schedule' && '600' || inputs.max_runtime_seconds }}
+      PAGE_SIZE: ${{ github.event_name == 'schedule' && '1000' || inputs.page_size }}
       REQUEST_PATH: ${{ matrix.request_path }}
-      RESUME_RUN_ID: ${{ inputs.resume_run_id }}
+      RESUME_RUN_ID: ${{ github.event_name == 'schedule' && '' || inputs.resume_run_id }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:

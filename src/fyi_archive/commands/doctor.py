@@ -77,29 +77,51 @@ def get_mirror_counts() -> dict[str, dict[str, Any]]:
 def get_coverage_info(
     manifest_records: int, *, instance_id: str = DEFAULT_INSTANCE_ID
 ) -> dict[str, Any]:
-    """Estimate coverage against the configured ID horizon / target."""
-    # Historical controller default horizon is 1..250000 inclusive when complete.
+    """Report coverage against an enumerated denominator or labelled planning horizon."""
     suffix = instance_id.upper().replace("-", "_")
+    public_denominator_raw = os.environ.get(
+        f"COVERAGE_PUBLIC_DENOMINATOR_{suffix}",
+        os.environ.get("COVERAGE_PUBLIC_DENOMINATOR", ""),
+    ).strip()
+    planning_estimate = not public_denominator_raw
+    if planning_estimate:
+        denominator = int(
+            os.environ.get(
+                f"COVERAGE_ID_HORIZON_{suffix}",
+                os.environ.get("COVERAGE_ID_HORIZON", "250000"),
+            )
+        )
+        denominator_method = "planning_id_horizon"
+        default_target = "60"
+    else:
+        denominator = int(public_denominator_raw)
+        denominator_method = os.environ.get(
+            f"COVERAGE_DENOMINATOR_METHOD_{suffix}",
+            os.environ.get("COVERAGE_DENOMINATOR_METHOD", "enumerated_public_records"),
+        )
+        default_target = "100"
     target_percent = int(
         os.environ.get(
-            f"COVERAGE_TARGET_PERCENT_{suffix}", os.environ.get("COVERAGE_TARGET_PERCENT", "60")
+            f"COVERAGE_TARGET_PERCENT_{suffix}",
+            os.environ.get("COVERAGE_TARGET_PERCENT", default_target),
         )
     )
-    id_horizon = int(
-        os.environ.get(
-            f"COVERAGE_ID_HORIZON_{suffix}", os.environ.get("COVERAGE_ID_HORIZON", "250000")
-        )
+    precision = 0 if planning_estimate else 4
+    percent = (
+        0 if denominator <= 0 else min(100, round(100 * manifest_records / denominator, precision))
     )
-    percent = 0 if id_horizon <= 0 else min(100, round(100 * manifest_records / id_horizon))
     target_records = (
         0
-        if id_horizon <= 0 or target_percent <= 0
-        else math.ceil(id_horizon * target_percent / 100)
+        if denominator <= 0 or target_percent <= 0
+        else math.ceil(denominator * target_percent / 100)
     )
     return {
         "percent_covered": percent,
         "target": target_percent,
-        "id_horizon": id_horizon,
+        "id_horizon": denominator if planning_estimate else None,
+        "denominator": denominator,
+        "denominator_method": denominator_method,
+        "planning_estimate": planning_estimate,
         "instance_id": instance_id,
         "records": manifest_records,
         "target_records": target_records,

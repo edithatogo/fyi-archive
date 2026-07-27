@@ -1,0 +1,114 @@
+{
+  "schema": "fyi-archive.archive-source-graph.v1",
+  "transformation": {
+    "id": "normalize-archive-sources-v1",
+    "description": "Join the registered Alaveteli instances, additional FOI sites, jurisdiction ledger, and preservation source catalogue without rewriting source observations.",
+    "inputs": [
+      "src/fyi_archive/instances.py",
+      "configs/additional_foi_archive_sites.json",
+      "configs/jurisdiction_archive_targets.json",
+      "configs/archive_source_graph.json"
+    ]
+  },
+  "default_preservation_source_ids": [
+    "internet-archive",
+    "common-crawl",
+    "arquivo-pt"
+  ],
+  "preservation_sources": [
+    {
+      "id": "internet-archive",
+      "kind": "web_archive",
+      "status": "discovery_configured",
+      "url": "https://web.archive.org/",
+      "evidence_mode": "cdx"
+    },
+    {
+      "id": "archive-it",
+      "kind": "managed_web_archive_capture",
+      "status": "candidate_unconfigured",
+      "url": "https://archive-it.org/",
+      "evidence_mode": "collection_crawl_and_cdx"
+    },
+    {
+      "id": "common-crawl",
+      "kind": "independent_crawl",
+      "status": "candidate_unverified",
+      "url": "https://index.commoncrawl.org/",
+      "evidence_mode": "index"
+    },
+    {
+      "id": "arquivo-pt",
+      "kind": "web_archive",
+      "status": "candidate_unverified",
+      "url": "https://arquivo.pt/",
+      "evidence_mode": "cdxj_or_api"
+    },
+    {
+      "id": "nz-web-archive",
+      "kind": "national_web_archive",
+      "status": "candidate_unverified",
+      "url": "https://natlib.govt.nz/collections/new-zealand-web-archive",
+      "evidence_mode": "catalogue_or_nomination"
+    },
+    {
+      "id": "australian-web-archive",
+      "kind": "national_web_archive",
+      "status": "candidate_unverified",
+      "url": "https://pandora.nla.gov.au/",
+      "evidence_mode": "url_search"
+    },
+    {
+      "id": "uk-web-archive",
+      "kind": "national_web_archive",
+      "status": "candidate_unverified",
+      "url": "https://www.webarchive.org.uk/",
+      "evidence_mode": "catalogue_or_nomination"
+    },
+    {
+      "id": "czech-webarchiv",
+      "kind": "national_web_archive",
+      "status": "candidate_unverified",
+      "url": "https://www.webarchiv.cz/",
+      "evidence_mode": "url_search_or_nomination"
+    },
+    {
+      "id": "croatian-web-archive",
+      "kind": "national_web_archive",
+      "status": "candidate_unverified",
+      "url": "https://haw.nsk.hr/",
+      "evidence_mode": "url_search"
+    }
+  ],
+  "sites": [
+    {"site_id": "nz-fyi", "jurisdiction_targets": ["NZ-OIA", "NZ-LGOIMA"], "additional_preservation_source_ids": ["nz-web-archive"]},
+    {"site_id": "au-rtk", "jurisdiction_targets": ["AU-FED", "AU-NSW", "AU-ACT", "AU-QLD", "AU-VIC", "AU-WA", "AU-SA", "AU-TAS", "AU-NT"], "additional_preservation_source_ids": ["australian-web-archive"]},
+    {"site_id": "uk-wdtk", "jurisdiction_targets": ["UK-FOIA", "UK-EIR", "SCOT-FOISA", "SCOT-EIR"], "additional_preservation_source_ids": ["uk-web-archive"]},
+    {"site_id": "ie-myrighttoknow", "jurisdiction_targets": ["IE-FOI-DISCOVERY", "IE-MYRIGHTTOKNOW"], "additional_preservation_source_ids": ["uk-web-archive"]},
+    {"site_id": "eu-asktheeu", "jurisdiction_targets": ["EU-ACCESS-DOCUMENTS"], "additional_preservation_source_ids": []},
+    {"site_id": "cz-infoprovsechny", "jurisdiction_targets": ["CZ-FOI"], "additional_preservation_source_ids": ["czech-webarchiv"]},
+    {"site_id": "fr-madada", "jurisdiction_targets": ["FR-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "se-handlingar", "jurisdiction_targets": ["SE-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "nl-woo-knop", "jurisdiction_targets": ["NL-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "be-transparencia", "jurisdiction_targets": ["BE-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "hr-imamopravoznati", "jurisdiction_targets": ["HR-FOI"], "additional_preservation_source_ids": ["croatian-web-archive"]},
+    {"site_id": "hu-kimittud", "jurisdiction_targets": ["HU-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "ua-dostup", "jurisdiction_targets": ["UA-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "gr-arthro5a", "jurisdiction_targets": ["GR-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "md-vreauinfo", "jurisdiction_targets": ["MD-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "hk-accessinfo", "jurisdiction_targets": ["HK-ACCESS-INFO"], "additional_preservation_source_ids": []},
+    {"site_id": "uy-quesabes", "jurisdiction_targets": ["UY-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "lr-infolib", "jurisdiction_targets": ["LR-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "co-queremosdatos", "jurisdiction_targets": ["CO-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "us-opramachine", "jurisdiction_targets": ["US-NJ-OPRA"], "additional_preservation_source_ids": []},
+    {"site_id": "ge-askgov", "jurisdiction_targets": ["GE-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "ro-iastatullaintrebari", "jurisdiction_targets": ["RO-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "xk-dumedite", "jurisdiction_targets": ["XK-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "ar-information-publica", "jurisdiction_targets": ["AR-FOI"], "additional_preservation_source_ids": []},
+    {"site_id": "de-fragdenstaat", "jurisdiction_targets": ["DE-FRAGDENSTAAT"], "additional_preservation_source_ids": []},
+    {"site_id": "es-tuderechoasaber", "jurisdiction_targets": ["ES-TUDERECHOASABER"], "additional_preservation_source_ids": []},
+    {"site_id": "ca-federal-atip", "jurisdiction_targets": ["CA-FED"], "additional_preservation_source_ids": []},
+    {"site_id": "us-federal-foia", "jurisdiction_targets": ["US-FOIA-FED"], "additional_preservation_source_ids": []},
+    {"site_id": "za-paia", "jurisdiction_targets": ["ZA-PAIA"], "additional_preservation_source_ids": []}
+  ]
+}

@@ -23,11 +23,6 @@ on:
         required: true
         default: "2.0"
         type: string
-      confirm_live:
-        description: Required only for live capture; enter RUN_LIVE_AU_CAPTURE
-        required: false
-        default: ""
-        type: string
 
 permissions:
   contents: read
@@ -51,12 +46,14 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: uv sync --extra dev --frozen
-      - name: Validate live capture confirmation
+      - name: Validate autonomous live capture readiness
         if: ${{ inputs.dry_run == false }}
+        env:
+          AUTONOMOUS_AU_CAPTURE_ENABLED: ${{ vars.AUTONOMOUS_AU_CAPTURE_ENABLED || 'false' }}
         run: |
           set -euo pipefail
-          if [ "${{ inputs.confirm_live }}" != "RUN_LIVE_AU_CAPTURE" ]; then
-            echo "Live AU capture requires confirm_live=RUN_LIVE_AU_CAPTURE" >&2
+          if [ "$AUTONOMOUS_AU_CAPTURE_ENABLED" != "true" ]; then
+            echo "Set repository variable AUTONOMOUS_AU_CAPTURE_ENABLED=true after recording readiness evidence." >&2
             exit 1
           fi
 

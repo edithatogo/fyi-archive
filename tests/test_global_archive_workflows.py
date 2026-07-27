@@ -1,0 +1,38 @@
+from pathlib import Path
+
+WORKFLOWS = Path(".github/workflows")
+
+
+def test_global_wayback_workflow_is_complete_and_provenance_first() -> None:
+    workflow = (WORKFLOWS / "foi_site_internet_archive.yml").read_text(encoding="utf-8")
+
+    assert "build_archive_source_graph.py --check" in workflow
+    assert "fetch_complete_internet_archive_cdx.py" in workflow
+    assert "Fail closed on incomplete snapshot" in workflow
+    assert "if: always()" in workflow
+    assert "include-hidden-files: true" in workflow
+    assert "origin_contacted" in workflow
+    assert "durable_handoff" in workflow
+
+
+def test_read_only_all_capture_export_is_scheduled_and_bounded() -> None:
+    workflow = (WORKFLOWS / "alaveteli_historical_all_captures.yml").read_text(encoding="utf-8")
+
+    assert "schedule:" in workflow
+    assert "confirm:" not in workflow
+    assert "EXPORT_ALL_CAPTURE_METADATA" not in workflow
+    assert "--capture-mode all_captures" in workflow
+    assert "--max-pages" in workflow
+    assert "--max-runtime-seconds" in workflow
+
+
+def test_live_capture_uses_repository_readiness_not_dispatch_prompts() -> None:
+    alaveteli = (WORKFLOWS / "alaveteli_working_sites.yml").read_text(encoding="utf-8")
+    assert "live_confirmation:" not in alaveteli
+    assert "AUTONOMOUS_LIVE_CAPTURE_ENABLED" in alaveteli
+
+    for name in ("au_nsw_historical_seed.yml", "au_jurisdiction_rollout.yml"):
+        workflow = (WORKFLOWS / name).read_text(encoding="utf-8")
+        assert "confirm_live:" not in workflow
+        assert "AUTONOMOUS_AU_CAPTURE_ENABLED" in workflow
+        assert "environment: au-live-capture" in workflow
