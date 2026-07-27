@@ -225,10 +225,20 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     return records
 
 
+def _bounded_file(root: Path, name: object, label: str) -> Path:
+    candidate = Path(str(name or ""))
+    if candidate.name != str(name) or candidate.is_absolute():
+        raise ValueError(f"{label} path is not a simple filename")
+    path = root / candidate
+    if path.is_symlink() or path.resolve(strict=False).parent != root.resolve():
+        raise ValueError(f"{label} path escaped its approved root")
+    return path
+
+
 def validate_candidate_outputs(output_root: Path, summary: dict[str, Any]) -> None:
     """Verify candidate JSONL content, hashes, provenance, and exact membership."""
     index_metadata = summary["replay_index"]
-    index_path = output_root / index_metadata["path"]
+    index_path = _bounded_file(output_root, index_metadata["path"], "replay index")
     if (
         not index_path.is_file()
         or index_path.stat().st_size != index_metadata["byte_count"]
@@ -250,7 +260,7 @@ def validate_candidate_outputs(output_root: Path, summary: dict[str, Any]) -> No
         "raw_sha256",
     )
     for jurisdiction, metadata in summary["jurisdiction_outputs"].items():
-        path = output_root / metadata["path"]
+        path = _bounded_file(output_root, metadata["path"], f"{jurisdiction} output")
         if (
             not path.is_file()
             or path.stat().st_size != metadata["byte_count"]

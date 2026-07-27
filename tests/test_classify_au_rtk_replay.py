@@ -243,3 +243,17 @@ def test_candidate_output_validator_requires_exact_partition_and_provenance(tmp_
     outputs["AU-NSW"]["record_count"] = 0
     with pytest.raises(ValueError, match="record count mismatch"):
         classifier.validate_candidate_outputs(tmp_path, summary)
+
+
+def test_candidate_output_validator_rejects_path_traversal(tmp_path) -> None:
+    summary = {
+        "replay_index": {
+            "path": "../outside.jsonl",
+            "record_count": 0,
+            "byte_count": 0,
+            "sha256": "a" * 64,
+        },
+        "jurisdiction_outputs": {},
+    }
+    with pytest.raises(ValueError, match="not a simple filename"):
+        classifier.validate_candidate_outputs(tmp_path, summary)
