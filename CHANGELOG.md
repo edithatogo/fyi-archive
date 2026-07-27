@@ -5,6 +5,26 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.18.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.17.0...fyi_archive-v0.18.0) (2026-07-27)
+
+
+### Features
+
+* add resumable NZ historical replay batches ([#262](https://github.com/edithatogo/fyi-archive/issues/262)) ([3675ba1](https://github.com/edithatogo/fyi-archive/commit/3675ba19c7afd8c7282305da984faa7c49be1f47))
+* build fyi-cli queues from completed source inventories ([#268](https://github.com/edithatogo/fyi-archive/issues/268)) ([09f167e](https://github.com/edithatogo/fyi-archive/commit/09f167ea4eb8dd0a9b43dd70f98a658729737526))
+
+
+### Bug Fixes
+
+* accept empty cursor inventories ([#271](https://github.com/edithatogo/fyi-archive/issues/271)) ([7ec75b0](https://github.com/edithatogo/fyi-archive/commit/7ec75b0a5f96d6866e971f83eddb4b1cc1090b21))
+* block dry-run full-corpus projections ([#258](https://github.com/edithatogo/fyi-archive/issues/258)) ([66560d3](https://github.com/edithatogo/fyi-archive/commit/66560d383581c57476a48f5acbcff7363da6b58e))
+* emit attachment sidecars in historical backfill ([#267](https://github.com/edithatogo/fyi-archive/issues/267)) ([a1ad1b2](https://github.com/edithatogo/fyi-archive/commit/a1ad1b29d8cc1b0769f5218884a56d6f456b6e1a))
+* keep cursor compatibility checks inside resolver ([#270](https://github.com/edithatogo/fyi-archive/issues/270)) ([56d1be8](https://github.com/edithatogo/fyi-archive/commit/56d1be8979b9335b816bb5c36b541bd858e80662))
+* make Wayback continuation more patient ([#264](https://github.com/edithatogo/fyi-archive/issues/264)) ([f3241ff](https://github.com/edithatogo/fyi-archive/commit/f3241ffdb92ba3cceed2f75d8534dc996983a25a))
+* restore NZ source checkpoints at artifact root ([#265](https://github.com/edithatogo/fyi-archive/issues/265)) ([96f401f](https://github.com/edithatogo/fyi-archive/commit/96f401fc31c7dc1e4f6d789a9f7c73592b27c3d2))
+* resume incomplete Wayback inventories ([#261](https://github.com/edithatogo/fyi-archive/issues/261)) ([13bb2e2](https://github.com/edithatogo/fyi-archive/commit/13bb2e227e35f2ab6dafe76baf48d59e962a4f55))
+* use CDX resume keys for complete inventories ([#269](https://github.com/edithatogo/fyi-archive/issues/269)) ([bbf0c00](https://github.com/edithatogo/fyi-archive/commit/bbf0c0076abe0af9ec64aff2172e344a50b47d18))
+
 ## [0.17.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.16.0...fyi_archive-v0.17.0) (2026-07-27)
 
 
