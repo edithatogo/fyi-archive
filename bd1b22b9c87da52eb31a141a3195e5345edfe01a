@@ -1,0 +1,5 @@
+Task: Harden resumed AU RTK replay and jurisdiction classification.
+
+Summary: Sequential mode now delays between completed requests and opens a circuit after bounded consecutive failures. Parser v2 handles authentic nested Alaveteli authority tags, law_used, timestamps, IDs, and HTML body slugs. Classification uses explicit authority tags or GIPA and only unanimous authority-slug propagation; conflicts abstain.
+
+Verification: 363 passed, 1 skipped; ruff and ty passed. Runtime remains restricted local and checkpointed. No manifest finalization or external repository action.
