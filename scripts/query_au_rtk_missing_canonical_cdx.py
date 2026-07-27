@@ -97,6 +97,34 @@ def validate_response_rows(query: dict[str, str], rows: object) -> list[list[str
     return validated
 
 
+def valid_complete_checkpoint(
+    query: dict[str, str],
+    checkpoint: dict[str, Any],
+) -> bool:
+    """Return whether a checkpoint is complete and bound to this exact query."""
+    if checkpoint.get("status") != "complete":
+        return False
+    if any(checkpoint.get(key) != query.get(key) for key in query):
+        return False
+    records = checkpoint.get("records")
+    try:
+        validated = validate_response_rows(query, [HEADER, *(records or [])])
+    except (TypeError, ValueError):
+        return False
+    request = urlsplit(str(checkpoint.get("request_url") or ""))
+    digest = checkpoint.get("response_sha256")
+    return (
+        isinstance(records, list)
+        and checkpoint.get("record_count") == len(validated)
+        and request.scheme == "https"
+        and (request.hostname or "").lower() == "web.archive.org"
+        and request.path == "/cdx/search/cdx"
+        and isinstance(digest, str)
+        and len(digest) == 64
+        and all(character in "0123456789abcdef" for character in digest)
+    )
+
+
 def query_one(
     query: dict[str, str],
     *,
@@ -180,7 +208,7 @@ def run(
         checkpoint = output_root / "responses" / f"{key}.json"
         if checkpoint.is_file():
             existing = json.loads(checkpoint.read_text(encoding="utf-8"))
-            if existing.get("status") == "complete":
+            if valid_complete_checkpoint(query, existing):
                 results.append(existing)
                 continue
         pending.append(query)

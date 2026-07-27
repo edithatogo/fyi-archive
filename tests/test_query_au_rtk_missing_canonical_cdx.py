@@ -55,6 +55,45 @@ def test_response_rows_reject_population_expansion() -> None:
         )
 
 
+def test_complete_checkpoint_must_match_query_and_cdx_provenance() -> None:
+    query = {
+        "canonical_slug": "example",
+        "media_kind": "html",
+        "exact_url": "https://www.righttoknow.org.au/request/example",
+    }
+    checkpoint = {
+        **query,
+        "status": "complete",
+        "record_count": 0,
+        "records": [],
+        "request_url": (
+            "https://web.archive.org/cdx/search/cdx"
+            "?url=https%3A%2F%2Fwww.righttoknow.org.au%2Frequest%2Fexample"
+        ),
+        "response_sha256": "a" * 64,
+    }
+    assert completion.valid_complete_checkpoint(query, checkpoint) is True
+    checkpoint["exact_url"] = "https://www.righttoknow.org.au/request/other"
+    assert completion.valid_complete_checkpoint(query, checkpoint) is False
+
+
+def test_complete_checkpoint_rejects_non_cdx_request_url() -> None:
+    query = {
+        "canonical_slug": "example",
+        "media_kind": "html",
+        "exact_url": "https://www.righttoknow.org.au/request/example",
+    }
+    checkpoint = {
+        **query,
+        "status": "complete",
+        "record_count": 0,
+        "records": [],
+        "request_url": "https://www.righttoknow.org.au/request/example",
+        "response_sha256": "a" * 64,
+    }
+    assert completion.valid_complete_checkpoint(query, checkpoint) is False
+
+
 def test_sequential_completion_opens_circuit(tmp_path, monkeypatch) -> None:
     queries = [
         {
