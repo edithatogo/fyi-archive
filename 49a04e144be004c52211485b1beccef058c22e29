@@ -1,0 +1,1 @@
+Commit notes: Exact canonical CDX completion now emits a hash-pinned proposed replay set only after all 1,716 queries succeed; replay remains explicitly unauthorized. Verification: 383 passed, 1 skipped; focused ruff, format, and ty passed.
