@@ -1,0 +1,136 @@
+name: NZ historical replay batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Successful NZ historical source-index workflow run ID
+        required: true
+        type: string
+      start_offset:
+        description: Zero-based request-page offset in the source index
+        required: true
+        default: "0"
+        type: string
+      replay_limit:
+        description: Maximum archived request pages to replay in this batch
+        required: true
+        default: "10"
+        type: string
+      delay_seconds:
+        description: Delay between Internet Archive replay requests
+        required: true
+        default: "3"
+        type: string
+      retries:
+        description: Retry count for a transient replay failure
+        required: true
+        default: "1"
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: nz-historical-replay-batch
+  cancel-in-progress: false
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+      START_OFFSET: ${{ inputs.start_offset }}
+      REPLAY_LIMIT: ${{ inputs.replay_limit }}
+      DELAY_SECONDS: ${{ inputs.delay_seconds }}
+      RETRIES: ${{ inputs.retries }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+      - name: Validate bounded batch settings
+        run: |
+          set -euo pipefail
+          for value in "$SOURCE_RUN_ID" "$START_OFFSET" "$REPLAY_LIMIT" "$DELAY_SECONDS" "$RETRIES"; do
+            [[ "$value" =~ ^[0-9]+$ ]]
+          done
+          test "$REPLAY_LIMIT" -ge 1 && test "$REPLAY_LIMIT" -le 10
+          test "$DELAY_SECONDS" -ge 1 && test "$DELAY_SECONDS" -le 10
+          test "$RETRIES" -le 1
+      - name: Download source-index evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
+        with:
+          name: nz-historical-source-index-${{ inputs.source_run_id }}
+          path: .tmp/source-index
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run_id }}
+      - name: Replay deterministic request-page batch
+        run: |
+          set -euo pipefail
+          root=.tmp/nz-historical-replay-batch
+          mkdir -p "$root"
+          input=.tmp/source-index/nz-historical-source-index.json
+          test -s "$input"
+          cp "$input" "$root/source-index.json"
+          uv run python scripts/filter_historical_request_pages.py \
+            --input "$root/source-index.json" \
+            --output "$root/request-pages-index.json"
+          uv run python scripts/enrich_historical_core.py \
+            --historical-index "$root/request-pages-index.json" \
+            --instance-id nz-fyi \
+            --limit "$REPLAY_LIMIT" \
+            --start-offset "$START_OFFSET" \
+            --retries "$RETRIES" \
+            --retry-delay-seconds "$DELAY_SECONDS" \
+            --delay-seconds "$DELAY_SECONDS" \
+            --timeout-seconds 15 \
+            --user-agent "fyi-archive-nz-historical-replay/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
+            --output "$root/historical-core.json"
+          uv run python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          root = Path(".tmp/nz-historical-replay-batch")
+          core = json.loads((root / "historical-core.json").read_text(encoding="utf-8"))
+          records = core["records"]
+          payload = {
+              "schema": "fyi-archive.nz-historical-replay-batch.v1",
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "source_run_id": os.environ["SOURCE_RUN_ID"],
+              "start_offset": int(os.environ["START_OFFSET"]),
+              "replay_limit": int(os.environ["REPLAY_LIMIT"]),
+              "delay_seconds": int(os.environ["DELAY_SECONDS"]),
+              "retries": int(os.environ["RETRIES"]),
+              "processed_record_count": core["processed_record_count"],
+              "extracted_record_count": core["extracted_record_count"],
+              "failed_record_count": sum(
+                  item.get("extraction_status") == "fetch_failed" for item in records
+              ),
+              "source_index_sha256": hashlib.sha256((root / "source-index.json").read_bytes()).hexdigest(),
+              "historical_core_sha256": hashlib.sha256((root / "historical-core.json").read_bytes()).hexdigest(),
+              "origin_contacted": False,
+              "publication": "none",
+              "raw_content_retained": False,
+          }
+          (root / "batch-evidence.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+      - name: Retain batch evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nz-historical-replay-batch-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          path: .tmp/nz-historical-replay-batch/
