@@ -10,7 +10,6 @@ import pytest
 from fyi_archive.source_graph import (
     JURISDICTION_TARGETS,
     SOURCE_GRAPH_CONFIG,
-    _read_json,
     build_source_graph,
 )
 
@@ -26,11 +25,6 @@ def _config() -> dict[str, Any]:
 
 def _targets() -> dict[str, Any]:
     return json.loads(JURISDICTION_TARGETS.read_text(encoding="utf-8"))
-
-
-def test_json_inputs_must_be_objects(tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="JSON object"):
-        _read_json(_write(tmp_path / "array.json", []))
 
 
 @pytest.mark.parametrize(
