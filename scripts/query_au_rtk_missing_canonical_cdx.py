@@ -125,6 +125,7 @@ def run(
     launch_delay_seconds: float,
     timeout_seconds: float,
     retries: int,
+    circuit_breaker_failures: int,
 ) -> dict[str, Any]:
     """Execute and consolidate the exact canonical completion plan."""
     plan_sha256 = sha256_file(plan_path)
@@ -142,21 +143,41 @@ def run(
                 results.append(existing)
                 continue
         pending.append(query)
-    with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
-        futures = []
+    circuit_open = False
+    if workers == 1:
+        consecutive_failures = 0
         for query in pending:
-            futures.append(
-                executor.submit(
-                    query_one,
-                    query,
-                    output_root=output_root,
-                    timeout_seconds=timeout_seconds,
-                    retries=retries,
-                )
+            result = query_one(
+                query,
+                output_root=output_root,
+                timeout_seconds=timeout_seconds,
+                retries=retries,
             )
+            results.append(result)
+            if result.get("status") == "complete":
+                consecutive_failures = 0
+            else:
+                consecutive_failures += 1
+                if consecutive_failures >= max(1, circuit_breaker_failures):
+                    circuit_open = True
+                    break
             time.sleep(max(0.0, launch_delay_seconds))
-        for future in as_completed(futures):
-            results.append(future.result())
+    else:
+        with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
+            futures = []
+            for query in pending:
+                futures.append(
+                    executor.submit(
+                        query_one,
+                        query,
+                        output_root=output_root,
+                        timeout_seconds=timeout_seconds,
+                        retries=retries,
+                    )
+                )
+                time.sleep(max(0.0, launch_delay_seconds))
+            for future in as_completed(futures):
+                results.append(future.result())
     results.sort(key=lambda item: (item["canonical_slug"], item["media_kind"]))
     candidate = {
         "schema": "fyi-archive.au-rtk-canonical-cdx-completion-candidate.v1",
@@ -165,6 +186,8 @@ def run(
         "query_count": len(results),
         "complete_query_count": sum(item["status"] == "complete" for item in results),
         "failed_query_count": sum(item["status"] != "complete" for item in results),
+        "pending_query_count": plan["query_count"] - len(results),
+        "circuit_open": circuit_open,
         "urls_with_captures": sum(bool(item.get("records")) for item in results),
         "publication": False,
         "redistribution": False,
@@ -189,6 +212,7 @@ def main() -> int:
     parser.add_argument("--launch-delay-seconds", type=float, default=0.25)
     parser.add_argument("--timeout-seconds", type=float, default=30)
     parser.add_argument("--retries", type=int, default=2)
+    parser.add_argument("--circuit-breaker-failures", type=int, default=5)
     args = parser.parse_args()
     if sha256_file(args.cdx) != APPROVED_CDX_SHA256:
         raise ValueError("approved CDX SHA-256 mismatch")
@@ -203,6 +227,7 @@ def main() -> int:
         launch_delay_seconds=args.launch_delay_seconds,
         timeout_seconds=args.timeout_seconds,
         retries=args.retries,
+        circuit_breaker_failures=args.circuit_breaker_failures,
     )
     print(json.dumps(summary, sort_keys=True))
     return 0 if summary["failed_query_count"] == 0 else 2

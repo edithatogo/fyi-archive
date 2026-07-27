@@ -6,7 +6,7 @@ import httpx
 import pytest
 
 from scripts import replay_au_rtk_selection as replay
-from scripts.replay_au_rtk_selection import _assert_archive_url, _parse_json
+from scripts.replay_au_rtk_selection import _assert_archive_url, _parse_json, record_from_raw
 
 
 def test_archive_url_boundary_rejects_origin() -> None:
@@ -35,6 +35,26 @@ def test_json_parser_extracts_authority_without_following_links() -> None:
 def test_httpx_defaults_do_not_follow_redirects() -> None:
     with httpx.Client(follow_redirects=False) as client:
         assert client.follow_redirects is False
+
+
+def test_existing_raw_json_is_reparsed_without_network() -> None:
+    selected = {
+        "source_url": "https://www.righttoknow.org.au/request/example.json",
+        "archive_timestamp": "20200101",
+        "archive_digest": "ABC",
+        "canonical_slug": "example",
+        "media_kind": "json",
+        "selection_reason": "latest_successful_json",
+    }
+    result = record_from_raw(
+        selected,
+        b'{"title":"T","public_body":{"tags":[["federal",null]]}}',
+        replay_url="https://web.archive.org/example",
+        content_type="application/json",
+    )
+    assert result["status"] == "captured"
+    assert result["parser_version"] == 2
+    assert result["authority_tags"] == ["federal"]
 
 
 def test_sequential_mode_opens_circuit_after_bounded_failures(tmp_path, monkeypatch) -> None:

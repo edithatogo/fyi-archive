@@ -120,6 +120,47 @@ def _parse_json(
     }
 
 
+def record_from_raw(
+    selected: dict[str, str],
+    raw: bytes,
+    *,
+    replay_url: str,
+    content_type: str,
+) -> dict[str, Any]:
+    """Parse an already captured response without further network access."""
+    if selected["media_kind"] == "json":
+        record = _parse_json(raw, selected=selected, replay_url=replay_url)
+    else:
+        html = raw.decode("utf-8", errors="replace")
+        record = parse_archived_request(
+            html,
+            source_url=selected["source_url"],
+            archive_url=replay_url,
+            archive_timestamp=selected["archive_timestamp"],
+            archive_digest=selected["archive_digest"],
+            instance_id="au-rtk",
+        )
+        record["media_kind"] = "html"
+        body_link = BeautifulSoup(html, "html.parser").select_one("a[href*='/body/']")
+        body_path = urlsplit(str(body_link.get("href") or "")).path if body_link else ""
+        record["authority_slug"] = (
+            body_path.split("/body/", 1)[1].split("/", 1)[0] if "/body/" in body_path else ""
+        )
+        record["authority_tags"] = []
+        record["law_used"] = ""
+        record["parser_version"] = 2
+    record.update(
+        {
+            "status": "captured",
+            "byte_count": len(raw),
+            "raw_sha256": sha256_bytes(raw),
+            "content_type": content_type,
+            "selection_reason": selected["selection_reason"],
+        }
+    )
+    return record
+
+
 def replay_one(
     selected: dict[str, str],
     *,
@@ -142,37 +183,11 @@ def replay_one(
                 )
             raw_path.parent.mkdir(parents=True, exist_ok=True)
             raw_path.write_bytes(raw)
-            if selected["media_kind"] == "json":
-                record = _parse_json(raw, selected=selected, replay_url=final_url)
-            else:
-                html = raw.decode("utf-8", errors="replace")
-                record = parse_archived_request(
-                    html,
-                    source_url=selected["source_url"],
-                    archive_url=final_url,
-                    archive_timestamp=selected["archive_timestamp"],
-                    archive_digest=selected["archive_digest"],
-                    instance_id="au-rtk",
-                )
-                record["media_kind"] = "html"
-                body_link = BeautifulSoup(html, "html.parser").select_one("a[href*='/body/']")
-                body_path = urlsplit(str(body_link.get("href") or "")).path if body_link else ""
-                record["authority_slug"] = (
-                    body_path.split("/body/", 1)[1].split("/", 1)[0]
-                    if "/body/" in body_path
-                    else ""
-                )
-                record["authority_tags"] = []
-                record["law_used"] = ""
-                record["parser_version"] = 2
-            record.update(
-                {
-                    "status": "captured",
-                    "byte_count": len(raw),
-                    "raw_sha256": sha256_bytes(raw),
-                    "content_type": content_type,
-                    "selection_reason": selected["selection_reason"],
-                }
+            record = record_from_raw(
+                selected,
+                raw,
+                replay_url=final_url,
+                content_type=content_type,
             )
             record_path.parent.mkdir(parents=True, exist_ok=True)
             record_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
@@ -216,11 +231,28 @@ def run(
     pending: list[dict[str, str]] = []
     for selected in records:
         record_path = output_root / "records" / f"{selected['canonical_slug']}.json"
+        raw_suffix = ".json" if selected["media_kind"] == "json" else ".html"
+        raw_path = output_root / "raw" / f"{selected['canonical_slug']}{raw_suffix}"
         if record_path.is_file():
             existing = json.loads(record_path.read_text(encoding="utf-8"))
             if existing.get("status") == "captured" and existing.get("parser_version") == 2:
                 complete.append(existing)
                 continue
+        if raw_path.is_file():
+            reparsed = record_from_raw(
+                selected,
+                raw_path.read_bytes(),
+                replay_url=archive_replay_url(
+                    selected["source_url"], selected["archive_timestamp"]
+                ),
+                content_type=(
+                    "application/json" if selected["media_kind"] == "json" else "text/html"
+                ),
+            )
+            record_path.parent.mkdir(parents=True, exist_ok=True)
+            record_path.write_text(json.dumps(reparsed, indent=2, sort_keys=True) + "\n")
+            complete.append(reparsed)
+            continue
         pending.append(selected)
 
     circuit_open = False
