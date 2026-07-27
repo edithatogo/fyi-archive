@@ -27,7 +27,7 @@ on:
       max_runtime_seconds:
         description: Whole-run deadline per URL pattern
         required: true
-        default: "900"
+        default: "1800"
         type: string
       resume_run_id:
         description: Optional prior run containing compatible site checkpoints
@@ -73,13 +73,13 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 2
       matrix:
         site: ${{ fromJSON(needs.enumerate.outputs.sites) }}
     env:
       CAPTURE_MODE: ${{ inputs.capture_mode || 'url_index' }}
       MAX_PAGES: ${{ inputs.max_pages || '1000' }}
-      MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds || '900' }}
+      MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds || '1800' }}
       PAGE_SIZE: ${{ inputs.page_size || '1000' }}
       REQUESTED_RESUME_RUN_ID: ${{ inputs.resume_run_id || '' }}
       SITE_COUNTRY: ${{ matrix.site.country }}
@@ -141,6 +141,27 @@ jobs:
               --name "foi-site-wayback-$SITE_ID-$run_id" \
               --dir "$candidate" >/dev/null 2>&1; then
               continue
+            fi
+            manifest="$(find "$candidate" -type f -name manifest.json -print -quit)"
+            [ -n "$manifest" ] || continue
+            if ! manifest_state="$(uv run python -c '
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              p = json.load(handle)
+          print("capture-match=" + str(p.get("capture_mode") == sys.argv[2]).lower())
+          print("complete=" + str(p.get("complete") is True).lower())
+          ' "$manifest" "$CAPTURE_MODE")"; then
+              continue
+            fi
+            grep -qx "capture-match=true" <<< "$manifest_state" || continue
+            if grep -qx "complete=true" <<< "$manifest_state"; then
+              [ -z "$REQUESTED_RESUME_RUN_ID" ] || continue
+              echo "run_id=" >> "$GITHUB_OUTPUT"
+              echo "reason=latest-complete-refresh" >> "$GITHUB_OUTPUT"
+              echo "Latest compatible $SITE_ID inventory is complete; refreshing from scratch"
+              exit 0
             fi
             checkpoint="$(find "$candidate" -type f -path '*/cdx-*.pages/checkpoint.json' -print -quit)"
             [ -n "$checkpoint" ] || continue

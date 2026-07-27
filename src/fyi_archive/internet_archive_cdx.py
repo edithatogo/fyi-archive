@@ -97,7 +97,7 @@ def _fetch(params: list[tuple[str, str]], opener: Callable[..., Any], *, deadlin
     )
     page_query = any(key == "page" for key, _ in params)
     last_error: Exception | None = None
-    for attempt in range(3):
+    for attempt in range(5):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise RuntimeError("CDX acquisition exceeded whole-run deadline")
@@ -109,8 +109,8 @@ def _fetch(params: list[tuple[str, str]], opener: Callable[..., Any], *, deadlin
             if error.code not in {429, 500, 502, 503, 504} and not retryable_page_error:
                 raise
             last_error = error
-        except (TimeoutError, URLError, OSError) as error:
+        except (json.JSONDecodeError, TimeoutError, URLError, OSError) as error:
             last_error = error
-        if attempt < 2:
-            time.sleep(min(2**attempt, max(0, deadline - time.monotonic())))
+        if attempt < 4:
+            time.sleep(min(2 ** (attempt + 1), max(0, deadline - time.monotonic())))
     raise RuntimeError(f"CDX request failed after bounded retries: {last_error}")

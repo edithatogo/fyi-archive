@@ -27,6 +27,20 @@ class _Response:
         return json.dumps(self.payload).encode()
 
 
+class _RawResponse:
+    def __init__(self, payload: bytes) -> None:
+        self.payload = payload
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self.payload
+
+
 def test_fetches_all_reported_pages() -> None:
     calls = 0
 
@@ -310,3 +324,26 @@ def test_retries_page_level_http_400_but_not_count_query(
             "example.test/request/*", page_size=10, max_pages=2, opener=invalid_count_query
         )
     assert count_attempts == 1
+
+
+def test_retries_malformed_json_with_patient_bounded_backoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+    sleeps: list[float] = []
+    monkeypatch.setattr(internet_archive_cdx.time, "monotonic", lambda: 0.0)
+    monkeypatch.setattr(internet_archive_cdx.time, "sleep", sleeps.append)
+
+    def malformed_then_valid(request: Request, timeout: int) -> _RawResponse:
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            return _RawResponse(b"")
+        return _RawResponse(b'[["blocks"], ["0"]]')
+
+    assert internet_archive_cdx._fetch([], malformed_then_valid, deadline=60.0) == [
+        ["blocks"],
+        ["0"],
+    ]
+    assert attempts == 3
+    assert sleeps == [2, 4]
