@@ -1,0 +1,9 @@
+Task: Implement bounded AU RightToKnow Internet Archive recovery.
+
+Summary: Added deterministic amended replay selection, archive-only redirect enforcement, JSON/HTML authority extraction, checkpointed restricted-local replay, and exact canonical CDX completion queries.
+
+Verification: 360 passed, 1 skipped; ruff check passed; focused format passed; ty passed.
+
+Runtime evidence: selection SHA-256 a1c2308ecc81de3754f37b3c26f7ba7fc232ff5bac930b86b36fb10463178c51; query plan SHA-256 ac402c3d69e6140772629e5ecb55f0138c891121a42c2fa7a180850260742d3b; 20 captures succeeded; 116 replay and 46 CDX checkpoints failed with Errno 61 connection refused. Internet Archive remained unavailable on a single-request retry.
+
+Boundary: no origin access, attachments, link traversal, publication, redistribution, manifest finalization, empirical freeze, annotation, training, certification, promotion, push, PR, or merge.
