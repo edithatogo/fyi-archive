@@ -1,0 +1,1 @@
+Commit notes: HTML replay now extracts explicit Alaveteli regime labels from the structured request header. Generic FOI does not imply Commonwealth; GIPA is direct NSW evidence. Partial audit: 528 CTH, 35 NSW, 122 unresolved. Verification: 379 passed, 1 skipped; ruff and ty passed.
