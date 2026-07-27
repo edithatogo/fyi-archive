@@ -1,0 +1,1 @@
+Commit notes: AU replay classification candidates now validate against a hash-pinned schema and cross-field coverage invariants before writing. Verification: 374 passed, 1 skipped; ruff and ty passed; changed files formatted.
