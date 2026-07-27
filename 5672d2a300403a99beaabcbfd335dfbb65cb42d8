@@ -1,0 +1,1 @@
+Commit notes: Resumption no longer trusts status=complete alone; checkpoints must pass exact-query and Internet Archive provenance validation. Full verification: 373 passed, 1 skipped; ruff and ty passed.
