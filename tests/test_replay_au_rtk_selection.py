@@ -53,7 +53,7 @@ def test_existing_raw_json_is_reparsed_without_network() -> None:
         content_type="application/json",
     )
     assert result["status"] == "captured"
-    assert result["parser_version"] == 2
+    assert result["parser_version"] == replay.PARSER_VERSION
     assert result["authority_tags"] == ["federal"]
 
 

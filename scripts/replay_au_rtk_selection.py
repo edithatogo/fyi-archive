@@ -18,6 +18,7 @@ from bs4 import BeautifulSoup
 from fyi_archive.historical_core import archive_replay_url, parse_archived_request
 
 SELECTION_SHA256 = "a1c2308ecc81de3754f37b3c26f7ba7fc232ff5bac930b86b36fb10463178c51"
+PARSER_VERSION = 3
 MAX_BYTES = 2 * 1024 * 1024
 MAX_REDIRECTS = 5
 
@@ -116,7 +117,7 @@ def _parse_json(
         "extracted_at": datetime.now(UTC).isoformat(),
         "instance_id": "au-rtk",
         "media_kind": "json",
-        "parser_version": 2,
+        "parser_version": PARSER_VERSION,
     }
 
 
@@ -148,7 +149,7 @@ def record_from_raw(
         )
         record["authority_tags"] = []
         record["law_used"] = ""
-        record["parser_version"] = 2
+        record["parser_version"] = PARSER_VERSION
     record.update(
         {
             "status": "captured",
@@ -241,7 +242,10 @@ def run(
         raw_path = output_root / "raw" / f"{selected['canonical_slug']}{raw_suffix}"
         if record_path.is_file():
             existing = json.loads(record_path.read_text(encoding="utf-8"))
-            if existing.get("status") == "captured" and existing.get("parser_version") == 2:
+            if (
+                existing.get("status") == "captured"
+                and existing.get("parser_version") == PARSER_VERSION
+            ):
                 complete.append(existing)
                 continue
         if raw_path.is_file():

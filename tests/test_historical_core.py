@@ -6,6 +6,7 @@ from pathlib import Path
 from fyi_archive.historical_core import (
     archive_replay_url,
     failed_archived_request,
+    normalize_alaveteli_state,
     parse_archived_request,
 )
 
@@ -22,7 +23,8 @@ def test_archived_request_core_fields_are_extracted() -> None:
     )
     assert record["title"] == "Road safety records"
     assert record["authority"] == "Example Agency"
-    assert record["state"] == "Successful"
+    assert record["state"] == "successful"
+    assert record["state_text"] == "Successful"
     assert record["first_seen"] == "2024-01-02"
     assert record["last_updated"] == "2024-03-04"
     assert record["extraction_status"] == "extracted"
@@ -57,3 +59,18 @@ def test_enrichment_script_contract_is_json_serializable() -> None:
         diagnostic="missing timestamp",
     )
     assert json.loads(json.dumps(record))["extraction_status"] == "fetch_failed"
+
+
+def test_archived_display_states_are_conservatively_normalized() -> None:
+    examples = {
+        "The request was partially successful.": "partially_successful",
+        "The request was refused by Example Agency.": "rejected",
+        "Example Agency did not have the information requested.": "not_held",
+        "The request has been withdrawn by the person who made it.": "user_withdrawn",
+        "The request is waiting for clarification.": "waiting_clarification",
+        "Waiting for an internal review by Example Agency.": "internal_review",
+        "Response to this request is long overdue.": "waiting_response",
+        "Currently waiting for a response from Example Agency.": "waiting_response",
+    }
+    assert {text: normalize_alaveteli_state(text) for text in examples} == examples
+    assert normalize_alaveteli_state("We are waiting for the requester to classify it.") == ""

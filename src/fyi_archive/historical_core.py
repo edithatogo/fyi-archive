@@ -17,11 +17,51 @@ _STATUS_PATTERN = re.compile(
     r"partially successful|gone|internal review)",
     re.IGNORECASE,
 )
+_STATE_PATTERNS = (
+    ("partially_successful", re.compile(r"\bpartially successful\b", re.IGNORECASE)),
+    ("successful", re.compile(r"\bsuccessful\b", re.IGNORECASE)),
+    ("not_held", re.compile(r"\bdid not have the information requested\b", re.IGNORECASE)),
+    ("rejected", re.compile(r"\b(?:refused|rejected)\b", re.IGNORECASE)),
+    ("user_withdrawn", re.compile(r"\bwithdrawn\b", re.IGNORECASE)),
+    (
+        "waiting_clarification",
+        re.compile(r"\bwaiting for clarification\b", re.IGNORECASE),
+    ),
+    ("internal_review", re.compile(r"\binternal review\b", re.IGNORECASE)),
+    (
+        "waiting_response",
+        re.compile(
+            r"\b(?:currently waiting for a response|response .*?(?:overdue|delayed))\b",
+            re.IGNORECASE,
+        ),
+    ),
+)
 
 
 def clean_text(value: object) -> str:
     """Collapse markup-derived whitespace into a stable string."""
     return _WHITESPACE.sub(" ", unescape(str(value or ""))).strip()
+
+
+def normalize_alaveteli_state(value: object) -> str:
+    """Map archived display text to a conservative canonical Alaveteli state."""
+    text = clean_text(value)
+    canonical = text.lower().replace(" ", "_")
+    if canonical in {
+        "successful",
+        "partially_successful",
+        "not_held",
+        "rejected",
+        "user_withdrawn",
+        "waiting_clarification",
+        "internal_review",
+        "waiting_response",
+    }:
+        return canonical
+    for state, pattern in _STATE_PATTERNS:
+        if pattern.search(text):
+            return state
+    return ""
 
 
 def archive_replay_url(source_url: str, timestamp: str) -> str:
@@ -65,10 +105,11 @@ def parse_archived_request(
         soup,
         ("a.public-body", "a[href*='/body/']", ".request-authority", ".public-body"),
     )
-    state = _first_text(soup, (".request-status", ".request-state", ".status", ".state"))
-    if not state:
+    state_text = _first_text(soup, (".request-status", ".request-state", ".status", ".state"))
+    if not state_text:
         match = _STATUS_PATTERN.search(clean_text(soup.get_text(" ", strip=True)))
-        state = clean_text(match.group(1)) if match else ""
+        state_text = clean_text(match.group(1)) if match else ""
+    state = normalize_alaveteli_state(state_text)
     first_seen = _extract_date(soup, ("datePublished", "requested", "created", "first-seen"))
     last_updated = _extract_date(soup, ("dateModified", "updated", "last-updated"))
     request_key = source_url.rstrip("/").rsplit("/", 1)[-1]
@@ -81,6 +122,7 @@ def parse_archived_request(
         "title": title,
         "authority": authority,
         "state": state,
+        "state_text": state_text,
         "first_seen": first_seen,
         "last_updated": last_updated,
         "extraction_status": "extracted",

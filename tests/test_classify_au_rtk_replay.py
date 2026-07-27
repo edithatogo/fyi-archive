@@ -81,7 +81,7 @@ def test_complete_replay_validation_binds_selection_provenance(tmp_path, monkeyp
             {
                 **selected,
                 "status": "captured",
-                "parser_version": 2,
+                "parser_version": classifier.PARSER_VERSION,
                 "archive_digest": "WRONG",
             }
         )
@@ -115,7 +115,7 @@ def test_complete_replay_and_index_bind_raw_and_record_hashes(tmp_path, monkeypa
             {
                 **selected,
                 "status": "captured",
-                "parser_version": 2,
+                "parser_version": classifier.PARSER_VERSION,
                 "raw_sha256": sha256(raw_bytes).hexdigest(),
                 "byte_count": len(raw_bytes),
             }

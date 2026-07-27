@@ -13,7 +13,7 @@ import jsonschema
 
 from fyi_archive.jurisdictions import jurisdiction_for_body_tag, load_jurisdiction_rules
 from scripts.prepare_au_rtk_replay_selection import APPROVED_CDX_SHA256, EXPECTED_SLUGS
-from scripts.replay_au_rtk_selection import SELECTION_SHA256
+from scripts.replay_au_rtk_selection import PARSER_VERSION, SELECTION_SHA256
 
 PROFILE_MAP = {"FEDERAL": "AU-CTH", "NSW": "AU-NSW"}
 SCHEMA_PATH = (
@@ -116,8 +116,10 @@ def load_complete_replay(
     for path in paths:
         record = json.loads(path.read_text(encoding="utf-8"))
         expected = selected[path.stem]
-        if record.get("status") != "captured" or record.get("parser_version") != 2:
-            raise ValueError(f"replay is not complete parser-v2 capture: {path.name}")
+        if record.get("status") != "captured" or record.get("parser_version") != PARSER_VERSION:
+            raise ValueError(
+                f"replay is not complete parser-v{PARSER_VERSION} capture: {path.name}"
+            )
         if any(record.get(field) != expected.get(field) for field in SELECTION_FIELDS):
             raise ValueError(f"replay selection provenance mismatch: {path.name}")
         suffix = ".json" if expected["media_kind"] == "json" else ".html"
