@@ -1,0 +1,1 @@
+Commit notes: Non-final AU replay packets now carry deterministic raw/record lineage and jurisdiction-output integrity metadata. Full verification: 371 passed, 1 skipped; ruff and ty passed.
