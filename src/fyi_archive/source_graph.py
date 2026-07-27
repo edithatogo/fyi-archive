@@ -116,26 +116,24 @@ def build_source_graph(
             "source_modes": list(instance.source_modes) if instance else [],
         }
         source_ids = list(dict.fromkeys([*defaults, *additional_sources]))
-        normalized_sites.append(
-            {
-                "site_id": site_id,
-                "country": site.country,
-                "platform": site.kind,
-                "jurisdiction_targets": sorted(str(item) for item in jurisdiction_ids),
-                "primary": primary,
-                "internet_archive": {
-                    "discovery_status": "configured",
-                    "prospective_capture_status": "archive_it_or_equivalent_required",
-                    "url_patterns": list(site.url_patterns),
-                    "evidence_mode": "complete_cdx_inventory",
-                    "origin_contacted": False,
-                },
-                "preservation_sources": [
-                    {**source_catalog[source_id], "site_evidence_status": "not_probed"}
-                    for source_id in source_ids
-                ],
-            }
-        )
+        normalized_sites.append({
+            "site_id": site_id,
+            "country": site.country,
+            "platform": site.kind,
+            "jurisdiction_targets": sorted(str(item) for item in jurisdiction_ids),
+            "primary": primary,
+            "internet_archive": {
+                "discovery_status": "configured",
+                "prospective_capture_status": "archive_it_or_equivalent_required",
+                "url_patterns": list(site.url_patterns),
+                "evidence_mode": "complete_cdx_inventory",
+                "origin_contacted": False,
+            },
+            "preservation_sources": [
+                {**source_catalog[source_id], "site_evidence_status": "not_probed"}
+                for source_id in source_ids
+            ],
+        })
 
     if len(mapped_targets) != len(set(mapped_targets)):
         raise ValueError("jurisdiction targets must map to exactly one site")

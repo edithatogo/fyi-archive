@@ -6,4 +6,4 @@
 - [x] Add redundant archive candidates and verification states.
 - [x] Replace interactive approval prompts with evidence-based autonomous gates.
 - [x] Document provenance, transformations, completeness semantics, and operations.
-- [~] Run focused and full quality gates and record acceptance evidence (repository-wide format baseline remains).
+- [x] Run hosted-equivalent quality gates and record acceptance evidence (353 passed, 1 skipped; 90.47% coverage).
