@@ -9,11 +9,18 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+import jsonschema
+
 from fyi_archive.jurisdictions import jurisdiction_for_body_tag, load_jurisdiction_rules
-from scripts.prepare_au_rtk_replay_selection import EXPECTED_SLUGS
+from scripts.prepare_au_rtk_replay_selection import APPROVED_CDX_SHA256, EXPECTED_SLUGS
 from scripts.replay_au_rtk_selection import SELECTION_SHA256
 
 PROFILE_MAP = {"FEDERAL": "AU-CTH", "NSW": "AU-NSW"}
+SCHEMA_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "schemas"
+    / "au-rtk-jurisdiction-classification-candidate.schema.json"
+)
 SELECTION_FIELDS = (
     "source_url",
     "archive_timestamp",
@@ -92,10 +99,7 @@ def load_complete_replay(
         for item in selection.get("records", [])
         if isinstance(item, dict) and item.get("canonical_slug")
     }
-    if (
-        selection.get("record_count") != EXPECTED_SLUGS
-        or len(selected) != EXPECTED_SLUGS
-    ):
+    if selection.get("record_count") != EXPECTED_SLUGS or len(selected) != EXPECTED_SLUGS:
         raise ValueError("authorized selection membership/count mismatch")
 
     paths = sorted(records_dir.glob("*.json"))
@@ -175,6 +179,23 @@ def write_replay_index(records: list[dict[str, Any]], output_path: Path) -> dict
     }
 
 
+def validate_candidate_summary(summary: dict[str, Any]) -> None:
+    """Validate schema and cross-field count invariants for the candidate packet."""
+    jsonschema.validate(
+        summary,
+        json.loads(SCHEMA_PATH.read_text(encoding="utf-8")),
+    )
+    counts = summary["counts"]
+    outputs = summary["jurisdiction_outputs"]
+    if sum(counts.values()) != summary["captured_record_count"]:
+        raise ValueError("jurisdiction counts do not cover the captured replay")
+    for jurisdiction, count in counts.items():
+        if outputs[jurisdiction]["record_count"] != count:
+            raise ValueError(f"{jurisdiction} output count does not match classification count")
+    if summary["replay_index"]["record_count"] != summary["captured_record_count"]:
+        raise ValueError("replay index count does not match captured replay")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--records-dir", type=Path, required=True)
@@ -198,11 +219,7 @@ def main() -> int:
     hashes = {}
     for jurisdiction, path in paths.items():
         selected = [
-            {
-                key: value
-                for key, value in record.items()
-                if not key.startswith("_")
-            }
+            {key: value for key, value in record.items() if not key.startswith("_")}
             for record in classified
             if record["jurisdiction"] == jurisdiction
         ]
@@ -220,6 +237,7 @@ def main() -> int:
     summary = {
         "schema": "fyi-archive.au-rtk-jurisdiction-classification-candidate.v1",
         "status": "candidate_non_final",
+        "source_cdx_sha256": APPROVED_CDX_SHA256,
         "selection_sha256": SELECTION_SHA256,
         "captured_record_count": len(records),
         "counts": counts,
@@ -229,6 +247,7 @@ def main() -> int:
         "redistribution": False,
         "manifest_finalization_authorized": False,
     }
+    validate_candidate_summary(summary)
     (args.output_root / "classification-summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n"
     )

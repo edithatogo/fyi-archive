@@ -1,6 +1,7 @@
 import json
 from hashlib import sha256
 
+import jsonschema
 import pytest
 
 from scripts import classify_au_rtk_replay as classifier
@@ -52,9 +53,7 @@ def test_complete_replay_validation_fails_closed_on_partial_membership(
     records.mkdir()
     raw = tmp_path / "raw"
     raw.mkdir()
-    (records / "one.json").write_text(
-        json.dumps({"status": "captured", "parser_version": 2})
-    )
+    (records / "one.json").write_text(json.dumps({"status": "captured", "parser_version": 2}))
     monkeypatch.setattr(classifier, "sha256_file", lambda _path: classifier.SELECTION_SHA256)
     monkeypatch.setattr(classifier, "EXPECTED_SLUGS", 2)
     with pytest.raises(ValueError, match="membership mismatch"):
@@ -132,3 +131,37 @@ def test_complete_replay_and_index_bind_raw_and_record_hashes(tmp_path, monkeypa
     assert index["record_count"] == 1
     assert entry["raw_sha256"] == sha256(raw_bytes).hexdigest()
     assert entry["record_sha256"] == classifier.sha256_file(record_path)
+
+
+def test_candidate_schema_requires_complete_bounded_non_final_packet() -> None:
+    artifact = {
+        "path": "candidate.jsonl",
+        "record_count": 0,
+        "byte_count": 0,
+        "sha256": "a" * 64,
+    }
+    candidate = {
+        "schema": "fyi-archive.au-rtk-jurisdiction-classification-candidate.v1",
+        "status": "candidate_non_final",
+        "source_cdx_sha256": classifier.APPROVED_CDX_SHA256,
+        "selection_sha256": classifier.SELECTION_SHA256,
+        "captured_record_count": classifier.EXPECTED_SLUGS,
+        "counts": {"AU-CTH": 0, "AU-NSW": 0, "UNRESOLVED": classifier.EXPECTED_SLUGS},
+        "replay_index": {**artifact, "record_count": classifier.EXPECTED_SLUGS},
+        "jurisdiction_outputs": {
+            "AU-CTH": artifact,
+            "AU-NSW": artifact,
+            "UNRESOLVED": {**artifact, "record_count": classifier.EXPECTED_SLUGS},
+        },
+        "publication": False,
+        "redistribution": False,
+        "manifest_finalization_authorized": False,
+    }
+    classifier.validate_candidate_summary(candidate)
+    candidate["counts"]["UNRESOLVED"] -= 1
+    with pytest.raises(ValueError, match="do not cover"):
+        classifier.validate_candidate_summary(candidate)
+    candidate["counts"]["UNRESOLVED"] += 1
+    candidate["manifest_finalization_authorized"] = True
+    with pytest.raises(jsonschema.ValidationError):
+        classifier.validate_candidate_summary(candidate)

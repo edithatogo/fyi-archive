@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AU RightToKnow jurisdiction classification candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "source_cdx_sha256",
+    "selection_sha256",
+    "captured_record_count",
+    "counts",
+    "replay_index",
+    "jurisdiction_outputs",
+    "publication",
+    "redistribution",
+    "manifest_finalization_authorized"
+  ],
+  "properties": {
+    "schema": {
+      "const": "fyi-archive.au-rtk-jurisdiction-classification-candidate.v1"
+    },
+    "status": {"const": "candidate_non_final"},
+    "source_cdx_sha256": {
+      "const": "954b0f80ad2a44038f364d240cc9baac815f252a43535c8403dec060ddb730bd"
+    },
+    "selection_sha256": {
+      "const": "a1c2308ecc81de3754f37b3c26f7ba7fc232ff5bac930b86b36fb10463178c51"
+    },
+    "captured_record_count": {"const": 2082},
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["AU-CTH", "AU-NSW", "UNRESOLVED"],
+      "properties": {
+        "AU-CTH": {"type": "integer", "minimum": 0},
+        "AU-NSW": {"type": "integer", "minimum": 0},
+        "UNRESOLVED": {"type": "integer", "minimum": 0}
+      }
+    },
+    "replay_index": {"$ref": "#/$defs/artifact"},
+    "jurisdiction_outputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["AU-CTH", "AU-NSW", "UNRESOLVED"],
+      "properties": {
+        "AU-CTH": {"$ref": "#/$defs/artifact"},
+        "AU-NSW": {"$ref": "#/$defs/artifact"},
+        "UNRESOLVED": {"$ref": "#/$defs/artifact"}
+      }
+    },
+    "publication": {"const": false},
+    "redistribution": {"const": false},
+    "manifest_finalization_authorized": {"const": false}
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "record_count", "byte_count", "sha256"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "record_count": {"type": "integer", "minimum": 0},
+        "byte_count": {"type": "integer", "minimum": 0},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    }
+  }
+}
