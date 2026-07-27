@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 import httpx
+from bs4 import BeautifulSoup
 
 from fyi_archive.historical_core import archive_replay_url, parse_archived_request
 
@@ -98,15 +99,24 @@ def _parse_json(
         "title": str(value.get("title") or ""),
         "authority": authority_name,
         "authority_slug": authority_slug,
-        "authority_tags": [str(tag) for tag in tags] if isinstance(tags, list) else [],
+        "authority_tags": [
+            str(tag[0] if isinstance(tag, list) and tag else tag)
+            for tag in tags
+            if isinstance(tag, (str, list))
+        ]
+        if isinstance(tags, list)
+        else [],
         "state": str(value.get("state") or value.get("described_state") or ""),
-        "first_seen": value.get("date_created"),
-        "last_updated": value.get("date_updated"),
+        "law_used": str(value.get("law_used") or ""),
+        "first_seen": value.get("created_at") or value.get("date_created"),
+        "last_updated": value.get("updated_at") or value.get("date_updated"),
+        "request_id": value.get("id"),
         "extraction_status": "extracted",
         "content_sha256": sha256_bytes(raw),
         "extracted_at": datetime.now(UTC).isoformat(),
         "instance_id": "au-rtk",
         "media_kind": "json",
+        "parser_version": 2,
     }
 
 
@@ -135,8 +145,9 @@ def replay_one(
             if selected["media_kind"] == "json":
                 record = _parse_json(raw, selected=selected, replay_url=final_url)
             else:
+                html = raw.decode("utf-8", errors="replace")
                 record = parse_archived_request(
-                    raw.decode("utf-8", errors="replace"),
+                    html,
                     source_url=selected["source_url"],
                     archive_url=final_url,
                     archive_timestamp=selected["archive_timestamp"],
@@ -144,8 +155,16 @@ def replay_one(
                     instance_id="au-rtk",
                 )
                 record["media_kind"] = "html"
-                record["authority_slug"] = ""
+                body_link = BeautifulSoup(html, "html.parser").select_one("a[href*='/body/']")
+                body_path = urlsplit(str(body_link.get("href") or "")).path if body_link else ""
+                record["authority_slug"] = (
+                    body_path.split("/body/", 1)[1].split("/", 1)[0]
+                    if "/body/" in body_path
+                    else ""
+                )
                 record["authority_tags"] = []
+                record["law_used"] = ""
+                record["parser_version"] = 2
             record.update(
                 {
                     "status": "captured",
@@ -183,6 +202,7 @@ def run(
     launch_delay_seconds: float,
     timeout_seconds: float,
     retries: int,
+    circuit_breaker_failures: int,
 ) -> dict[str, Any]:
     """Replay a selection with deterministic membership and resumable checkpoints."""
     if sha256_file(selection_path) != SELECTION_SHA256:
@@ -198,26 +218,46 @@ def run(
         record_path = output_root / "records" / f"{selected['canonical_slug']}.json"
         if record_path.is_file():
             existing = json.loads(record_path.read_text(encoding="utf-8"))
-            if existing.get("status") == "captured":
+            if existing.get("status") == "captured" and existing.get("parser_version") == 2:
                 complete.append(existing)
                 continue
         pending.append(selected)
 
-    with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
-        futures = []
+    circuit_open = False
+    if workers == 1:
+        consecutive_failures = 0
         for selected in pending:
-            futures.append(
-                executor.submit(
-                    replay_one,
-                    selected,
-                    output_root=output_root,
-                    timeout_seconds=timeout_seconds,
-                    retries=retries,
-                )
+            result = replay_one(
+                selected,
+                output_root=output_root,
+                timeout_seconds=timeout_seconds,
+                retries=retries,
             )
+            complete.append(result)
+            if result.get("status") == "captured":
+                consecutive_failures = 0
+            else:
+                consecutive_failures += 1
+                if consecutive_failures >= max(1, circuit_breaker_failures):
+                    circuit_open = True
+                    break
             time.sleep(max(0.0, launch_delay_seconds))
-        for future in as_completed(futures):
-            complete.append(future.result())
+    else:
+        with ThreadPoolExecutor(max_workers=max(1, workers)) as executor:
+            futures = []
+            for selected in pending:
+                futures.append(
+                    executor.submit(
+                        replay_one,
+                        selected,
+                        output_root=output_root,
+                        timeout_seconds=timeout_seconds,
+                        retries=retries,
+                    )
+                )
+                time.sleep(max(0.0, launch_delay_seconds))
+            for future in as_completed(futures):
+                complete.append(future.result())
 
     complete.sort(key=lambda record: str(record.get("request_key") or record["canonical_slug"]))
     normalized = output_root / "normalized-candidate.jsonl"
@@ -232,6 +272,8 @@ def run(
         "record_count": len(complete),
         "captured_count": sum(record.get("status") == "captured" for record in complete),
         "failed_count": sum(record.get("status") != "captured" for record in complete),
+        "pending_count": selection["record_count"] - len(complete),
+        "circuit_open": circuit_open,
         "normalized_candidate_sha256": sha256_file(normalized),
         "publication": False,
         "redistribution": False,
@@ -250,6 +292,7 @@ def main() -> int:
     parser.add_argument("--launch-delay-seconds", type=float, default=0.25)
     parser.add_argument("--timeout-seconds", type=float, default=30)
     parser.add_argument("--retries", type=int, default=2)
+    parser.add_argument("--circuit-breaker-failures", type=int, default=5)
     args = parser.parse_args()
     summary = run(
         args.selection,
@@ -258,6 +301,7 @@ def main() -> int:
         launch_delay_seconds=args.launch_delay_seconds,
         timeout_seconds=args.timeout_seconds,
         retries=args.retries,
+        circuit_breaker_failures=args.circuit_breaker_failures,
     )
     print(json.dumps(summary, sort_keys=True))
     return 0 if summary["failed_count"] == 0 else 2
