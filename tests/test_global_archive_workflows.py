@@ -36,3 +36,15 @@ def test_live_capture_uses_repository_readiness_not_dispatch_prompts() -> None:
         assert "confirm_live:" not in workflow
         assert "AUTONOMOUS_AU_CAPTURE_ENABLED" in workflow
         assert "environment: au-live-capture" in workflow
+
+
+def test_nz_historical_replay_pilot_is_bounded_and_non_publishing() -> None:
+    workflow = (WORKFLOWS / "nz_historical_replay_pilot.yml").read_text(encoding="utf-8")
+
+    assert "source_run_id:" in workflow
+    assert 'test "$REPLAY_LIMIT" -le 25' in workflow
+    assert 'test "$DELAY_SECONDS" -ge 1' in workflow
+    assert "actions/download-artifact" in workflow
+    assert "enrich_historical_core.py" in workflow
+    assert '"origin_contacted": False' in workflow
+    assert '"publication": "none"' in workflow
