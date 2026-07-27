@@ -60,11 +60,11 @@ def test_completeness_excludes_synthetic_and_reports_independent_channels(
         "planning_horizon_used": False,
         "synthetic_rows_excluded": 1,
     }
-    assert report["channels"]["primary"]["percent"] == 50.0
-    assert report["channels"]["internet_archive"]["percent"] == 100.0
+    assert report["channels"]["primary"]["percent"] == pytest.approx(50.0)
+    assert report["channels"]["internet_archive"]["percent"] == pytest.approx(100.0)
     assert report["minimum_preservation"]["complete"] is True
-    assert report["dual_primary_wayback"]["percent"] == 50.0
-    assert report["independent_redundancy"]["percent"] == 100.0
+    assert report["dual_primary_wayback"]["percent"] == pytest.approx(50.0)
+    assert report["independent_redundancy"]["percent"] == pytest.approx(100.0)
     assert report["complete"] is False
     assert report["provenance"]["inputs"]["enumerated"]["synthetic_urls_excluded"] == [
         "https://example.test/request/1"

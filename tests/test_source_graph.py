@@ -29,7 +29,7 @@ def test_source_graph_covers_every_site_and_jurisdiction(tmp_path: Path) -> None
 
 
 def test_source_graph_rejects_unmapped_target(tmp_path: Path) -> None:
-    config = json.loads(Path("configs/archive_source_graph.json").read_text())
+    config = json.loads(Path("configs/archive_source_graph.json").read_text(encoding="utf-8"))
     config["sites"][0]["jurisdiction_targets"] = ["NZ-OIA"]
     path = tmp_path / "graph.json"
     path.write_text(json.dumps(config))
@@ -38,7 +38,7 @@ def test_source_graph_rejects_unmapped_target(tmp_path: Path) -> None:
 
 
 def test_source_graph_rejects_unknown_preservation_source(tmp_path: Path) -> None:
-    config = json.loads(Path("configs/archive_source_graph.json").read_text())
+    config = json.loads(Path("configs/archive_source_graph.json").read_text(encoding="utf-8"))
     config["sites"][0]["additional_preservation_source_ids"] = ["unknown"]
     path = tmp_path / "graph.json"
     path.write_text(json.dumps(config))
