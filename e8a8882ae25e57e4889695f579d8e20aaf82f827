@@ -1,0 +1,1 @@
+Commit notes: HTML fallback records now use the authorized canonical slug as request_key, preventing tracking queries from fragmenting duplicate clusters. Verification: 376 passed, 1 skipped; focused ruff, format, and ty passed.
