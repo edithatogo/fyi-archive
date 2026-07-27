@@ -45,3 +45,9 @@ def test_separate_site_workflow_auto_restores_latest_checkpoint() -> None:
     assert "RESUME_SOURCE_RUN_ID" in workflow
     assert "--resume-source-run-id" in workflow
     assert "actions: read" in workflow
+    assert "max-parallel: 2" in workflow
+    assert "MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds || '1800' }}" in workflow
+    assert 'p.get("capture_mode") == sys.argv[2]' in workflow
+    assert 'p.get("complete") is True' in workflow
+    assert "latest-complete-refresh" in workflow
+    assert 'grep -qx "complete=true"' in workflow

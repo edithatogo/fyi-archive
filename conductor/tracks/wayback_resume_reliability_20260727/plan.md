@@ -8,7 +8,13 @@
 - [x] Implement verified automatic checkpoint restoration.
 - [x] Preserve explicit resume precedence and provenance.
 - [x] Run focused tests and lint.
-- [~] Run the repository quality suite: 368 passed and 1 skipped; the existing
+- [x] Run the repository quality suite: 368 passed and 1 skipped; the existing
   repository formatter baseline remains red on unrelated files.
-- [~] Record the final diff and hosted continuation payload.
+- [x] Record hosted continuation run `30250397882`: 29 independent artifacts,
+  12 advancing targets, 34,674 additional records, and 23 fail-closed targets.
+- [x] Add malformed-response retries with patient bounded backoff.
+- [x] Reduce hosted CDX concurrency and extend the per-pattern deadline.
+- [x] Fresh-start refreshes after the newest compatible complete inventory.
+- [x] Re-run focused and repository quality gates for the follow-up.
+- [ ] Record the follow-up hosted continuation evidence.
 - [ ] Complete the track only after hosted evidence passes.

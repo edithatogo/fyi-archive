@@ -1,0 +1,36 @@
+# Acceptance evidence: Wayback resume reliability
+
+## Hosted source evidence
+
+- Initial run: `30241894770`.
+- Automatic continuation: `30250397882`.
+- Artifact boundary: 29 independently retained site artifacts per run.
+- Continuation result: 12 targets advanced by 34,674 records and 37 pages.
+- New Zealand advanced from 25,564 to 27,564 records and from 26 to 28 pages.
+- Six zero-record inventories completed; 23 targets remained fail-closed.
+
+The comparison was derived from each retained artifact's `manifest.json` and
+retrieval evidence. Record and page deltas are observations from those files,
+not estimates of total national FOI coverage.
+
+## Transformation and provenance controls
+
+- The CDX response remains a paginated cumulative URL inventory.
+- URL-level mode retains the documented `urlkey` collapse; no inferred records
+  are created.
+- Checkpoint pages and configuration hashes remain validated by the fetch
+  wrapper before resumption.
+- A complete compatible manifest causes a fresh retrieval, preventing an older
+  incomplete checkpoint from becoming the basis of a later refresh.
+- The selected resume run and reason remain embedded in each site manifest.
+- Origin FOI sites are not contacted and token permissions are unchanged.
+
+## Local verification
+
+- Focused tests: `19 passed`.
+- Repository tests: `372 passed, 1 skipped`.
+- Ruff lint and format checks: passed.
+- Actionlint: passed.
+- Zizmor at medium severity: no findings (three configured suppressions).
+
+The track remains open pending a hosted continuation from the merged workflow.
