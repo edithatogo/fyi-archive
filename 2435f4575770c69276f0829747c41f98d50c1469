@@ -1,0 +1,5 @@
+Task: Reduce Internet Archive connection churn during bounded replay.
+
+Summary: Sequential replay reuses one non-redirecting httpx client while retaining archive-host checks, retries, pacing, checkpoint preservation, and the circuit breaker.
+
+Verification: 365 passed, 1 skipped; ruff and ty passed. Runtime validation recovered all 137 initial checkpoints with zero failures before advancing.
