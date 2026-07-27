@@ -61,3 +61,17 @@ def test_nz_historical_replay_batch_is_resumable_and_bounded() -> None:
     assert '"failed_record_count"' in workflow
     assert '"origin_contacted": False' in workflow
     assert '"publication": "none"' in workflow
+
+
+def test_nz_source_index_uses_resumable_complete_cdx_export() -> None:
+    workflow = (WORKFLOWS / "nz_historical_source_indexes.yml").read_text(encoding="utf-8")
+
+    assert "cdx_limit:" not in workflow
+    assert "page_size:" in workflow
+    assert "max_pages:" in workflow
+    assert "resume_run_id:" in workflow
+    assert "actions: read" in workflow
+    assert "fetch_complete_internet_archive_cdx.py" in workflow
+    assert "--capture-mode url_index" in workflow
+    assert "Fail closed on incomplete snapshot" in workflow
+    assert "if: always()" in workflow
