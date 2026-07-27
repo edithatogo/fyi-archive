@@ -94,6 +94,61 @@ def test_complete_checkpoint_rejects_non_cdx_request_url() -> None:
     assert completion.valid_complete_checkpoint(query, checkpoint) is False
 
 
+def test_completion_replay_selection_prefers_latest_json_and_remains_unauthorized() -> None:
+    results = []
+    for index in range(completion.EXPECTED_MISSING_SLUGS):
+        slug = f"slug-{index}"
+        for media_kind in ("json", "html"):
+            records = []
+            if index == 0:
+                suffix = ".json" if media_kind == "json" else ""
+                records = [
+                    [
+                        f"https://www.righttoknow.org.au/request/{slug}{suffix}",
+                        "20200101000000",
+                        f"{media_kind}-old",
+                        "200",
+                        "1",
+                    ],
+                    [
+                        f"https://www.righttoknow.org.au/request/{slug}{suffix}",
+                        "20210101000000",
+                        f"{media_kind}-new",
+                        "200",
+                        "2",
+                    ],
+                ]
+            results.append(
+                {
+                    "canonical_slug": slug,
+                    "media_kind": media_kind,
+                    "exact_url": (
+                        f"https://www.righttoknow.org.au/request/{slug}"
+                        f"{'.json' if media_kind == 'json' else ''}"
+                    ),
+                    "status": "complete",
+                    "records": records,
+                }
+            )
+    candidate = {
+        "failed_query_count": 0,
+        "pending_query_count": 0,
+        "results": results,
+    }
+    selection = completion.build_completion_replay_selection(
+        candidate,
+        completion_candidate_sha256="a" * 64,
+    )
+    assert selection["queried_slug_count"] == completion.EXPECTED_MISSING_SLUGS
+    assert selection["selected_slug_count"] == 1
+    assert selection["json_count"] == 1
+    assert selection["html_fallback_count"] == 0
+    assert selection["records"][0]["archive_digest"] == "json-new"
+    assert selection["no_capture_slug_count"] == completion.EXPECTED_MISSING_SLUGS - 1
+    assert selection["replay_authorized"] is False
+    assert selection["manifest_finalization_authorized"] is False
+
+
 def test_sequential_completion_opens_circuit(tmp_path, monkeypatch) -> None:
     queries = [
         {
@@ -128,10 +183,14 @@ def test_sequential_completion_reuses_one_http_client(tmp_path, monkeypatch) -> 
     queries = [
         {
             "canonical_slug": str(index),
-            "media_kind": "json",
-            "exact_url": f"https://www.righttoknow.org.au/request/{index}.json",
+            "media_kind": media_kind,
+            "exact_url": (
+                f"https://www.righttoknow.org.au/request/{index}"
+                f"{'.json' if media_kind == 'json' else ''}"
+            ),
         }
-        for index in range(completion.EXPECTED_QUERY_COUNT)
+        for index in range(completion.EXPECTED_MISSING_SLUGS)
+        for media_kind in ("json", "html")
     ]
     plan = tmp_path / "plan.json"
     plan.write_text(json.dumps({"query_count": len(queries), "queries": queries}))

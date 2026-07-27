@@ -125,6 +125,86 @@ def valid_complete_checkpoint(
     )
 
 
+def build_completion_replay_selection(
+    candidate: dict[str, Any],
+    *,
+    completion_candidate_sha256: str,
+) -> dict[str, Any]:
+    """Select latest JSON or HTML captures without authorizing their replay."""
+    results = candidate.get("results")
+    if (
+        not isinstance(results, list)
+        or len(results) != EXPECTED_QUERY_COUNT
+        or candidate.get("failed_query_count") != 0
+        or candidate.get("pending_query_count") != 0
+    ):
+        raise ValueError("completion candidate is not complete")
+    by_slug: dict[str, dict[str, dict[str, Any] | None]] = {}
+    for result in results:
+        if not isinstance(result, dict) or result.get("status") != "complete":
+            raise ValueError("completion result is malformed or incomplete")
+        slug = str(result.get("canonical_slug") or "")
+        media_kind = str(result.get("media_kind") or "")
+        if not slug or media_kind not in {"json", "html"}:
+            raise ValueError("completion result identity is invalid")
+        options = by_slug.setdefault(slug, {})
+        if media_kind in options:
+            raise ValueError("completion candidate contains a duplicate slug/media result")
+        options[media_kind] = None
+        records = result.get("records")
+        if not isinstance(records, list):
+            raise ValueError("completion result records are invalid")
+        validated = validate_response_rows(result, [HEADER, *records])
+        if validated:
+            latest = max(validated, key=lambda row: row[1])
+            options[media_kind] = {
+                "canonical_slug": slug,
+                "media_kind": media_kind,
+                "source_url": latest[0],
+                "archive_timestamp": latest[1],
+                "archive_digest": latest[2],
+                "statuscode": latest[3],
+                "length": latest[4],
+            }
+    if len(by_slug) != EXPECTED_MISSING_SLUGS:
+        raise ValueError("completion candidate slug count mismatch")
+    selected = []
+    missing = []
+    for slug in sorted(by_slug):
+        options = by_slug[slug]
+        record = options.get("json") or options.get("html")
+        if record is None:
+            missing.append(slug)
+            continue
+        selected.append(
+            {
+                **record,
+                "selection_reason": (
+                    "latest_successful_canonical_json"
+                    if record["media_kind"] == "json"
+                    else "latest_successful_canonical_html_fallback"
+                ),
+            }
+        )
+    return {
+        "schema": "fyi-archive.au-rtk-canonical-completion-replay-selection.v1",
+        "status": "candidate_pending_replay_approval",
+        "source_cdx_sha256": APPROVED_CDX_SHA256,
+        "completion_candidate_sha256": completion_candidate_sha256,
+        "queried_slug_count": len(by_slug),
+        "selected_slug_count": len(selected),
+        "json_count": sum(record["media_kind"] == "json" for record in selected),
+        "html_fallback_count": sum(record["media_kind"] == "html" for record in selected),
+        "no_capture_slug_count": len(missing),
+        "no_capture_slugs": missing,
+        "records": selected,
+        "replay_authorized": False,
+        "publication": False,
+        "redistribution": False,
+        "manifest_finalization_authorized": False,
+    }
+
+
 def query_one(
     query: dict[str, str],
     *,
@@ -268,10 +348,29 @@ def run(
     candidate_path = output_root / "completion-candidate.json"
     candidate_path.parent.mkdir(parents=True, exist_ok=True)
     candidate_path.write_text(json.dumps(candidate, indent=2, sort_keys=True) + "\n")
-    return {
+    summary = {
         **{key: value for key, value in candidate.items() if key != "results"},
         "candidate_sha256": sha256_file(candidate_path),
     }
+    if (
+        summary["failed_query_count"] == 0
+        and summary["pending_query_count"] == 0
+        and summary["query_count"] == EXPECTED_QUERY_COUNT
+    ):
+        selection = build_completion_replay_selection(
+            candidate,
+            completion_candidate_sha256=summary["candidate_sha256"],
+        )
+        selection_path = output_root / "completion-replay-selection.candidate.json"
+        selection_path.write_text(json.dumps(selection, indent=2, sort_keys=True) + "\n")
+        summary.update(
+            {
+                "completion_replay_selection_sha256": sha256_file(selection_path),
+                "completion_replay_selected_slug_count": selection["selected_slug_count"],
+                "completion_replay_authorized": False,
+            }
+        )
+    return summary
 
 
 def main() -> int:
