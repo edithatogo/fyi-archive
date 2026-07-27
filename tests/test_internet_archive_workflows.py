@@ -55,3 +55,10 @@ def test_separate_site_workflow_auto_restores_latest_checkpoint() -> None:
     assert 'grep -qx "pagination-match=true"' in workflow
     assert '"mode": "resume_key"' in workflow
     assert '"continuation": "showResumeKey/resumeKey"' in workflow
+    python_close = workflow.index('\' "$manifest" "$CAPTURE_MODE")"')
+    pagination_print = workflow.index('print("pagination-match="')
+    capture_guard = workflow.index('grep -qx "capture-match=true"')
+    pagination_guard = workflow.index('grep -qx "pagination-match=true"')
+    complete_guard = workflow.index('if grep -qx "complete=true"')
+    assert pagination_print < python_close
+    assert capture_guard < pagination_guard < complete_guard
