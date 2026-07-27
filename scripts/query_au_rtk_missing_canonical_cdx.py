@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -64,6 +65,38 @@ def build_queries(cdx_rows: list[Any]) -> dict[str, Any]:
     }
 
 
+def validate_response_rows(query: dict[str, str], rows: object) -> list[list[str]]:
+    """Validate that CDX returned only the authorized exact canonical URL."""
+    if not isinstance(rows, list):
+        raise ValueError("CDX response is not an array")
+    if not rows:
+        return []
+    if rows[0] != HEADER:
+        raise ValueError("CDX response header mismatch")
+    expected = urlsplit(query["exact_url"])
+    validated = []
+    for row in rows[1:]:
+        if (
+            not isinstance(row, list)
+            or len(row) != len(HEADER)
+            or not all(isinstance(value, str) for value in row)
+        ):
+            raise ValueError("CDX response row is malformed")
+        actual = urlsplit(row[0])
+        if (
+            actual.scheme not in {"http", "https"}
+            or (actual.hostname or "").lower() != (expected.hostname or "").lower()
+            or actual.path != expected.path
+            or actual.query
+            or actual.fragment
+        ):
+            raise ValueError("CDX response escaped the authorized exact canonical URL")
+        if row[3] != "200":
+            raise ValueError("CDX response contains a non-success capture")
+        validated.append(row)
+    return validated
+
+
 def query_one(
     query: dict[str, str],
     *,
@@ -102,14 +135,13 @@ def query_one(
                 )
             response.raise_for_status()
             rows = response.json()
-            if rows and rows[0] != HEADER:
-                raise ValueError("CDX response header mismatch")
+            records = validate_response_rows(query, rows)
             result = {
                 **query,
                 "status": "complete",
                 "retrieved_at": datetime.now(UTC).isoformat(),
-                "record_count": max(0, len(rows) - 1),
-                "records": rows[1:] if rows else [],
+                "record_count": len(records),
+                "records": records,
                 "request_url": str(response.request.url),
                 "response_sha256": hashlib.sha256(response.content).hexdigest(),
             }

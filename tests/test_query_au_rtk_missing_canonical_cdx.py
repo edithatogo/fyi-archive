@@ -1,6 +1,7 @@
 import json
 
 import httpx
+import pytest
 
 from scripts import query_au_rtk_missing_canonical_cdx as completion
 from scripts.query_au_rtk_missing_canonical_cdx import CDX_ENDPOINT
@@ -8,6 +9,50 @@ from scripts.query_au_rtk_missing_canonical_cdx import CDX_ENDPOINT
 
 def test_completion_endpoint_is_internet_archive_only() -> None:
     assert CDX_ENDPOINT == "https://web.archive.org/cdx/search/cdx"
+
+
+def test_response_rows_are_bound_to_exact_authorized_canonical_url() -> None:
+    query = {
+        "canonical_slug": "example",
+        "media_kind": "json",
+        "exact_url": "https://www.righttoknow.org.au/request/example.json",
+    }
+    records = completion.validate_response_rows(
+        query,
+        [
+            completion.HEADER,
+            [
+                "http://www.righttoknow.org.au/request/example.json",
+                "20200101000000",
+                "DIGEST",
+                "200",
+                "123",
+            ],
+        ],
+    )
+    assert len(records) == 1
+
+
+def test_response_rows_reject_population_expansion() -> None:
+    query = {
+        "canonical_slug": "example",
+        "media_kind": "html",
+        "exact_url": "https://www.righttoknow.org.au/request/example",
+    }
+    with pytest.raises(ValueError, match="escaped"):
+        completion.validate_response_rows(
+            query,
+            [
+                completion.HEADER,
+                [
+                    "https://www.righttoknow.org.au/request/example/response/1",
+                    "20200101000000",
+                    "DIGEST",
+                    "200",
+                    "123",
+                ],
+            ],
+        )
 
 
 def test_sequential_completion_opens_circuit(tmp_path, monkeypatch) -> None:
