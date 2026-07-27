@@ -135,7 +135,14 @@ def fetch_complete_cdx_with_resume_key(
         if current_key:
             params.append(("resumeKey", current_key))
         payload = _fetch(params, opener, deadline=deadline)
-        if not isinstance(payload, list) or not payload or not isinstance(payload[0], list):
+        if payload == []:
+            return [
+                header
+                or expected_header
+                or ["original", "timestamp", "digest", "statuscode", "length"],
+                *rows,
+            ]
+        if not isinstance(payload, list) or not isinstance(payload[0], list):
             raise RuntimeError("CDX returned an invalid resume-key payload")
         next_key: str | None = None
         data_end = len(payload)

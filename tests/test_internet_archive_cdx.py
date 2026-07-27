@@ -382,6 +382,17 @@ def test_resume_key_paginator_resumes_verified_rows() -> None:
     assert len(rows) == 3
 
 
+def test_resume_key_paginator_accepts_empty_zero_result_payload() -> None:
+    rows = fetch_complete_cdx_with_resume_key(
+        "example.test/request/*",
+        page_size=10,
+        max_pages=2,
+        opener=lambda *_args, **_kwargs: _Response([]),
+    )
+
+    assert rows == [["original", "timestamp", "digest", "statuscode", "length"]]
+
+
 def test_resume_key_paginator_rejects_repeated_cursor() -> None:
     def opener(request: Request, timeout: int) -> _Response:
         row = "two" if "resumeKey" in request.full_url else "one"
