@@ -5,12 +5,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
+import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import SplitResult, parse_qs, urlsplit
 
 import httpx
 import jsonschema
@@ -30,6 +32,38 @@ COMPLETION_SELECTION_SCHEMA = (
     / "schemas"
     / "au-rtk-canonical-completion-replay-selection.schema.json"
 )
+CDX_QUERY_FIELDS = {
+    "matchType": ["exact"],
+    "output": ["json"],
+    "fl": [",".join(HEADER)],
+    "filter": ["statuscode:200"],
+}
+
+
+def _default_port(parsed: SplitResult) -> bool:
+    """Return whether a URL has no userinfo and only its scheme's default port."""
+    try:
+        port = parsed.port
+    except ValueError:
+        return False
+    expected_port = 80 if parsed.scheme == "http" else 443
+    return parsed.username is None and parsed.password is None and port in {None, expected_port}
+
+
+def _atomic_write(path: Path, value: bytes) -> None:
+    """Replace one checkpoint artifact atomically within its destination directory."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary_name = ""
+    try:
+        with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as handle:
+            temporary_name = handle.name
+            handle.write(value)
+            handle.flush()
+            os.fsync(handle.fileno())
+        Path(temporary_name).replace(path)
+    finally:
+        if temporary_name:
+            Path(temporary_name).unlink(missing_ok=True)
 
 
 def build_queries(cdx_rows: list[Any]) -> dict[str, Any]:
@@ -91,6 +125,7 @@ def validate_response_rows(query: dict[str, str], rows: object) -> list[list[str
         actual = urlsplit(row[0])
         if (
             actual.scheme not in {"http", "https"}
+            or not _default_port(actual)
             or (actual.hostname or "").lower() != (expected.hostname or "").lower()
             or actual.path != expected.path
             or actual.query
@@ -135,13 +170,17 @@ def valid_complete_checkpoint(  # noqa: PLR0911
         body_records = validate_response_rows(query, json.loads(body))
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
         return False
+    expected_query = {**CDX_QUERY_FIELDS, "url": [query["exact_url"]]}
     return (
         isinstance(records, list)
         and checkpoint.get("record_count") == len(validated)
         and body_records == validated
         and request.scheme == "https"
+        and _default_port(request)
         and (request.hostname or "").lower() == "web.archive.org"
         and request.path == "/cdx/search/cdx"
+        and not request.fragment
+        and parse_qs(request.query, keep_blank_values=True) == expected_query
         and isinstance(digest, str)
         and len(digest) == 64
         and all(character in "0123456789abcdef" for character in digest)
@@ -259,6 +298,7 @@ def validate_completion_replay_selection(selection: dict[str, Any]) -> None:
         parsed = urlsplit(record["source_url"])
         if (
             parsed.scheme not in {"http", "https"}
+            or not _default_port(parsed)
             or (parsed.hostname or "").lower() != "www.righttoknow.org.au"
             or parsed.path != f"/request/{slug}{suffix}"
             or parsed.query
@@ -307,8 +347,7 @@ def query_one(
             response.raise_for_status()
             rows = response.json()
             records = validate_response_rows(query, rows)
-            response_body_path.parent.mkdir(parents=True, exist_ok=True)
-            response_body_path.write_bytes(response.content)
+            _atomic_write(response_body_path, response.content)
             result = {
                 **query,
                 "status": "complete",
@@ -320,16 +359,20 @@ def query_one(
                 "response_byte_count": len(response.content),
                 "response_sha256": hashlib.sha256(response.content).hexdigest(),
             }
-            checkpoint.parent.mkdir(parents=True, exist_ok=True)
-            checkpoint.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+            _atomic_write(
+                checkpoint,
+                (json.dumps(result, indent=2, sort_keys=True) + "\n").encode(),
+            )
             return result  # noqa: TRY300
         except Exception as error:  # noqa: BLE001
             last_error = str(error)[-500:]
             if attempt < retries:
                 time.sleep(2**attempt)
     result = {**query, "status": "failed", "diagnostic": last_error, "records": []}
-    checkpoint.parent.mkdir(parents=True, exist_ok=True)
-    checkpoint.write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    _atomic_write(
+        checkpoint,
+        (json.dumps(result, indent=2, sort_keys=True) + "\n").encode(),
+    )
     return result
 
 
@@ -353,9 +396,16 @@ def run(
     for query in plan["queries"]:
         key = f"{query['canonical_slug']}.{query['media_kind']}"
         checkpoint = output_root / "responses" / f"{key}.json"
-        if checkpoint.is_file():
-            existing = json.loads(checkpoint.read_text(encoding="utf-8"))
-            if valid_complete_checkpoint(query, existing, output_root=output_root):
+        if checkpoint.is_file() and not checkpoint.is_symlink():
+            try:
+                existing = json.loads(checkpoint.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                existing = None
+            if isinstance(existing, dict) and valid_complete_checkpoint(
+                query,
+                existing,
+                output_root=output_root,
+            ):
                 results.append(existing)
                 continue
         pending.append(query)

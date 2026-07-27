@@ -74,6 +74,9 @@ def test_complete_checkpoint_must_match_query_and_cdx_provenance(tmp_path) -> No
         "request_url": (
             "https://web.archive.org/cdx/search/cdx"
             "?url=https%3A%2F%2Fwww.righttoknow.org.au%2Frequest%2Fexample"
+            "&matchType=exact&output=json"
+            "&fl=original%2Ctimestamp%2Cdigest%2Cstatuscode%2Clength"
+            "&filter=statuscode%3A200"
         ),
         "response_body_filename": "example.html.json",
         "response_byte_count": len(body),
@@ -81,6 +84,35 @@ def test_complete_checkpoint_must_match_query_and_cdx_provenance(tmp_path) -> No
     }
     assert completion.valid_complete_checkpoint(query, checkpoint, output_root=tmp_path) is True
     checkpoint["exact_url"] = "https://www.righttoknow.org.au/request/other"
+    assert completion.valid_complete_checkpoint(query, checkpoint, output_root=tmp_path) is False
+
+
+def test_complete_checkpoint_rejects_changed_cdx_query_parameters(tmp_path) -> None:
+    query = {
+        "canonical_slug": "example",
+        "media_kind": "html",
+        "exact_url": "https://www.righttoknow.org.au/request/example",
+    }
+    body = json.dumps([completion.HEADER]).encode()
+    body_dir = tmp_path / "response-bodies"
+    body_dir.mkdir()
+    (body_dir / "example.html.json").write_bytes(body)
+    checkpoint = {
+        **query,
+        "status": "complete",
+        "record_count": 0,
+        "records": [],
+        "request_url": (
+            "https://web.archive.org/cdx/search/cdx"
+            "?url=https%3A%2F%2Fwww.righttoknow.org.au%2Frequest%2Fother"
+            "&matchType=exact&output=json"
+            "&fl=original%2Ctimestamp%2Cdigest%2Cstatuscode%2Clength"
+            "&filter=statuscode%3A200"
+        ),
+        "response_body_filename": "example.html.json",
+        "response_byte_count": len(body),
+        "response_sha256": hashlib.sha256(body).hexdigest(),
+    }
     assert completion.valid_complete_checkpoint(query, checkpoint, output_root=tmp_path) is False
 
 
@@ -130,6 +162,67 @@ def test_complete_checkpoint_rejects_changed_response_body(tmp_path) -> None:
     }
     body_path.write_bytes(b"[]")
     assert completion.valid_complete_checkpoint(query, checkpoint, output_root=tmp_path) is False
+
+
+@pytest.mark.parametrize(
+    "actual_url",
+    [
+        "https://user@www.righttoknow.org.au/request/example",
+        "https://www.righttoknow.org.au:444/request/example",
+    ],
+)
+def test_response_rows_reject_changed_url_authority(actual_url) -> None:
+    query = {
+        "canonical_slug": "example",
+        "media_kind": "html",
+        "exact_url": "https://www.righttoknow.org.au/request/example",
+    }
+    with pytest.raises(ValueError, match="escaped"):
+        completion.validate_response_rows(
+            query,
+            [
+                completion.HEADER,
+                [actual_url, "20200101000000", "DIGEST", "200", "123"],
+            ],
+        )
+
+
+def test_resume_requeries_malformed_checkpoint(tmp_path, monkeypatch) -> None:
+    queries = [
+        {
+            "canonical_slug": str(index),
+            "media_kind": media_kind,
+            "exact_url": (
+                f"https://www.righttoknow.org.au/request/{index}"
+                f"{'.json' if media_kind == 'json' else ''}"
+            ),
+        }
+        for index in range(completion.EXPECTED_MISSING_SLUGS)
+        for media_kind in ("json", "html")
+    ]
+    plan = tmp_path / "plan.json"
+    plan.write_text(json.dumps({"query_count": len(queries), "queries": queries}))
+    responses = tmp_path / "output" / "responses"
+    responses.mkdir(parents=True)
+    (responses / "0.json.json").write_text('{"status":')
+    observed = []
+
+    def successful_query(query, **_kwargs):
+        observed.append(query)
+        return {**query, "status": "complete", "records": []}
+
+    monkeypatch.setattr(completion, "query_one", successful_query)
+    result = completion.run(
+        plan,
+        output_root=tmp_path / "output",
+        workers=1,
+        launch_delay_seconds=0,
+        timeout_seconds=1,
+        retries=0,
+        circuit_breaker_failures=4,
+    )
+    assert result["complete_query_count"] == completion.EXPECTED_QUERY_COUNT
+    assert len(observed) == completion.EXPECTED_QUERY_COUNT
 
 
 def test_completion_replay_selection_prefers_latest_json_and_remains_unauthorized() -> None:
