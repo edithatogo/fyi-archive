@@ -27,6 +27,11 @@ def _targets() -> dict[str, Any]:
     return json.loads(JURISDICTION_TARGETS.read_text(encoding="utf-8"))
 
 
+def test_json_inputs_must_be_objects(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="JSON object"):
+        build_source_graph(config_path=_write(tmp_path / "array.json", []))
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [
