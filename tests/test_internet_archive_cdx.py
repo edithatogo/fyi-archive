@@ -414,3 +414,78 @@ def test_retries_malformed_json_with_patient_bounded_backoff(
     ]
     assert attempts == 3
     assert sleeps == [2, 4]
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"capture_mode": "invalid"}, "unsupported CDX capture mode"),
+        ({"start_chunk": -1}, "start_chunk"),
+        ({"start_chunk": 1}, "resume_key is required"),
+    ],
+)
+def test_resume_key_paginator_rejects_invalid_configuration(
+    kwargs: dict[str, object], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*", page_size=1, max_pages=2, **kwargs
+        )
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"invalid": True}, "invalid resume-key payload"),
+        ([["original"], ["one"], [], []], "invalid resumption key"),
+        ([["original"], [], ["one"], ["tail"]], "malformed resumption-key separator"),
+        ([["original"], [], ["cursor"]], "without records"),
+    ],
+)
+def test_resume_key_paginator_rejects_malformed_payloads(payload: object, message: str) -> None:
+    with pytest.raises(RuntimeError, match=message):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*",
+            page_size=1,
+            max_pages=2,
+            opener=lambda *_args, **_kwargs: _Response(payload),
+        )
+
+
+def test_resume_key_paginator_rejects_changed_header_and_repeated_chunk() -> None:
+    calls = 0
+
+    def changed_header(_: Request, timeout: int) -> _Response:
+        nonlocal calls
+        calls += 1
+        payload = [["original" if calls == 1 else "timestamp"], [str(calls)]]
+        if calls == 1:
+            payload.extend([[], ["next"]])
+        return _Response(payload)
+
+    with pytest.raises(RuntimeError, match="header changed"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*", page_size=1, max_pages=2, opener=changed_header
+        )
+
+    def repeated(_: Request, timeout: int) -> _Response:
+        return _Response([["original"], ["same"], [], ["next"]])
+
+    with pytest.raises(RuntimeError, match="chunk repeated"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*", page_size=1, max_pages=2, opener=repeated
+        )
+
+
+def test_resume_key_paginator_fails_closed_at_chunk_cap() -> None:
+    counter = 0
+
+    def endless(_: Request, timeout: int) -> _Response:
+        nonlocal counter
+        counter += 1
+        return _Response([["original"], [str(counter)], [], [f"next-{counter}"]])
+
+    with pytest.raises(RuntimeError, match="configured chunk cap"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*", page_size=1, max_pages=2, opener=endless
+        )
