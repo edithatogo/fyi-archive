@@ -1,0 +1,1 @@
+Commit notes: AU candidate validation now proves content-level provenance and exact partition membership, not only summary hashes/counts. Verification: 381 passed, 1 skipped; ruff and ty passed.
