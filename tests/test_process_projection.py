@@ -231,6 +231,24 @@ def test_process_verify_rejects_manifest_event_count_mismatch(tmp_path: Path) ->
         verify_process_projection(output)
 
 
+def test_projection_rejects_dry_run_manifest_for_full_corpus(tmp_path: Path) -> None:
+    events = tmp_path / "events.jsonl"
+    manifest = tmp_path / "manifest.json"
+    _write_jsonl(events, [{"event_id": "e1", "case_id": "c1", "activity": "opened"}])
+    manifest.write_text(
+        json.dumps({"meta": {"record_count": 1}, "requests": [{"state": "dry-run"}]}),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="dry-run rows"):
+        build_process_projection(
+            events_path=events,
+            manifest_path=manifest,
+            output_dir=tmp_path / "out",
+            require_live_manifest=True,
+        )
+
+
 def test_projection_rejects_wrong_contract(tmp_path: Path) -> None:
     events = tmp_path / "events.jsonl"
     _write_jsonl(
