@@ -1,3 +1,4 @@
+import hashlib
 import json
 
 import httpx
@@ -55,12 +56,16 @@ def test_response_rows_reject_population_expansion() -> None:
         )
 
 
-def test_complete_checkpoint_must_match_query_and_cdx_provenance() -> None:
+def test_complete_checkpoint_must_match_query_and_cdx_provenance(tmp_path) -> None:
     query = {
         "canonical_slug": "example",
         "media_kind": "html",
         "exact_url": "https://www.righttoknow.org.au/request/example",
     }
+    body = json.dumps([completion.HEADER]).encode()
+    body_dir = tmp_path / "response-bodies"
+    body_dir.mkdir()
+    (body_dir / "example.html.json").write_bytes(body)
     checkpoint = {
         **query,
         "status": "complete",
@@ -70,28 +75,61 @@ def test_complete_checkpoint_must_match_query_and_cdx_provenance() -> None:
             "https://web.archive.org/cdx/search/cdx"
             "?url=https%3A%2F%2Fwww.righttoknow.org.au%2Frequest%2Fexample"
         ),
-        "response_sha256": "a" * 64,
+        "response_body_filename": "example.html.json",
+        "response_byte_count": len(body),
+        "response_sha256": hashlib.sha256(body).hexdigest(),
     }
-    assert completion.valid_complete_checkpoint(query, checkpoint) is True
+    assert completion.valid_complete_checkpoint(query, checkpoint, output_root=tmp_path) is True
     checkpoint["exact_url"] = "https://www.righttoknow.org.au/request/other"
-    assert completion.valid_complete_checkpoint(query, checkpoint) is False
+    assert completion.valid_complete_checkpoint(query, checkpoint, output_root=tmp_path) is False
 
 
-def test_complete_checkpoint_rejects_non_cdx_request_url() -> None:
+def test_complete_checkpoint_rejects_non_cdx_request_url(tmp_path) -> None:
     query = {
         "canonical_slug": "example",
         "media_kind": "html",
         "exact_url": "https://www.righttoknow.org.au/request/example",
     }
+    body = json.dumps([completion.HEADER]).encode()
+    body_dir = tmp_path / "response-bodies"
+    body_dir.mkdir()
+    (body_dir / "example.html.json").write_bytes(body)
     checkpoint = {
         **query,
         "status": "complete",
         "record_count": 0,
         "records": [],
         "request_url": "https://www.righttoknow.org.au/request/example",
-        "response_sha256": "a" * 64,
+        "response_body_filename": "example.html.json",
+        "response_byte_count": len(body),
+        "response_sha256": hashlib.sha256(body).hexdigest(),
     }
-    assert completion.valid_complete_checkpoint(query, checkpoint) is False
+    assert completion.valid_complete_checkpoint(query, checkpoint, output_root=tmp_path) is False
+
+
+def test_complete_checkpoint_rejects_changed_response_body(tmp_path) -> None:
+    query = {
+        "canonical_slug": "example",
+        "media_kind": "html",
+        "exact_url": "https://www.righttoknow.org.au/request/example",
+    }
+    original = json.dumps([completion.HEADER]).encode()
+    body_dir = tmp_path / "response-bodies"
+    body_dir.mkdir()
+    body_path = body_dir / "example.html.json"
+    body_path.write_bytes(original)
+    checkpoint = {
+        **query,
+        "status": "complete",
+        "record_count": 0,
+        "records": [],
+        "request_url": "https://web.archive.org/cdx/search/cdx?url=example",
+        "response_body_filename": body_path.name,
+        "response_byte_count": len(original),
+        "response_sha256": hashlib.sha256(original).hexdigest(),
+    }
+    body_path.write_bytes(b"[]")
+    assert completion.valid_complete_checkpoint(query, checkpoint, output_root=tmp_path) is False
 
 
 def test_completion_replay_selection_prefers_latest_json_and_remains_unauthorized() -> None:

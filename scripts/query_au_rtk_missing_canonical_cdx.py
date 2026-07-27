@@ -103,9 +103,11 @@ def validate_response_rows(query: dict[str, str], rows: object) -> list[list[str
     return validated
 
 
-def valid_complete_checkpoint(
+def valid_complete_checkpoint(  # noqa: PLR0911
     query: dict[str, str],
     checkpoint: dict[str, Any],
+    *,
+    output_root: Path,
 ) -> bool:
     """Return whether a checkpoint is complete and bound to this exact query."""
     if checkpoint.get("status") != "complete":
@@ -119,15 +121,32 @@ def valid_complete_checkpoint(
         return False
     request = urlsplit(str(checkpoint.get("request_url") or ""))
     digest = checkpoint.get("response_sha256")
+    filename = checkpoint.get("response_body_filename")
+    if not isinstance(filename, str) or Path(filename).name != filename:
+        return False
+    expected_filename = f"{query['canonical_slug']}.{query['media_kind']}.json"
+    if filename != expected_filename:
+        return False
+    body_path = output_root / "response-bodies" / filename
+    if body_path.is_symlink() or not body_path.is_file():
+        return False
+    body = body_path.read_bytes()
+    try:
+        body_records = validate_response_rows(query, json.loads(body))
+    except (UnicodeDecodeError, json.JSONDecodeError, ValueError):
+        return False
     return (
         isinstance(records, list)
         and checkpoint.get("record_count") == len(validated)
+        and body_records == validated
         and request.scheme == "https"
         and (request.hostname or "").lower() == "web.archive.org"
         and request.path == "/cdx/search/cdx"
         and isinstance(digest, str)
         and len(digest) == 64
         and all(character in "0123456789abcdef" for character in digest)
+        and checkpoint.get("response_byte_count") == len(body)
+        and hashlib.sha256(body).hexdigest() == digest
     )
 
 
@@ -259,6 +278,7 @@ def query_one(
     """Fetch one exact-URL CDX response and checkpoint it."""
     key = f"{query['canonical_slug']}.{query['media_kind']}"
     checkpoint = output_root / "responses" / f"{key}.json"
+    response_body_path = output_root / "response-bodies" / f"{key}.json"
     last_error = ""
     params = {
         "url": query["exact_url"],
@@ -287,6 +307,8 @@ def query_one(
             response.raise_for_status()
             rows = response.json()
             records = validate_response_rows(query, rows)
+            response_body_path.parent.mkdir(parents=True, exist_ok=True)
+            response_body_path.write_bytes(response.content)
             result = {
                 **query,
                 "status": "complete",
@@ -294,6 +316,8 @@ def query_one(
                 "record_count": len(records),
                 "records": records,
                 "request_url": str(response.request.url),
+                "response_body_filename": response_body_path.name,
+                "response_byte_count": len(response.content),
                 "response_sha256": hashlib.sha256(response.content).hexdigest(),
             }
             checkpoint.parent.mkdir(parents=True, exist_ok=True)
@@ -331,7 +355,7 @@ def run(
         checkpoint = output_root / "responses" / f"{key}.json"
         if checkpoint.is_file():
             existing = json.loads(checkpoint.read_text(encoding="utf-8"))
-            if valid_complete_checkpoint(query, existing):
+            if valid_complete_checkpoint(query, existing, output_root=output_root):
                 results.append(existing)
                 continue
         pending.append(query)
