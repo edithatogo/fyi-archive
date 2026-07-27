@@ -77,7 +77,11 @@ def classify(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return output
 
 
-def load_complete_replay(records_dir: Path, selection_path: Path) -> list[dict[str, Any]]:
+def load_complete_replay(
+    records_dir: Path,
+    raw_dir: Path,
+    selection_path: Path,
+) -> list[dict[str, Any]]:
     """Load replay records only when they exactly cover the authorized selection."""
     selection_digest = sha256_file(selection_path)
     if selection_digest != SELECTION_SHA256:
@@ -112,19 +116,79 @@ def load_complete_replay(records_dir: Path, selection_path: Path) -> list[dict[s
             raise ValueError(f"replay is not complete parser-v2 capture: {path.name}")
         if any(record.get(field) != expected.get(field) for field in SELECTION_FIELDS):
             raise ValueError(f"replay selection provenance mismatch: {path.name}")
-        records.append({"canonical_slug": path.stem, **record})
+        suffix = ".json" if expected["media_kind"] == "json" else ".html"
+        raw_path = raw_dir / f"{path.stem}{suffix}"
+        if not raw_path.is_file():
+            raise ValueError(f"replay raw content is missing: {raw_path.name}")
+        raw_sha256 = sha256_file(raw_path)
+        if (
+            record.get("raw_sha256") != raw_sha256
+            or record.get("byte_count") != raw_path.stat().st_size
+        ):
+            raise ValueError(f"replay raw integrity mismatch: {raw_path.name}")
+        records.append(
+            {
+                "canonical_slug": path.stem,
+                **record,
+                "_record_sha256": sha256_file(path),
+                "_record_byte_count": path.stat().st_size,
+                "_raw_filename": raw_path.name,
+            }
+        )
+    expected_raw_names = {record["_raw_filename"] for record in records}
+    actual_raw_names = {path.name for path in raw_dir.iterdir() if path.is_file()}
+    if actual_raw_names != expected_raw_names:
+        missing = sorted(expected_raw_names - actual_raw_names)
+        extra = sorted(actual_raw_names - expected_raw_names)
+        raise ValueError(f"replay raw membership mismatch: missing={missing[:3]} extra={extra[:3]}")
     return records
+
+
+def write_replay_index(records: list[dict[str, Any]], output_path: Path) -> dict[str, Any]:
+    """Write a deterministic integrity index for the non-final replay candidate."""
+    entries = []
+    for record in records:
+        entries.append(
+            {
+                "canonical_slug": record["canonical_slug"],
+                "media_kind": record["media_kind"],
+                "source_url": record["source_url"],
+                "archive_timestamp": record["archive_timestamp"],
+                "archive_digest": record["archive_digest"],
+                "raw_filename": record["_raw_filename"],
+                "raw_byte_count": record["byte_count"],
+                "raw_sha256": record["raw_sha256"],
+                "record_filename": f"{record['canonical_slug']}.json",
+                "record_byte_count": record["_record_byte_count"],
+                "record_sha256": record["_record_sha256"],
+            }
+        )
+    output_path.write_text(
+        "".join(json.dumps(entry, sort_keys=True) + "\n" for entry in entries),
+        encoding="utf-8",
+    )
+    return {
+        "path": output_path.name,
+        "record_count": len(entries),
+        "byte_count": output_path.stat().st_size,
+        "sha256": sha256_file(output_path),
+    }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--records-dir", type=Path, required=True)
+    parser.add_argument("--raw-dir", type=Path, required=True)
     parser.add_argument("--selection", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
     args = parser.parse_args()
-    records = load_complete_replay(args.records_dir, args.selection)
+    records = load_complete_replay(args.records_dir, args.raw_dir, args.selection)
     classified = classify(records)
     args.output_root.mkdir(parents=True, exist_ok=True)
+    replay_index = write_replay_index(
+        records,
+        args.output_root / "replay-index.candidate.jsonl",
+    )
     paths = {
         "AU-CTH": args.output_root / "au-cth.candidate.jsonl",
         "AU-NSW": args.output_root / "au-nsw.candidate.jsonl",
@@ -133,20 +197,34 @@ def main() -> int:
     counts = {}
     hashes = {}
     for jurisdiction, path in paths.items():
-        selected = [record for record in classified if record["jurisdiction"] == jurisdiction]
+        selected = [
+            {
+                key: value
+                for key, value in record.items()
+                if not key.startswith("_")
+            }
+            for record in classified
+            if record["jurisdiction"] == jurisdiction
+        ]
         path.write_text(
             "".join(json.dumps(record, sort_keys=True) + "\n" for record in selected),
             encoding="utf-8",
         )
         counts[jurisdiction] = len(selected)
-        hashes[jurisdiction] = sha256_file(path)
+        hashes[jurisdiction] = {
+            "path": path.name,
+            "record_count": len(selected),
+            "byte_count": path.stat().st_size,
+            "sha256": sha256_file(path),
+        }
     summary = {
         "schema": "fyi-archive.au-rtk-jurisdiction-classification-candidate.v1",
         "status": "candidate_non_final",
         "selection_sha256": SELECTION_SHA256,
         "captured_record_count": len(records),
         "counts": counts,
-        "sha256": hashes,
+        "replay_index": replay_index,
+        "jurisdiction_outputs": hashes,
         "publication": False,
         "redistribution": False,
         "manifest_finalization_authorized": False,

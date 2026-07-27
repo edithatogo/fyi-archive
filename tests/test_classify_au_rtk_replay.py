@@ -1,9 +1,10 @@
 import json
+from hashlib import sha256
 
 import pytest
 
 from scripts import classify_au_rtk_replay as classifier
-from scripts.classify_au_rtk_replay import classify, load_complete_replay
+from scripts.classify_au_rtk_replay import classify, load_complete_replay, write_replay_index
 
 
 def test_classification_uses_explicit_tags_and_unanimous_authority_crosswalk() -> None:
@@ -49,13 +50,15 @@ def test_complete_replay_validation_fails_closed_on_partial_membership(
     )
     records = tmp_path / "records"
     records.mkdir()
+    raw = tmp_path / "raw"
+    raw.mkdir()
     (records / "one.json").write_text(
         json.dumps({"status": "captured", "parser_version": 2})
     )
     monkeypatch.setattr(classifier, "sha256_file", lambda _path: classifier.SELECTION_SHA256)
     monkeypatch.setattr(classifier, "EXPECTED_SLUGS", 2)
     with pytest.raises(ValueError, match="membership mismatch"):
-        load_complete_replay(records, selection)
+        load_complete_replay(records, raw, selection)
 
 
 def test_complete_replay_validation_binds_selection_provenance(tmp_path, monkeypatch) -> None:
@@ -71,6 +74,9 @@ def test_complete_replay_validation_binds_selection_provenance(tmp_path, monkeyp
     selection.write_text(json.dumps({"record_count": 1, "records": [selected]}))
     records = tmp_path / "records"
     records.mkdir()
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    (raw / "one.json").write_bytes(b"raw")
     (records / "one.json").write_text(
         json.dumps(
             {
@@ -84,4 +90,45 @@ def test_complete_replay_validation_binds_selection_provenance(tmp_path, monkeyp
     monkeypatch.setattr(classifier, "sha256_file", lambda _path: classifier.SELECTION_SHA256)
     monkeypatch.setattr(classifier, "EXPECTED_SLUGS", 1)
     with pytest.raises(ValueError, match="provenance mismatch"):
-        load_complete_replay(records, selection)
+        load_complete_replay(records, raw, selection)
+
+
+def test_complete_replay_and_index_bind_raw_and_record_hashes(tmp_path, monkeypatch) -> None:
+    raw_bytes = b'{"title":"example"}'
+    selected = {
+        "canonical_slug": "one",
+        "source_url": "https://www.righttoknow.org.au/request/one.json",
+        "archive_timestamp": "20200101000000",
+        "archive_digest": "DIGEST",
+        "media_kind": "json",
+        "selection_reason": "latest_successful_json",
+    }
+    selection = tmp_path / "selection.json"
+    selection.write_text(json.dumps({"record_count": 1, "records": [selected]}))
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    (raw / "one.json").write_bytes(raw_bytes)
+    records_dir = tmp_path / "records"
+    records_dir.mkdir()
+    record_path = records_dir / "one.json"
+    record_path.write_text(
+        json.dumps(
+            {
+                **selected,
+                "status": "captured",
+                "parser_version": 2,
+                "raw_sha256": sha256(raw_bytes).hexdigest(),
+                "byte_count": len(raw_bytes),
+            }
+        )
+    )
+    monkeypatch.setattr(classifier, "sha256_file", classifier.sha256_file)
+    monkeypatch.setattr(classifier, "SELECTION_SHA256", classifier.sha256_file(selection))
+    monkeypatch.setattr(classifier, "EXPECTED_SLUGS", 1)
+    records = load_complete_replay(records_dir, raw, selection)
+    index_path = tmp_path / "index.jsonl"
+    index = write_replay_index(records, index_path)
+    entry = json.loads(index_path.read_text())
+    assert index["record_count"] == 1
+    assert entry["raw_sha256"] == sha256(raw_bytes).hexdigest()
+    assert entry["record_sha256"] == classifier.sha256_file(record_path)
