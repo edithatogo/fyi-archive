@@ -23,6 +23,7 @@ def test_archived_request_core_fields_are_extracted() -> None:
     )
     assert record["title"] == "Road safety records"
     assert record["authority"] == "Example Agency"
+    assert record["authority_slug"] == "example-agency"
     assert record["state"] == "successful"
     assert record["state_text"] == "Successful"
     assert record["first_seen"] == "2024-01-02"
@@ -74,3 +75,18 @@ def test_archived_display_states_are_conservatively_normalized() -> None:
     }
     assert {text: normalize_alaveteli_state(text) for text in examples} == examples
     assert normalize_alaveteli_state("We are waiting for the requester to classify it.") == ""
+
+
+def test_authority_extraction_skips_body_list_navigation() -> None:
+    record = parse_archived_request(
+        """
+        <a href="/body/list/all">View authorities</a>
+        <h1>Request</h1>
+        <a href="/body/actual-agency">Actual Agency</a>
+        """,
+        source_url="https://example.test/request/example",
+        archive_url="https://web.archive.org/example",
+        archive_timestamp="20200101000000",
+    )
+    assert record["authority"] == "Actual Agency"
+    assert record["authority_slug"] == "actual-agency"

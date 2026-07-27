@@ -13,7 +13,6 @@ from typing import Any
 from urllib.parse import urljoin, urlsplit
 
 import httpx
-from bs4 import BeautifulSoup
 
 from fyi_archive.historical_core import archive_replay_url, parse_archived_request
 
@@ -143,11 +142,6 @@ def record_from_raw(
         )
         record["request_key"] = selected["canonical_slug"]
         record["media_kind"] = "html"
-        body_link = BeautifulSoup(html, "html.parser").select_one("a[href*='/body/']")
-        body_path = urlsplit(str(body_link.get("href") or "")).path if body_link else ""
-        record["authority_slug"] = (
-            body_path.split("/body/", 1)[1].split("/", 1)[0] if "/body/" in body_path else ""
-        )
         record["authority_tags"] = []
         record["law_used"] = ""
         record["parser_version"] = PARSER_VERSION

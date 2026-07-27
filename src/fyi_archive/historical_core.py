@@ -7,7 +7,7 @@ import re
 from datetime import UTC, datetime
 from html import unescape
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 from bs4 import BeautifulSoup
 
@@ -89,6 +89,29 @@ def _extract_date(soup: BeautifulSoup, names: tuple[str, ...]) -> str | None:
     return None
 
 
+def extract_authority_identity(soup: BeautifulSoup) -> tuple[str, str]:
+    """Extract one authority name/slug while excluding Alaveteli navigation links."""
+    anchors = [
+        *soup.select("a.public-body[href*='/body/']"),
+        *soup.select("a[href*='/body/']"),
+    ]
+    seen: set[int] = set()
+    for anchor in anchors:
+        if id(anchor) in seen:
+            continue
+        seen.add(id(anchor))
+        href = str(anchor.get("href") or "")
+        match = re.search(r"/body/([^/?#]+)", href)
+        if not match:
+            continue
+        slug = unquote(match.group(1)).strip()
+        name = clean_text(anchor.get_text(" ", strip=True))
+        if slug.lower() in {"list", "all"} or not slug or not name:
+            continue
+        return name, slug
+    return "", ""
+
+
 def parse_archived_request(
     html: str,
     *,
@@ -101,10 +124,9 @@ def parse_archived_request(
     """Extract conservative core fields from one archived request page."""
     soup = BeautifulSoup(html, "html.parser")
     title = _first_text(soup, ("h1", "meta[property='og:title']", "title"))
-    authority = _first_text(
-        soup,
-        ("a.public-body", "a[href*='/body/']", ".request-authority", ".public-body"),
-    )
+    authority, authority_slug = extract_authority_identity(soup)
+    if not authority:
+        authority = _first_text(soup, (".request-authority", ".public-body"))
     state_text = _first_text(soup, (".request-status", ".request-state", ".status", ".state"))
     if not state_text:
         match = _STATUS_PATTERN.search(clean_text(soup.get_text(" ", strip=True)))
@@ -121,6 +143,7 @@ def parse_archived_request(
         "request_key": request_key,
         "title": title,
         "authority": authority,
+        "authority_slug": authority_slug,
         "state": state,
         "state_text": state_text,
         "first_seen": first_seen,

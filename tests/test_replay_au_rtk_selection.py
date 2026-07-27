@@ -73,6 +73,8 @@ def test_html_request_key_uses_canonical_slug_not_tracking_query() -> None:
         content_type="text/html",
     )
     assert result["request_key"] == "example"
+    assert result["authority"] == "Agency"
+    assert result["authority_slug"] == "agency"
 
 
 def test_sequential_mode_opens_circuit_after_bounded_failures(tmp_path, monkeypatch) -> None:
