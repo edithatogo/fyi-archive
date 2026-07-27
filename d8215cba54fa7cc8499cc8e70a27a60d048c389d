@@ -1,0 +1,1 @@
+Commit notes: HTML fallback state values are now conservative canonical states with original display text preserved. Parser v3 forces local reparse of existing raw snapshots without network access. Verification: 375 passed, 1 skipped; ruff and ty passed.
