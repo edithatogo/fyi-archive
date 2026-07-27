@@ -1,0 +1,1 @@
+Independent audit remediation: canonical CDX completion checkpoints now use atomic replacement, malformed checkpoints fail closed to re-query, retained request URLs must match exact url/matchType/output/fl/filter parameters, and URL userinfo/non-default ports are rejected. Validation: 13 focused tests; 388 passed, 1 skipped full suite; ruff passed.
