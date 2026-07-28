@@ -108,6 +108,20 @@ jobs:
           )
           print(json.dumps({"queue_count": len(rows), "start": start, "selected": len(selected)}))
           PY
+      - name: Preflight live source health
+        run: |
+          set -euo pipefail
+          test -s .tmp/batch_requests.jsonl
+          request_url="$(jq -r 'select(.request_url != null) | .request_url' .tmp/batch_requests.jsonl | head -n 1)"
+          test -n "$request_url" && test "$request_url" != "null"
+          curl_exit=0
+          status="$(curl --location --silent --show-error --output /dev/null \
+            --write-out '%{http_code}' --connect-timeout 10 --max-time 30 \
+            --retry 2 --retry-delay 2 --retry-all-errors "$request_url")" || curl_exit=$?
+          jq -n --arg url "$request_url" --arg status "$status" --arg exit "$curl_exit" \
+            '{checked_url:$url,http_status:(if ($status|test("^[0-9]{3}$")) then ($status|tonumber) else null end),curl_exit:($exit|tonumber),healthy:(($exit|tonumber)==0 and ($status|test("^[23][0-9][0-9]$")))}' \
+            > .tmp/source-health.json
+          test "$curl_exit" -eq 0 && [[ "$status" =~ ^[23][0-9][0-9]$ ]]
       - name: Capture real requests with fyi-cli
         run: |
           set -euo pipefail
@@ -137,6 +151,7 @@ jobs:
           if-no-files-found: error
           path: |
             .tmp/batch_requests.jsonl
+            .tmp/source-health.json
             data/_state/ledger.jsonl
       - name: Build live manifest and process sidecars
         run: |
