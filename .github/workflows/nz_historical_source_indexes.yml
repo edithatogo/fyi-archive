@@ -99,31 +99,33 @@ jobs:
             echo "CDX continuation attempt ${attempt}/${max_attempts}"
             if timeout --signal=TERM --kill-after=15s 180s uv run python scripts/fetch_complete_internet_archive_cdx.py "${export_args[@]}" "${resume_args[@]}"; then
               break
-            fi
-            uv run python - <<'PY'
-            import json
-            from datetime import datetime, timezone
-            from pathlib import Path
+            else
+              timeout_status=$?
+              echo "CDX exporter exited with status ${timeout_status}; synchronizing checkpoint evidence" >&2
+              python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
 
-            evidence_path = Path(".tmp/nz-historical-source-inputs/internet_archive_retrieval.json")
-            checkpoint_path = Path(".tmp/nz-historical-source-inputs/internet_archive_cdx.pages/checkpoint.json")
-            if checkpoint_path.exists() and evidence_path.exists():
-                evidence = json.loads(evidence_path.read_text())
-                checkpoint = json.loads(checkpoint_path.read_text())
-                evidence["checkpoint"] = checkpoint
-                evidence["record_count"] = checkpoint.get("record_count", 0)
-                evidence["retrieved_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-                evidence["retrieval_status"] = "failed"
-                evidence["pagination_complete"] = False
-                evidence["failure"] = {"type": "TimeoutError", "message": "CDX continuation attempt timed out"}
-                evidence_path.write_text(json.dumps(evidence, indent=2) + "\n")
-            PY
-            if [ "$attempt" -eq "$max_attempts" ]; then
-              echo "CDX continuation budget exhausted; retaining checkpoint and failing closed" >&2
-              exit 1
+          evidence_path = Path(".tmp/nz-historical-source-inputs/internet_archive_retrieval.json")
+          checkpoint_path = Path(".tmp/nz-historical-source-inputs/internet_archive_cdx.pages/checkpoint.json")
+          evidence = json.loads(evidence_path.read_text())
+          checkpoint = json.loads(checkpoint_path.read_text())
+          evidence["checkpoint"] = checkpoint
+          evidence["record_count"] = checkpoint.get("record_count", 0)
+          evidence["retrieved_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+          evidence["retrieval_status"] = "failed"
+          evidence["pagination_complete"] = False
+          evidence["failure"] = {"type": "TimeoutError", "message": "CDX continuation attempt timed out or exited"}
+          evidence_path.write_text(json.dumps(evidence, indent=2) + "\n")
+          PY
+              if [ "$attempt" -eq "$max_attempts" ]; then
+                echo "CDX continuation budget exhausted; retaining checkpoint and failing closed" >&2
+                exit 1
+              fi
+              resume_args=(--resume --resume-source-run-id "$continuation_source_run_id")
+              sleep $((attempt * 30))
             fi
-            resume_args=(--resume --resume-source-run-id "$continuation_source_run_id")
-            sleep $((attempt * 30))
           done
       - name: Validate checkpoint and evidence parity
         run: |
