@@ -124,17 +124,20 @@ jobs:
           set -euo pipefail
           uv run fyi-archive manifest build \
             --instance nz-fyi \
-            --derived-dir data/derived/requests \
+            --derived-dir data/raw/requests \
             --fyi-cli-version 1.2.0
           captured_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           mkdir -p dist/process-events
           uv run fyi export-process-events \
-            --derived-dir data/derived/requests \
+            --derived-dir data/raw/requests \
             --output dist/process-events/events.jsonl \
             --attachments-output dist/process-events/attachments.jsonl \
             --captured-at "$captured_at" \
             --instance-id nz-fyi \
             --source "fyi-cli-real-backfill-${START_OFFSET}"
+          test -s manifests/latest_manifest.json
+          test "$(jq '.meta.record_count' manifests/latest_manifest.json)" -eq "$BATCH_SIZE"
+          test -s dist/process-events/events.jsonl
           uv run fyi-archive process project \
             --events dist/process-events/events.jsonl \
             --attachments dist/process-events/attachments.jsonl \
