@@ -21,6 +21,7 @@
 - [x] Add a bounded sequential resume-key paginator with regression tests.
 - [x] Persist hash-verified cursor checkpoints and explicit pagination provenance.
 - [x] Reject incompatible legacy page checkpoints in cursor workflows.
-- [~] Run the repository and hosted quality gates for cursor pagination.
-- [ ] Record a cursor-based hosted continuation and compare all 29 artifacts.
+- [x] Run the repository and hosted quality gates for cursor pagination.
+- [x] Record cursor-based hosted continuation `30262962651`: all 29 artifacts
+  retained; 16 complete inventories and 13 fail-closed failures.
 - [ ] Complete the track only after hosted evidence passes.
