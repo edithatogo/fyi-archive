@@ -21,6 +21,7 @@ from fyi_archive.seed import (
     requests_from_id_range,
     requests_from_jsonl,
     run_seed,
+    synthetic_requests,
 )
 
 
@@ -380,3 +381,25 @@ def test_seed_cli_dry_run(tmp_path: Path) -> None:
 
     assert result.exit_code == 0
     assert '"processed": 2' in result.stdout
+
+
+def test_synthetic_requests_edge_cases() -> None:
+    # Test positive integer
+    reqs = synthetic_requests(5)
+    assert len(reqs) == 5
+    assert reqs[0].request_id == 1
+    assert reqs[-1].request_id == 5
+
+    # Test None (default fallback to 1)
+    reqs = synthetic_requests(None)
+    assert len(reqs) == 1
+    assert reqs[0].request_id == 1
+
+    # Test 0 (falsy, so it currently falls back to 1)
+    reqs = synthetic_requests(0)
+    assert len(reqs) == 1
+    assert reqs[0].request_id == 1
+
+    # Test negative integer (range(1, count + 1) where count is negative is empty)
+    reqs = synthetic_requests(-5)
+    assert len(reqs) == 0
