@@ -148,15 +148,13 @@ def test_reuses_completed_checkpoint_without_a_resume_key(
         )
     )
     (checkpoint / "checkpoint.json").write_text(
-        json.dumps(
-            {
-                "config_sha256": config_sha256,
-                "completed_pages": 1,
-                "next_page": 1,
-                "next_resume_key": None,
-                "record_count": 1,
-            }
-        )
+        json.dumps({
+            "config_sha256": config_sha256,
+            "completed_pages": 1,
+            "next_page": 1,
+            "next_resume_key": None,
+            "record_count": 1,
+        })
     )
     (checkpoint / "page-000000.json").write_text(
         json.dumps({"page": 0, "header": ["original"], "rows": rows, "fingerprint": fingerprint})
@@ -225,23 +223,19 @@ def test_rejects_tampered_checkpoint_page(tmp_path: Path, monkeypatch: pytest.Mo
     checkpoint = tmp_path / "cdx.pages"
     checkpoint.mkdir()
     (checkpoint / "checkpoint.json").write_text(
-        json.dumps(
-            {
-                "config_sha256": config_sha256,
-                "completed_pages": 1,
-                "page_count": 2,
-            }
-        )
+        json.dumps({
+            "config_sha256": config_sha256,
+            "completed_pages": 1,
+            "page_count": 2,
+        })
     )
     (checkpoint / "page-000000.json").write_text(
-        json.dumps(
-            {
-                "page": 0,
-                "header": ["original"],
-                "rows": [["https://example.test/request/1"]],
-                "fingerprint": "tampered",
-            }
-        )
+        json.dumps({
+            "page": 0,
+            "header": ["original"],
+            "rows": [["https://example.test/request/1"]],
+            "fingerprint": "tampered",
+        })
     )
 
     with pytest.raises(RuntimeError, match="fingerprint validation"):
@@ -253,25 +247,21 @@ def test_checkpoint_loader_rejects_incompatible_or_incomplete_state(tmp_path: Pa
     checkpoint.mkdir()
     state = checkpoint / "checkpoint.json"
     state.write_text(
-        json.dumps(
-            {
-                "config_sha256": "other",
-                "completed_pages": 1,
-                "page_count": 2,
-            }
-        )
+        json.dumps({
+            "config_sha256": "other",
+            "completed_pages": 1,
+            "page_count": 2,
+        })
     )
     with pytest.raises(RuntimeError, match="configuration does not match"):
         fetch_script._load_checkpoint(checkpoint, config_sha256="expected")  # noqa: SLF001
 
     state.write_text(
-        json.dumps(
-            {
-                "config_sha256": "expected",
-                "completed_pages": 1,
-                "page_count": 2,
-            }
-        )
+        json.dumps({
+            "config_sha256": "expected",
+            "completed_pages": 1,
+            "page_count": 2,
+        })
     )
     with pytest.raises(RuntimeError, match="page 0 is missing"):
         fetch_script._load_checkpoint(checkpoint, config_sha256="expected")  # noqa: SLF001
@@ -281,13 +271,11 @@ def test_checkpoint_loader_rejects_bad_index_and_changed_header(tmp_path: Path) 
     checkpoint = tmp_path / "pages"
     checkpoint.mkdir()
     (checkpoint / "checkpoint.json").write_text(
-        json.dumps(
-            {
-                "config_sha256": "expected",
-                "completed_pages": 2,
-                "page_count": 2,
-            }
-        )
+        json.dumps({
+            "config_sha256": "expected",
+            "completed_pages": 2,
+            "page_count": 2,
+        })
     )
     rows = [["https://example.test/request/1"]]
     fingerprint = fetch_script.hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
@@ -308,14 +296,12 @@ def test_checkpoint_loader_rejects_bad_index_and_changed_header(tmp_path: Path) 
         json.dumps(second_rows, sort_keys=True).encode()
     ).hexdigest()
     (checkpoint / "page-000001.json").write_text(
-        json.dumps(
-            {
-                "page": 1,
-                "header": ["timestamp"],
-                "rows": second_rows,
-                "fingerprint": second_fingerprint,
-            }
-        )
+        json.dumps({
+            "page": 1,
+            "header": ["timestamp"],
+            "rows": second_rows,
+            "fingerprint": second_fingerprint,
+        })
     )
     with pytest.raises(RuntimeError, match="headers are inconsistent"):
         fetch_script._load_checkpoint(checkpoint, config_sha256="expected")  # noqa: SLF001
