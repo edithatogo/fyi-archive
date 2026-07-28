@@ -47,6 +47,10 @@ def test_separate_site_workflow_auto_restores_latest_checkpoint() -> None:
     assert "actions: read" in workflow
     assert "max-parallel: 2" in workflow
     assert "MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds || '1800' }}" in workflow
+    assert "timeout-minutes: 135" in workflow
+    assert 'test "$MAX_RUNTIME_SECONDS" -ge 30 && test "$MAX_RUNTIME_SECONDS" -le 7200' in workflow
+    assert 'if [ "$MAX_RUNTIME_SECONDS" -gt 2400 ]; then' in workflow
+    assert 'test -n "${TARGET_SITE_ID}${TARGET_SITE_IDS}"' in workflow
     assert "site_ids:" in workflow
     assert "TARGET_SITE_IDS" in workflow
     assert "site_ids=site_ids if raw_site_ids else None" in workflow

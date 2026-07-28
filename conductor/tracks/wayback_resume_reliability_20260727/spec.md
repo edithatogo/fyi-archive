@@ -31,6 +31,9 @@ paginator for compatibility.
 - Allow one targeted workflow run to select multiple configured sites while
   retaining the two-site concurrency ceiling and global workflow serialization.
 - Allow 1,800 seconds per URL pattern within the existing job timeout.
+- Keep scheduled and full-matrix runs capped at 2,400 seconds, while allowing an
+  explicitly named-site continuation up to 7,200 seconds within a bounded job
+  timeout.
 - Emit bounded progress heartbeats without exposing raw resume keys.
 - Use the available whole-run deadline for patient transient retries with a
   capped backoff.
