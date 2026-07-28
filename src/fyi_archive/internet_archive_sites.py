@@ -95,9 +95,15 @@ def list_internet_archive_sites(
 
 def internet_archive_matrix(
     additional_path: Path = ADDITIONAL_SITES,
+    *,
+    site_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Return a JSON-serializable GitHub Actions matrix."""
     matrix = [asdict(site) for site in list_internet_archive_sites(additional_path)]
+    if site_id is not None:
+        matrix = [row for row in matrix if row["id"] == site_id]
+        if not matrix:
+            raise ValueError(f"unknown Internet Archive site id: {site_id}")
     for row in matrix:
         row["url_patterns"] = list(row["url_patterns"])
     return matrix

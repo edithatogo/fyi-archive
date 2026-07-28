@@ -24,4 +24,6 @@
 - [x] Run the repository and hosted quality gates for cursor pagination.
 - [x] Record cursor-based hosted continuation `30262962651`: all 29 artifacts
   retained; 16 complete inventories and 13 fail-closed failures.
+- [x] Add a bounded manual `site_id` selector for targeted retries; scheduled
+  runs continue to enumerate the full site matrix.
 - [ ] Complete the track only after hosted evidence passes.
