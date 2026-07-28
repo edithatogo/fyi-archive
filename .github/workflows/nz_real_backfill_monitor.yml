@@ -1,0 +1,76 @@
+name: NZ real backfill monitor
+
+on:
+  schedule:
+    - cron: "17,47 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: nz-real-backfill-monitor
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check live source health
+        id: health
+        run: |
+          set -euo pipefail
+          url="https://fyi.org.nz/request/10004-financials-relating-to-the-northern-toll-road"
+          status="$(curl --location --silent --show-error --output /dev/null \
+            --write-out '%{http_code}' --connect-timeout 10 --max-time 30 \
+            --retry 2 --retry-delay 2 --retry-all-errors "$url")" || true
+          echo "http_status=$status" >> "$GITHUB_OUTPUT"
+          if [[ "$status" =~ ^[23][0-9][0-9]$ ]]; then
+            echo "healthy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "healthy=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Find latest complete inventory
+        id: inventory
+        if: steps.health.outputs.healthy == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_id="$(gh run list --repo "$GITHUB_REPOSITORY" \
+            --workflow nz_historical_source_indexes.yml --status success \
+            --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$run_id"
+          mkdir -p .tmp/source
+          gh run download "$run_id" --repo "$GITHUB_REPOSITORY" --dir .tmp/source
+          evidence="$(find .tmp/source -name internet_archive_retrieval.json -type f | head -n 1)"
+          test -s "$evidence"
+          jq -e '.retrieval_status == "complete" and .pagination_complete == true' "$evidence" >/dev/null
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+      - name: Skip when a backfill is already running
+        id: active
+        if: steps.inventory.outputs.run_id != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          active="$(gh run list --repo "$GITHUB_REPOSITORY" \
+            --workflow nz_real_backfill_batch.yml --status in_progress \
+            --limit 1 --json databaseId --jq 'length')"
+          echo "active=$active" >> "$GITHUB_OUTPUT"
+      - name: Dispatch parity-gated continuation
+        if: steps.inventory.outputs.run_id != '' && steps.active.outputs.active == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ steps.inventory.outputs.run_id }}
+        run: |
+          set -euo pipefail
+          gh workflow run nz_real_backfill_batch.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            -f source_run_id="$SOURCE_RUN_ID" \
+            -f start_offset=0 \
+            -f batch_size=25 \
+            -f max_runtime_minutes=40 \
+            -f min_interval=2 \
+            -f auto_continue=true
