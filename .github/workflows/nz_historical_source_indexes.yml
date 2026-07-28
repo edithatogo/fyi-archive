@@ -74,6 +74,7 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ inputs.resume_run_id }}
       - name: Export complete Internet Archive CDX inventory
+        timeout-minutes: 50
         run: |
           set -euo pipefail
           mkdir -p .tmp/nz-historical-source-inputs
