@@ -62,5 +62,11 @@
   patient retry loop can use the existing whole-pattern deadline.
 - [x] Run focused and repository quality gates for the follow-up: 394 passed,
   1 skipped; Ruff, ty, Actionlint, and Zizmor passed.
-- [ ] Record a bounded hosted multi-site continuation and inspect every retained
-  site artifact before closing acceptance.
+- [x] Record bounded hosted multi-site continuation `30373774064`: exactly six
+  requested artifacts were retained without cancellation, and every manifest,
+  retrieval record, checkpoint, configuration hash, and page fingerprint was
+  inspected.
+- [ ] Acceptance remains open: CA, DE, EU, NZ, UA, and UK all advanced but
+  remained fail-closed and resumable at the 1,800-second deadline. They resume
+  on the existing weekly schedule; an operator may separately choose one
+  bounded `site_ids` retry at the allowed 2,400-second maximum.
