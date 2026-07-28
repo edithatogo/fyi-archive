@@ -84,3 +84,23 @@ Validation performed from downloaded artifacts in
 top-level pagination mode, complete/fail-closed state, per-site record counts,
 retrieval failures, and NZ progress were inspected. The track intentionally
 remains open because 13 site acceptance criteria are not complete.
+
+## Reconciliation update (2026-07-28)
+
+Scheduled run `30339737294` retained exactly 29 independent artifacts: 22
+complete and seven fail-closed, with 500,573 retained records. The incomplete
+counts were AU 40,000; CA 54,000; DE 67,000; EU 56,000; NZ 50,000; UA 42,000;
+and GB/UK 26,000. NZ remains incomplete; no percentage is inferred because no
+defensible national denominator exists.
+
+Bounded targeted follow-up produced AU run `30365391104` (complete, 63,473
+records) and UA run `30365404274` (incomplete at 50,000 after HTTP 503). UK
+retry `30369505285` was cancelled after a stale snapshot. Invalid selector
+attempts (`30370087242`, `30370285224`, `30370349930`, `30370464238`) failed
+closed during enumeration; valid CA run `30370646140` remained active without
+a terminal update during the bounded observation window and was not retried
+indefinitely. These runs do not establish corpus coverage.
+
+Acceptance remains open: CA, DE, EU, NZ, UK, and UA are not all complete. They
+resume on the existing weekly schedule; targeted dispatch remains an optional,
+operator-controlled improvement rather than an unbounded retry loop.

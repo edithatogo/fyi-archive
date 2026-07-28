@@ -27,3 +27,23 @@
 - [x] Add a bounded manual `site_id` selector for targeted retries; scheduled
   runs continue to enumerate the full site matrix.
 - [ ] Complete the track only after hosted evidence passes.
+
+## Weekly reconciliation 30339737294 and bounded targeted follow-up
+
+- [x] Reconcile the weekly run `30339737294`: 29 artifacts retained, 22
+  complete and 7 fail-closed; aggregate retained records `500,573`.
+- [x] Record the seven incomplete sites and the explicit NZ observation:
+  `au-rtk` 40,000, `ca-federal-atip` 54,000, `de-fragdenstaat` 67,000,
+  `eu-asktheeu` 56,000, `nz-fyi` 50,000, `ua-dostup` 42,000, and `uk-wdtk`
+  26,000. NZ remains incomplete; no national denominator is available.
+- [x] Execute bounded targeted follow-up: AU run `30365391104` completed with
+  63,473 records; UA run `30365404274` remained fail-closed at 50,000 after
+  HTTP 503. UK retry `30369505285` was cancelled after a stale snapshot.
+- [x] Verify named-site selector behavior through terminal runs. Attempts
+  using invalid ids (`30370087242`, `30370285224`, `30370349930`,
+  `30370464238`) failed closed during enumeration; the valid CA attempt
+  `30370646140` exceeded the bounded observation window without a terminal
+  update and was not retried indefinitely.
+- [ ] Acceptance remains open: CA, DE, EU, NZ, UK, and UA are not all complete.
+  They resume on the existing weekly schedule; targeted dispatches remain an
+  optional operator-controlled improvement, not an unbounded retry loop.
