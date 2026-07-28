@@ -25,13 +25,22 @@ def _write_json(path: Path, value: dict[str, object]) -> None:
     temporary.replace(path)
 
 
-def _config_hash(args: argparse.Namespace, *, include_max_pages: bool = False) -> str:
+def _config_hash(
+    args: argparse.Namespace,
+    *,
+    include_max_pages: bool = False,
+    max_pages_override: int | None = None,
+) -> str:
     config = {
         "url_pattern": args.url_pattern,
         "instance_id": args.instance_id,
         "host": args.host,
         "page_size": args.page_size,
-        **({"max_pages": args.max_pages} if include_max_pages else {}),
+        **(
+            {"max_pages": max_pages_override if max_pages_override is not None else args.max_pages}
+            if include_max_pages
+            else {}
+        ),
         "capture_mode": args.capture_mode,
         "pagination_mode": "resume_key",
         "endpoint": CDX_ENDPOINT,
@@ -44,13 +53,13 @@ def _checkpoint_dir(output: Path) -> Path:
 
 
 def _load_checkpoint(
-    directory: Path, *, config_sha256: str, legacy_config_sha256: str | None = None
+    directory: Path, *, config_sha256: str, legacy_config_sha256: set[str] | None = None
 ) -> tuple[int, str | None, list[str] | None, list[list[str]], set[str]]:
     state_path = directory / "checkpoint.json"
     if not state_path.exists():
         return 0, None, None, [], set()
     state = json.loads(state_path.read_text(encoding="utf-8"))
-    if state.get("config_sha256") not in {config_sha256, legacy_config_sha256}:
+    if state.get("config_sha256") not in ({config_sha256} | (legacy_config_sha256 or set())):
         raise RuntimeError("checkpoint configuration does not match this export")
     completed_pages = int(state["completed_pages"])
     next_resume_key = state.get("next_resume_key")
@@ -115,7 +124,10 @@ def main() -> int:
     }
     checkpoint_dir = _checkpoint_dir(args.output)
     config_sha256 = _config_hash(args)
-    legacy_config_sha256 = _config_hash(args, include_max_pages=True)
+    legacy_config_sha256 = {
+        _config_hash(args, include_max_pages=True, max_pages_override=cap)
+        for cap in range(1, args.max_pages + 1)
+    }
     if not args.resume and checkpoint_dir.exists():
         shutil.rmtree(checkpoint_dir)
     start_chunk, next_resume_key, header, existing_rows, fingerprints = _load_checkpoint(
