@@ -17,6 +17,23 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
+      - name: Cancel stale source-index runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cutoff="$(date -u -d '20 minutes ago' +%s)"
+          gh run list --repo "$GITHUB_REPOSITORY" \
+            --workflow nz_historical_source_indexes.yml --status in_progress \
+            --limit 20 --json databaseId,createdAt |
+            jq -r '.[] | [.databaseId, .createdAt] | @tsv' |
+            while IFS=$'\t' read -r run_id created_at; do
+              created="$(date -u -d "$created_at" +%s)"
+              if [ "$created" -lt "$cutoff" ]; then
+                echo "Cancelling stale source-index run $run_id (created $created_at)"
+                gh run cancel "$run_id" --repo "$GITHUB_REPOSITORY"
+              fi
+            done
       - name: Check live source health
         id: health
         run: |
