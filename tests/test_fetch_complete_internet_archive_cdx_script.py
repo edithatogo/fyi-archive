@@ -128,6 +128,66 @@ def test_resumes_hash_verified_page_checkpoint(
     assert "cursor-1" not in progress
 
 
+def test_reuses_completed_checkpoint_without_a_resume_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "cdx.json"
+    evidence = tmp_path / "retrieval.json"
+    checkpoint = tmp_path / "cdx.pages"
+    checkpoint.mkdir()
+    rows = [["https://example.test/request/1"]]
+    fingerprint = fetch_script.hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
+    config_sha256 = fetch_script._config_hash(  # noqa: SLF001
+        fetch_script.argparse.Namespace(
+            url_pattern="example.test/request/*",
+            instance_id="example",
+            host="example.test",
+            page_size=1000,
+            max_pages=100,
+            capture_mode="all_captures",
+        )
+    )
+    (checkpoint / "checkpoint.json").write_text(
+        json.dumps({
+            "config_sha256": config_sha256,
+            "completed_pages": 1,
+            "next_page": 1,
+            "next_resume_key": None,
+            "record_count": 1,
+        })
+    )
+    (checkpoint / "page-000000.json").write_text(
+        json.dumps({"page": 0, "header": ["original"], "rows": rows, "fingerprint": fingerprint})
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "fetch_complete_internet_archive_cdx.py",
+            "--url-pattern",
+            "example.test/request/*",
+            "--instance-id",
+            "example",
+            "--host",
+            "example.test",
+            "--capture-mode",
+            "all_captures",
+            "--output",
+            str(output),
+            "--evidence",
+            str(evidence),
+            "--resume",
+            "--resume-source-run-id",
+            "12345",
+        ],
+    )
+    assert fetch_script.main() == 0
+    assert json.loads(output.read_text())[1:] == rows
+    payload = json.loads(evidence.read_text())
+    assert payload["pagination_complete"] is True
+    assert payload["checkpoint"]["resumable"] is False
+
+
 def test_rejects_tampered_checkpoint_page(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     output = tmp_path / "cdx.json"
     evidence = tmp_path / "retrieval.json"
