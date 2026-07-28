@@ -37,6 +37,16 @@ def test_site_matrix_is_json_serializable_and_separate() -> None:
     assert all(row["id"] and row["url_patterns"] for row in matrix)
 
 
+def test_site_matrix_can_select_one_site() -> None:
+    matrix = internet_archive_matrix(site_id="au-rtk")
+    assert [row["id"] for row in matrix] == ["au-rtk"]
+
+
+def test_site_matrix_rejects_unknown_site() -> None:
+    with pytest.raises(ValueError, match="unknown Internet Archive site id"):
+        internet_archive_matrix(site_id="not-configured")
+
+
 @pytest.mark.parametrize(
     ("document", "message"),
     [

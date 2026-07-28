@@ -69,9 +69,15 @@ The track remains open pending a hosted continuation from the merged workflow.
   continuation snapshot; per-site counts above are the authoritative retained
   observations and are not interpreted as a national corpus percentage.
 - The 13 incomplete sites will resume on the existing weekly schedule. A
-  targeted-run improvement is recommended separately: add an explicit site
-  selector/resume-key input so only named incomplete sites can be retried
-  without dispatching an unbounded matrix retry.
+  targeted retry selector is now available for named sites; the existing
+  weekly schedule still dispatches the complete matrix.
+
+## Targeted retry control
+
+Manual dispatches of `foi_site_internet_archive.yml` now accept an optional
+`site_id`. Enumeration filters to that configured site and rejects unknown
+identifiers; scheduled runs leave the input empty and retain the full 29-site
+matrix. Regression tests cover both selection and unknown-site rejection.
 
 Validation performed from downloaded artifacts in
 `C:\tmp\fyi-archive-cursor-30262962651-all-2`: all 29 manifests were parsed;
