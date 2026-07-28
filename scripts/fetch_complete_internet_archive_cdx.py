@@ -149,6 +149,31 @@ def main() -> int:
         ),
         flush=True,
     )
+    if args.resume and start_chunk > 0 and next_resume_key is None:
+        # A completed checkpoint is authoritative; it has no resume key to query.
+        rows = [header or ["original", "timestamp", "digest", "statuscode", "length"], *existing_rows]
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
+        _write_json(
+            args.evidence,
+            {
+                **base_evidence,
+                "retrieval_status": "complete",
+                "pagination_complete": True,
+                "response_sha256": hashlib.sha256(args.output.read_bytes()).hexdigest(),
+                "record_count": len(existing_rows),
+                "checkpoint": {
+                    "config_sha256": config_sha256,
+                    "completed_pages": start_chunk,
+                    "next_page": start_chunk,
+                    "page_count": start_chunk,
+                    "next_resume_key": None,
+                    "resumable": False,
+                },
+            },
+        )
+        print(json.dumps({"event": "cdx-complete-checkpoint-reused", "record_count": len(existing_rows)}))
+        return 0
 
     def save_page(
         page: int,
