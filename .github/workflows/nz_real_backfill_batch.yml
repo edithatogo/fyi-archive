@@ -1,0 +1,186 @@
+name: NZ real backfill batch
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Successful NZ historical source-index run containing the complete CDX snapshot
+        required: true
+        type: string
+      start_offset:
+        description: Zero-based offset in the canonical reconciled request queue
+        required: true
+        default: "0"
+        type: string
+      batch_size:
+        description: Number of real requests to capture in this bounded batch
+        required: true
+        default: "25"
+        type: string
+      max_runtime_minutes:
+        description: Maximum runtime for the fyi-cli capture batch
+        required: true
+        default: "40"
+        type: string
+      min_interval:
+        description: Minimum seconds between requests to the same host
+        required: true
+        default: "2"
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: nz-real-backfill-${{ inputs.start_offset }}
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    env:
+      SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+      START_OFFSET: ${{ inputs.start_offset }}
+      BATCH_SIZE: ${{ inputs.batch_size }}
+      MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes }}
+      MIN_INTERVAL: ${{ inputs.min_interval }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: timeout --signal=TERM --kill-after=15s 300s uv sync --extra dev --frozen
+      - name: Validate bounded live settings
+        run: |
+          set -euo pipefail
+          for value in "$SOURCE_RUN_ID" "$START_OFFSET" "$BATCH_SIZE" "$MAX_RUNTIME_MINUTES"; do
+            [[ "$value" =~ ^[0-9]+$ ]]
+          done
+          [[ "$MIN_INTERVAL" =~ ^[0-9]+([.][0-9]+)?$ ]]
+          test "$BATCH_SIZE" -ge 1 && test "$BATCH_SIZE" -le 100
+          test "$MAX_RUNTIME_MINUTES" -ge 5 && test "$MAX_RUNTIME_MINUTES" -le 45
+          test "$MIN_INTERVAL" -ge 1
+      - name: Download complete source evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
+        with:
+          name: nz-historical-source-index-${{ inputs.source_run_id }}
+          path: .tmp/source
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run_id }}
+      - name: Build and slice canonical reconciled queue
+        run: |
+          set -euo pipefail
+          evidence=.tmp/source/nz-historical-source-inputs/internet_archive_retrieval.json
+          index=.tmp/source/nz-historical-source-index.json
+          test -s "$evidence" && test -s "$index"
+          jq -e '.retrieval_status == "complete" and .pagination_complete == true' "$evidence" >/dev/null
+          uv run python scripts/build_reconciled_backfill_queue.py \
+            --source-index "$index" \
+            --retrieval-evidence "$evidence" \
+            --output .tmp/reconciled_requests.jsonl
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          source = Path(".tmp/reconciled_requests.jsonl")
+          rows = [json.loads(line) for line in source.read_text(encoding="utf-8").splitlines() if line]
+          start = int(os.environ["START_OFFSET"])
+          end = start + int(os.environ["BATCH_SIZE"])
+          selected = rows[start:end]
+          if len(selected) != int(os.environ["BATCH_SIZE"]):
+              raise SystemExit(f"requested batch exceeds queue: {start}:{end} of {len(rows)}")
+          Path(".tmp/batch_requests.jsonl").write_text(
+              "".join(json.dumps(row, sort_keys=True) + "\n" for row in selected),
+              encoding="utf-8",
+          )
+          print(json.dumps({"queue_count": len(rows), "start": start, "selected": len(selected)}))
+          PY
+      - name: Capture real requests with fyi-cli
+        run: |
+          set -euo pipefail
+          mkdir -p data/_state data/raw/requests data/derived/requests dist
+          uv run fyi-archive seed run \
+            --instance nz-fyi \
+            --requests-file .tmp/batch_requests.jsonl \
+            --ledger-path data/_state/ledger.jsonl \
+            --data-dir data \
+            --derived-dir data/derived/requests \
+            --dist-dir dist \
+            --max-requests "$BATCH_SIZE" \
+            --max-runtime-minutes "$MAX_RUNTIME_MINUTES" \
+            --min-interval "$MIN_INTERVAL" \
+            --concurrency 1
+          test -s data/_state/ledger.jsonl
+          ! grep -q '"status": "failed"' data/_state/ledger.jsonl
+      - name: Build live manifest and process sidecars
+        run: |
+          set -euo pipefail
+          uv run fyi-archive manifest build \
+            --instance nz-fyi \
+            --derived-dir data/derived/requests \
+            --fyi-cli-version 1.2.0
+          captured_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          mkdir -p dist/process-events
+          uv run fyi export-process-events \
+            --derived-dir data/derived/requests \
+            --output dist/process-events/events.jsonl \
+            --attachments-output dist/process-events/attachments.jsonl \
+            --captured-at "$captured_at" \
+            --instance-id nz-fyi \
+            --source "fyi-cli-real-backfill-${START_OFFSET}"
+          uv run fyi-archive process project \
+            --events dist/process-events/events.jsonl \
+            --attachments dist/process-events/attachments.jsonl \
+            --manifest manifests/latest_manifest.json \
+            --output-dir dist/process-events/projection \
+            --snapshot-revision "nz-real-backfill-${START_OFFSET}" \
+            --require-live-manifest
+          uv run fyi-archive process verify --output-dir dist/process-events/projection
+      - name: Write batch evidence
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          def digest(path: str) -> str:
+              return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+          payload = {
+              "schema": "fyi-archive.nz-real-backfill-batch.v1",
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "source_run_id": os.environ["SOURCE_RUN_ID"],
+              "start_offset": int(os.environ["START_OFFSET"]),
+              "batch_size": int(os.environ["BATCH_SIZE"]),
+              "publication": "none",
+              "dry_run": False,
+              "manifest_sha256": digest("manifests/latest_manifest.json"),
+              "events_sha256": digest("dist/process-events/events.jsonl"),
+              "attachments_sha256": digest("dist/process-events/attachments.jsonl"),
+          }
+          Path("dist/nz-real-backfill-evidence.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+      - name: Upload verified batch
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nz-real-backfill-${{ inputs.start_offset }}-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          path: |
+            data/_state/ledger.jsonl
+            manifests/latest_manifest.json
+            manifests/latest_manifest.parquet
+            dist/process-events/
+            dist/nz-real-backfill-evidence.json
