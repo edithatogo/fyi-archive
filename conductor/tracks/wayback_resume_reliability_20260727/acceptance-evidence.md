@@ -47,3 +47,34 @@ pagination but do not establish percentage coverage of any national corpus.
 - Zizmor at medium severity: no findings (three configured suppressions).
 
 The track remains open pending a hosted continuation from the merged workflow.
+
+## Cursor continuation run 30262962651
+
+- Hosted run terminal state: `failure` (13 matrix jobs failed closed); artifact
+  boundary was nevertheless exactly 29 independently retained site artifacts.
+- Every retained `manifest.json` declares top-level `pagination.mode` as
+  `resume_key`. No artifact was accepted without that provenance marker.
+- 16 manifests are complete and 13 are incomplete with explicit retrieval
+  failures. The incomplete artifacts are `AU`, `BE`, `CA`, `CO`, `CZ`, `DE`,
+  `EU`, `FR`, `HU`, `NL`, `NZ`, `UA`, and `GB`.
+- Aggregate records retained in this run: 257,528. Complete-site records are
+  observed directly in manifests; failed sites retain partial counts and are
+  not treated as complete coverage.
+- New Zealand (`nz-fyi`) retained 23,000 records in 23 pages before the
+  whole-run deadline and is explicitly incomplete (`pagination_complete=false`)
+  with a fail-closed CDX acquisition failure. No percentage coverage is
+  inferred because no defensible national denominator exists.
+- Compared with run `30252925334`, which recorded 88,004 additional records
+  across 11 advancing sites and NZ at 53,564, this run is a fresh bounded
+  continuation snapshot; per-site counts above are the authoritative retained
+  observations and are not interpreted as a national corpus percentage.
+- The 13 incomplete sites will resume on the existing weekly schedule. A
+  targeted-run improvement is recommended separately: add an explicit site
+  selector/resume-key input so only named incomplete sites can be retried
+  without dispatching an unbounded matrix retry.
+
+Validation performed from downloaded artifacts in
+`C:\tmp\fyi-archive-cursor-30262962651-all-2`: all 29 manifests were parsed;
+top-level pagination mode, complete/fail-closed state, per-site record counts,
+retrieval failures, and NZ progress were inspected. The track intentionally
+remains open because 13 site acceptance criteria are not complete.
