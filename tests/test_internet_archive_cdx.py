@@ -285,6 +285,29 @@ def test_fetch_rejects_deadlines_and_bounded_retries(monkeypatch: pytest.MonkeyP
         internet_archive_cdx._fetch([], unavailable, deadline=10.0)
 
 
+def test_transient_failures_use_patient_attempts_with_capped_backoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+    sleeps: list[float] = []
+    monkeypatch.setattr(internet_archive_cdx.time, "monotonic", lambda: 0.0)
+    monkeypatch.setattr(internet_archive_cdx.time, "sleep", sleeps.append)
+
+    def unavailable(request: Request, timeout: int) -> _Response:
+        nonlocal attempts
+        attempts += 1
+        raise HTTPError(
+            request.full_url, 503, "unavailable", hdrs=Message(), fp=BytesIO(b"unavailable")
+        )
+
+    with pytest.raises(RuntimeError, match="bounded retries"):
+        internet_archive_cdx._fetch([], unavailable, deadline=10_000.0)
+
+    assert attempts == internet_archive_cdx.REQUEST_ATTEMPTS
+    assert len(sleeps) == internet_archive_cdx.REQUEST_ATTEMPTS - 1
+    assert max(sleeps) == internet_archive_cdx.MAX_RETRY_BACKOFF_SECONDS
+
+
 def test_retries_page_level_http_400_but_not_count_query(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

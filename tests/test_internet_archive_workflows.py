@@ -47,6 +47,12 @@ def test_separate_site_workflow_auto_restores_latest_checkpoint() -> None:
     assert "actions: read" in workflow
     assert "max-parallel: 2" in workflow
     assert "MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds || '1800' }}" in workflow
+    assert "site_ids:" in workflow
+    assert "TARGET_SITE_IDS" in workflow
+    assert "site_ids=site_ids if raw_site_ids else None" in workflow
+    assert "max-parallel: 2" in workflow
+    assert '"event": "cdx-heartbeat"' in workflow
+    assert "process.wait(timeout=60)" in workflow
     assert 'p.get("capture_mode") == sys.argv[2]' in workflow
     assert 'p.get("complete") is True' in workflow
     assert "latest-complete-refresh" in workflow

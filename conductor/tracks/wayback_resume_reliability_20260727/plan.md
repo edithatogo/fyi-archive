@@ -47,3 +47,20 @@
 - [ ] Acceptance remains open: CA, DE, EU, NZ, UK, and UA are not all complete.
   They resume on the existing weekly schedule; targeted dispatches remain an
   optional operator-controlled improvement, not an unbounded retry loop.
+
+## Targeted-run reliability follow-up
+
+- [x] Diagnose queued targeted-run cancellations as a consequence of separate
+  dispatches sharing the deliberate global CDX concurrency group.
+- [x] Add a comma-separated multi-site selector that produces one bounded matrix
+  while preserving `max-parallel: 2` and the existing single-site input.
+- [x] Add explicit valid-id diagnostics and reject mixed, empty, duplicate, or
+  unknown targeted selections before acquisition.
+- [x] Emit minute-level workflow heartbeats plus checkpoint progress without
+  logging raw resume keys.
+- [x] Extend transient request attempts with a 60-second backoff ceiling so the
+  patient retry loop can use the existing whole-pattern deadline.
+- [x] Run focused and repository quality gates for the follow-up: 394 passed,
+  1 skipped; Ruff, ty, Actionlint, and Zizmor passed.
+- [ ] Record a bounded hosted multi-site continuation and inspect every retained
+  site artifact before closing acceptance.

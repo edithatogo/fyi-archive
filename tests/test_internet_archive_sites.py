@@ -42,9 +42,29 @@ def test_site_matrix_can_select_one_site() -> None:
     assert [row["id"] for row in matrix] == ["au-rtk"]
 
 
+def test_site_matrix_can_select_a_bounded_batch_in_configured_order() -> None:
+    matrix = internet_archive_matrix(site_ids=("nz-fyi", "ca-federal-atip"))
+    assert [row["id"] for row in matrix] == ["ca-federal-atip", "nz-fyi"]
+
+
 def test_site_matrix_rejects_unknown_site() -> None:
-    with pytest.raises(ValueError, match="unknown Internet Archive site id"):
+    with pytest.raises(ValueError, match=r"configured ids:.*au-rtk"):
         internet_archive_matrix(site_id="not-configured")
+
+
+@pytest.mark.parametrize(
+    ("site_id", "site_ids", "message"),
+    [
+        ("au-rtk", ("nz-fyi",), "mutually exclusive"),
+        (None, (), "at least one"),
+        (None, ("nz-fyi", "nz-fyi"), "must be unique"),
+    ],
+)
+def test_site_matrix_rejects_ambiguous_or_empty_target_batches(
+    site_id: str | None, site_ids: tuple[str, ...], message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        internet_archive_matrix(site_id=site_id, site_ids=site_ids)
 
 
 @pytest.mark.parametrize(
@@ -127,6 +147,7 @@ def test_workflow_is_scheduled_separate_and_origin_free() -> None:
     workflow = Path(".github/workflows/foi_site_internet_archive.yml").read_text(encoding="utf-8")
     assert "schedule:" in workflow
     assert "internet_archive_matrix" in workflow
+    assert "site_ids:" in workflow
     assert "foi-site-wayback-${{ matrix.site.id }}-${{ github.run_id }}" in workflow
     assert "origin_contacted" in workflow
     assert "contents: read" in workflow

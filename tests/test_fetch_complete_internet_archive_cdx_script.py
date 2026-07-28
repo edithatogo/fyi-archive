@@ -71,7 +71,7 @@ def test_writes_failure_evidence_without_a_partial_export(
 
 
 def test_resumes_hash_verified_page_checkpoint(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     output = tmp_path / "cdx.json"
     evidence = tmp_path / "retrieval.json"
@@ -121,6 +121,11 @@ def test_resumes_hash_verified_page_checkpoint(
     assert observed["resume_key"] == "cursor-1"
     assert observed["existing_rows"] == [["https://example.test/request/1"]]
     assert json.loads(evidence.read_text())["resume_source_run_id"] == "12345"
+    progress = capsys.readouterr().out
+    assert '"event": "cdx-start"' in progress
+    assert '"event": "cdx-checkpoint"' in progress
+    assert '"next_resume_key_sha256"' in progress
+    assert "cursor-1" not in progress
 
 
 def test_rejects_tampered_checkpoint_page(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

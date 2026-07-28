@@ -39,6 +39,11 @@ on:
         required: false
         default: ""
         type: string
+      site_ids:
+        description: Optional comma-separated configured ids for one bounded targeted matrix
+        required: false
+        default: ""
+        type: string
 
 permissions:
   actions: read
@@ -67,13 +72,22 @@ jobs:
       - id: sites
         env:
           TARGET_SITE_ID: ${{ inputs.site_id || '' }}
+          TARGET_SITE_IDS: ${{ inputs.site_ids || '' }}
         run: |
           uv run python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           import os
           from fyi_archive.internet_archive_sites import internet_archive_matrix
           site_id = os.environ["TARGET_SITE_ID"] or None
-          print("sites=" + json.dumps(internet_archive_matrix(site_id=site_id), separators=(",", ":")))
+          raw_site_ids = os.environ["TARGET_SITE_IDS"]
+          site_ids = tuple(value.strip() for value in raw_site_ids.split(",") if value.strip())
+          print("sites=" + json.dumps(
+              internet_archive_matrix(
+                  site_id=site_id,
+                  site_ids=site_ids if raw_site_ids else None,
+              ),
+              separators=(",", ":"),
+          ))
           PY
 
   snapshot:
@@ -236,12 +250,33 @@ jobs:
                       "--resume",
                       "--resume-source-run-id", os.environ["RESUME_SOURCE_RUN_ID"],
                   ])
-              completed = subprocess.run(command, check=False)
+              process = subprocess.Popen(command)
+              while True:
+                  try:
+                      returncode = process.wait(timeout=60)
+                      break
+                  except subprocess.TimeoutExpired:
+                      checkpoint_path = output.with_name(
+                          f"{output.stem}.pages"
+                      ) / "checkpoint.json"
+                      progress = {
+                          "event": "cdx-heartbeat",
+                          "site_id": os.environ["SITE_ID"],
+                          "pattern_index": index,
+                          "process_alive": process.poll() is None,
+                      }
+                      if checkpoint_path.exists():
+                          checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+                          progress.update({
+                              "completed_chunks": checkpoint.get("completed_pages", 0),
+                              "record_count": checkpoint.get("record_count", 0),
+                          })
+                      print(json.dumps(progress, sort_keys=True), flush=True)
               retrieval = json.loads(evidence.read_text(encoding="utf-8"))
-              if completed.returncode or retrieval["retrieval_status"] != "complete":
+              if returncode or retrieval["retrieval_status"] != "complete":
                   failures.append({
                       "pattern": pattern,
-                      "returncode": completed.returncode,
+                      "returncode": returncode,
                       "retrieval_status": retrieval["retrieval_status"],
                       "failure": retrieval.get("failure"),
                   })

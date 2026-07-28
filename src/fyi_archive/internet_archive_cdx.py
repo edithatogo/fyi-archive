@@ -13,6 +13,8 @@ from urllib.error import HTTPError, URLError
 
 CDX_ENDPOINT = "https://web.archive.org/cdx/search/cdx"
 CAPTURE_MODES = frozenset({"url_index", "all_captures"})
+REQUEST_ATTEMPTS = 32
+MAX_RETRY_BACKOFF_SECONDS = 60.0
 
 
 def fetch_complete_cdx(
@@ -189,7 +191,7 @@ def _fetch(params: list[tuple[str, str]], opener: Callable[..., Any], *, deadlin
     page_query = any(key == "page" for key, _ in params)
     last_error: Exception | None = None
     # CDX can refuse connections during sustained pagination; keep retries bounded by the whole-run deadline.
-    for attempt in range(8):
+    for attempt in range(REQUEST_ATTEMPTS):
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise RuntimeError("CDX acquisition exceeded whole-run deadline")
@@ -203,6 +205,12 @@ def _fetch(params: list[tuple[str, str]], opener: Callable[..., Any], *, deadlin
             last_error = error
         except (json.JSONDecodeError, TimeoutError, URLError, OSError) as error:
             last_error = error
-        if attempt < 7:
-            time.sleep(min(2 ** (attempt + 1), max(0, deadline - time.monotonic())))
+        if attempt < REQUEST_ATTEMPTS - 1:
+            time.sleep(
+                min(
+                    2 ** (attempt + 1),
+                    MAX_RETRY_BACKOFF_SECONDS,
+                    max(0, deadline - time.monotonic()),
+                )
+            )
     raise RuntimeError(f"CDX request failed after bounded retries: {last_error}")
