@@ -52,7 +52,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: uv sync --extra dev --frozen
+        run: timeout --signal=TERM --kill-after=15s 300s uv sync --extra dev --frozen
       - name: Validate complete-inventory settings
         run: |
           set -euo pipefail
