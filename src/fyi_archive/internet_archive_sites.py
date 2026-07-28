@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -97,13 +98,27 @@ def internet_archive_matrix(
     additional_path: Path = ADDITIONAL_SITES,
     *,
     site_id: str | None = None,
+    site_ids: Sequence[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Return a JSON-serializable GitHub Actions matrix."""
     matrix = [asdict(site) for site in list_internet_archive_sites(additional_path)]
-    if site_id is not None:
-        matrix = [row for row in matrix if row["id"] == site_id]
-        if not matrix:
-            raise ValueError(f"unknown Internet Archive site id: {site_id}")
+    if site_id is not None and site_ids is not None:
+        raise ValueError("site_id and site_ids are mutually exclusive")
+    requested = [site_id] if site_id is not None else list(site_ids or ())
+    if site_ids is not None and not requested:
+        raise ValueError("site_ids must contain at least one configured id")
+    if len(requested) != len(set(requested)):
+        raise ValueError("targeted Internet Archive site ids must be unique")
+    if requested:
+        configured = {str(row["id"]) for row in matrix}
+        unknown = sorted(set(requested) - configured)
+        if unknown:
+            raise ValueError(
+                "unknown Internet Archive site id(s): "
+                f"{', '.join(unknown)}; configured ids: {', '.join(sorted(configured))}"
+            )
+        selected = set(requested)
+        matrix = [row for row in matrix if row["id"] in selected]
     for row in matrix:
         row["url_patterns"] = list(row["url_patterns"])
     return matrix

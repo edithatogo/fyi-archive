@@ -104,3 +104,21 @@ indefinitely. These runs do not establish corpus coverage.
 Acceptance remains open: CA, DE, EU, NZ, UK, and UA are not all complete. They
 resume on the existing weekly schedule; targeted dispatch remains an optional,
 operator-controlled improvement rather than an unbounded retry loop.
+
+## Targeted-run reliability hardening (2026-07-29)
+
+The cancellation pattern came from dispatching separate runs into the workflow's
+deliberate global concurrency group. A new optional comma-separated `site_ids`
+input selects one bounded matrix, retaining the global serialization and
+`max-parallel: 2` limit. The legacy singular `site_id` input remains supported.
+Selection rejects mixed, empty, duplicate, and unknown targets and reports the
+configured ids before any acquisition begins.
+
+Long CDX calls now emit minute-level process heartbeats and checkpoint counts.
+Checkpoint messages include only the SHA-256 of a next resume key, never the raw
+key. Transient requests may use up to 32 attempts with a 60-second backoff cap,
+still bounded by the existing whole-pattern deadline and fail-closed semantics.
+
+Local verification: 394 tests passed and 1 skipped. Ruff preview lint, ty,
+Actionlint, and Zizmor at medium severity all passed. Hosted multi-site evidence
+is still required before the acceptance criteria or track can close.

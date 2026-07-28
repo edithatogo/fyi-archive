@@ -28,7 +28,12 @@ paginator for compatibility.
 - Validate checkpoint configuration and hashes before continuing.
 - Retry malformed or empty JSON responses with patient bounded backoff.
 - Limit hosted CDX enumeration to two concurrent sites.
+- Allow one targeted workflow run to select multiple configured sites while
+  retaining the two-site concurrency ceiling and global workflow serialization.
 - Allow 1,800 seconds per URL pattern within the existing job timeout.
+- Emit bounded progress heartbeats without exposing raw resume keys.
+- Use the available whole-run deadline for patient transient retries with a
+  capped backoff.
 - Refresh from scratch when the newest compatible inventory is already complete.
 - Keep site evidence separate and fail closed until pagination completes.
 - Record the selected resume source in provenance.
@@ -43,3 +48,5 @@ paginator for compatibility.
 - Focused retry and workflow-resume regression tests pass.
 - Repository quality gates pass without weakening completeness semantics.
 - A hosted continuation retains per-site evidence and demonstrates safe progress.
+- Targeted batches reject unknown or duplicate ids before acquisition and do not
+  create cancellation-prone queues of independent workflow runs.

@@ -122,6 +122,19 @@ def main() -> int:
         config_sha256=config_sha256,
     )
     checkpoint_record_count = len(existing_rows)
+    print(
+        json.dumps(
+            {
+                "event": "cdx-start",
+                "instance_id": args.instance_id,
+                "start_chunk": start_chunk,
+                "record_count": checkpoint_record_count,
+                "resumed": args.resume,
+            },
+            sort_keys=True,
+        ),
+        flush=True,
+    )
 
     def save_page(
         page: int,
@@ -152,6 +165,21 @@ def main() -> int:
                 "next_resume_key": resume_key,
                 "record_count": checkpoint_record_count,
             },
+        )
+        print(
+            json.dumps(
+                {
+                    "event": "cdx-checkpoint",
+                    "instance_id": args.instance_id,
+                    "completed_chunks": page + 1,
+                    "record_count": checkpoint_record_count,
+                    "next_resume_key_sha256": (
+                        hashlib.sha256(resume_key.encode()).hexdigest() if resume_key else None
+                    ),
+                },
+                sort_keys=True,
+            ),
+            flush=True,
         )
 
     try:
