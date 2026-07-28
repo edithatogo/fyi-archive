@@ -32,12 +32,12 @@ permissions:
 
 concurrency:
   group: nz-historical-source-index
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 15
     env:
       PAGE_SIZE: ${{ github.event_name == 'schedule' && '1000' || inputs.page_size }}
       MAX_PAGES: ${{ github.event_name == 'schedule' && '100' || inputs.max_pages }}
