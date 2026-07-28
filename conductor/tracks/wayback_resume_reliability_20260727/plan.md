@@ -81,6 +81,8 @@
   or full-matrix work.
 - [x] Allow only an explicitly named-site run to request a bounded deadline up
   to 7,200 seconds, with a correspondingly bounded job timeout.
+- [x] Replace the Wayback artifact upload action's deprecated Node.js 20 runtime
+  with its pinned Node.js 24 release after run `30391530911` exposed the warning.
 - [ ] Run repository and hosted quality gates.
 - [ ] Execute at most one four-site continuation from run `30382291280` and
   reconcile its retained evidence without an automatic retry loop.
