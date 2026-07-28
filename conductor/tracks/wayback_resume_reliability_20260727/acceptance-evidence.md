@@ -212,3 +212,63 @@ inferred because no defensible national denominator exists.
 The track remains open for CA, DE, NZ, and UK. These four sites resume through
 the existing weekly schedule. The one recommended bounded follow-up has been
 executed; no additional targeted retry loop is authorized or planned.
+
+## Guarded four-site continuation 30391530911
+
+The one permitted long-budget continuation ran from merged `main` with
+`max_runtime_seconds=7200`, `resume_run_id=30382291280`, and the four explicit
+site ids `ca-federal-atip,de-fragdenstaat,nz-fyi,uk-wdtk`. It retained exactly
+four independent site artifacts. Their ZIP SHA-256 values independently matched
+the published artifact digests:
+
+| Site | Artifact id | ZIP SHA-256 |
+| --- | ---: | --- |
+| `ca-federal-atip` | `8704434030` | `be6b70df5add9d28ada540a76361d1f508b65be18bc16ce8ad6f4f010f7c0de9` |
+| `de-fragdenstaat` | `8704442746` | `f6375eab6931d818cce2e8c174c090bb64ef6b05d7b8e9e8605624228ac22dcd` |
+| `nz-fyi` | `8706924267` | `3d3e2ddfd30b248556961252c578fe0d00d5c140df56e5ef806041037faf71d3` |
+| `uk-wdtk` | `8707198443` | `7f8ff6c67a7e799374763eb2ffb04dcd2d2b16d92817734bc98cb866ff2883ab` |
+
+Every manifest declares top-level `pagination.mode=resume_key` and records
+`30382291280` as its resume source. All 781 retained page files were inspected:
+their indices are contiguous, headers are consistent, and independently
+recomputed fingerprints are valid and unique. Independently reconstructed
+configuration SHA-256 values matched every checkpoint and retrieval record.
+Page, checkpoint, retrieval, and manifest counts agree, and every manifest's
+retrieval-evidence SHA-256 matches the retained retrieval file.
+
+NZ reached terminal pagination. Its 208,826-record cumulative output independently
+matches the recorded response SHA-256
+`1e105e4b04ffb4790bbd3dafec4404854dc4ca2109a452816b21894645148630`;
+the retrieval and manifest declare completion, retain no next key, and set
+`resumable=false`. CA, DE, and UK exhausted the explicit whole-run deadline and
+failed closed: each has `pagination_complete=false`, no cumulative output or
+response hash, a non-empty next resume key, and `resumable=true`.
+
+| Site | Run 30252925334 | Run 30382291280 | Run 30391530911 | Delta from 30382291280 | Result |
+| --- | ---: | ---: | ---: | ---: | --- |
+| `ca-federal-atip` | 18,255 | 117,000 | 189,000 | +72,000 | incomplete, resumable |
+| `de-fragdenstaat` | 46,000 | 111,000 | 191,000 | +80,000 | incomplete, resumable |
+| `nz-fyi` | 53,564 | 119,000 | 208,826 | +89,826 | complete |
+| `uk-wdtk` | 18,000 | 77,000 | 192,000 | +115,000 | incomplete, resumable |
+| **Four-site aggregate** | **135,819** | **424,000** | **780,826** | **+356,826** | |
+
+The same-site increase from run `30252925334` is 645,007 records. These are
+observed retained-record and checkpoint comparisons, not corpus-coverage
+estimates.
+
+New Zealand retained 208,826 observed records: 89,826 more than run
+`30382291280` and 155,262 more than run `30252925334`. No percentage coverage
+is inferred because no defensible national denominator exists.
+
+The four job logs contain four `cdx-start` events, 357 checkpoint events, and
+470 minute-level heartbeat events. All checkpoint log records use
+`next_resume_key_sha256`; no raw `next_resume_key` field appears. The workflow's
+four Node.js 20 artifact-upload warnings prompted a separately pinned Node.js
+24 action update.
+
+Acceptance remains open for CA, DE, and UK. They resume from their verified
+next keys through the existing weekly schedule; no additional targeted retry
+loop is authorized. A future operator-controlled improvement should subdivide a
+named site into stable URL-prefix ranges or otherwise partition its CDX query,
+then merge only independently complete partitions. That design should be
+implemented and tested separately rather than increasing the deadline again.
