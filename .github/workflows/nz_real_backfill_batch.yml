@@ -106,7 +106,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p data/_state data/raw/requests data/derived/requests dist
-          uv run fyi-archive seed run \
+          capture_timeout=$((MAX_RUNTIME_MINUTES * 60))
+          timeout --signal=TERM --kill-after=30s "${capture_timeout}s" \
+            uv run fyi-archive seed run \
             --instance nz-fyi \
             --requests-file .tmp/batch_requests.jsonl \
             --ledger-path data/_state/ledger.jsonl \
