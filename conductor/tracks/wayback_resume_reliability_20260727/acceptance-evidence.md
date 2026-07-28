@@ -171,3 +171,44 @@ CA, DE, EU, NZ, UA, and UK resume on the existing weekly schedule. A separate
 operator-controlled improvement is one bounded multi-site retry using the
 workflow's allowed 2,400-second maximum; it is not an automatic or unbounded
 retry loop.
+
+## Operator-controlled continuation 30382291280
+
+The single recommended follow-up ran from merged `main` with
+`max_runtime_seconds=2400`, `resume_run_id=30373774064`, and the same six
+selected site ids. The matrix retained exactly six independent artifacts with
+no cancellation and never exceeded two active acquisitions.
+
+EU and UA reached terminal pagination and are now complete. CA, DE, NZ, and UK
+advanced before failing closed at the bounded deadline:
+
+| Site | Run 30373774064 | Run 30382291280 | Delta | Result |
+| --- | ---: | ---: | ---: | --- |
+| `ca-federal-atip` | 81,000 | 117,000 | +36,000 | incomplete, resumable |
+| `de-fragdenstaat` | 87,000 | 111,000 | +24,000 | incomplete, resumable |
+| `eu-asktheeu` | 80,000 | 96,698 | +16,698 | complete |
+| `nz-fyi` | 74,000 | 119,000 | +45,000 | incomplete, resumable |
+| `ua-dostup` | 63,000 | 68,801 | +5,801 | complete |
+| `uk-wdtk` | 48,000 | 77,000 | +29,000 | incomplete, resumable |
+| **Selected-site aggregate** | **433,000** | **589,499** | **+156,499** | |
+
+Every manifest declares top-level `pagination.mode=resume_key` and records
+`30373774064` as its resume source. Recomputing all 590 retained page
+fingerprints succeeded without duplicates. Independently reconstructed
+configuration SHA-256 values matched every checkpoint and retrieval record, and
+all page, checkpoint, retrieval, and manifest counts agreed. The two complete
+exports also matched their recorded response SHA-256 values. Each incomplete
+artifact retained a non-empty next resume key with `resumable=true`; complete
+artifacts retained no next key and declare `resumable=false`.
+
+The run logs contain six start events, 157 checkpoint events, and 185
+minute-level heartbeats. All checkpoint log records used resume-key SHA-256
+values, and none of the four retained raw next keys appeared in the logs.
+
+New Zealand now retains 119,000 observed records, 45,000 more than the preceding
+targeted run and 65,436 more than run `30252925334`. No percentage coverage is
+inferred because no defensible national denominator exists.
+
+The track remains open for CA, DE, NZ, and UK. These four sites resume through
+the existing weekly schedule. The one recommended bounded follow-up has been
+executed; no additional targeted retry loop is authorized or planned.

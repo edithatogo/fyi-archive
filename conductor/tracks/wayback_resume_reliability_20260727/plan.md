@@ -66,7 +66,9 @@
   requested artifacts were retained without cancellation, and every manifest,
   retrieval record, checkpoint, configuration hash, and page fingerprint was
   inspected.
-- [ ] Acceptance remains open: CA, DE, EU, NZ, UA, and UK all advanced but
-  remained fail-closed and resumable at the 1,800-second deadline. They resume
-  on the existing weekly schedule; an operator may separately choose one
-  bounded `site_ids` retry at the allowed 2,400-second maximum.
+- [x] Execute the one operator-controlled 2,400-second `site_ids` continuation
+  as run `30382291280`; retain exactly six artifacts without cancellation and
+  complete the EU and UA inventories.
+- [ ] Acceptance remains open: CA, DE, NZ, and UK advanced but remained
+  fail-closed and resumable. They resume on the existing weekly schedule; no
+  additional targeted retry loop is authorized or planned.
