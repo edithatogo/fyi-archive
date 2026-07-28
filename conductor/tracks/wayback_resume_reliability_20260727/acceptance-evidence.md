@@ -120,5 +120,54 @@ key. Transient requests may use up to 32 attempts with a 60-second backoff cap,
 still bounded by the existing whole-pattern deadline and fail-closed semantics.
 
 Local verification: 394 tests passed and 1 skipped. Ruff preview lint, ty,
-Actionlint, and Zizmor at medium severity all passed. Hosted multi-site evidence
-is still required before the acceptance criteria or track can close.
+Actionlint, and Zizmor at medium severity all passed. The hosted multi-site
+evidence requirement is reconciled below; completion still depends on the
+inventories reaching terminal pagination.
+
+## Bounded multi-site continuation 30373774064
+
+Run `30373774064` exercised the merged `site_ids` control for
+`ca-federal-atip,de-fragdenstaat,eu-asktheeu,nz-fyi,ua-dostup,uk-wdtk`.
+Enumeration passed, the matrix kept at most two acquisition jobs active, no job
+was cancelled, and exactly six independently retained site artifacts were
+available when the run terminated fail-closed.
+
+All six `manifest.json` files declare top-level
+`pagination.mode=resume_key`. Every retrieval is explicitly incomplete with a
+deadline failure, `pagination_complete=false`, a non-empty next resume key, and
+`resumable=true`. Recomputing all 433 retained page fingerprints succeeded with
+no duplicates. The independently reconstructed configuration SHA-256 matched
+the checkpoint and retrieval values for every site, and page, checkpoint,
+retrieval, and manifest record counts agreed.
+
+| Site | Run 30252925334 | Run 30339737294 | Run 30373774064 | Delta from 30339737294 |
+| --- | ---: | ---: | ---: | ---: |
+| `ca-federal-atip` | 18,255 | 54,000 | 81,000 | +27,000 |
+| `de-fragdenstaat` | 46,000 | 67,000 | 87,000 | +20,000 |
+| `eu-asktheeu` | 18,084 | 56,000 | 80,000 | +24,000 |
+| `nz-fyi` | 53,564 | 50,000 | 74,000 | +24,000 |
+| `ua-dostup` | 7,149 | 42,000 | 63,000 | +21,000 |
+| `uk-wdtk` | 18,000 | 26,000 | 48,000 | +22,000 |
+| **Selected-site aggregate** | **161,052** | **295,000** | **433,000** | **+138,000** |
+
+The older comparison run `30252925334` retained 218,554 records across its full
+29-site matrix; its same-six subset retained 161,052. The current targeted run
+retained 433,000 across only the six selected sites, a same-site increase of
+271,948. The full-matrix and selected-site aggregates are deliberately not
+treated as interchangeable.
+
+New Zealand retained 74,000 records: 24,000 more than the immediately preceding
+weekly checkpoint and 20,436 more than run `30252925334`. This is observed
+checkpoint progress, not percentage coverage; no defensible national
+denominator is available.
+
+The completed logs contain six `cdx-start` events, 138 checkpoint events, and
+186 minute-level heartbeat events. Every checkpoint log entry used
+`next_resume_key_sha256`; searching for each artifact's raw next resume key
+found zero log disclosures.
+
+Acceptance remains open because none of the six selected inventories completed.
+CA, DE, EU, NZ, UA, and UK resume on the existing weekly schedule. A separate
+operator-controlled improvement is one bounded multi-site retry using the
+workflow's allowed 2,400-second maximum; it is not an automatic or unbounded
+retry loop.
