@@ -27,9 +27,14 @@ on:
         required: true
         default: "2"
         type: string
+      auto_continue:
+        description: Dispatch the next batch only after this batch passes exact parity
+        required: true
+        default: false
+        type: boolean
 
 permissions:
-  actions: read
+  actions: write
   contents: read
 
 concurrency:
@@ -46,6 +51,7 @@ jobs:
       BATCH_SIZE: ${{ inputs.batch_size }}
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes }}
       MIN_INTERVAL: ${{ inputs.min_interval }}
+      AUTO_CONTINUE: ${{ inputs.auto_continue }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -200,3 +206,19 @@ jobs:
             manifests/latest_manifest.parquet
             dist/process-events/
             dist/nz-real-backfill-evidence.json
+      - name: Dispatch next verified batch
+        if: ${{ success() && inputs.auto_continue == true }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEXT_OFFSET: ${{ inputs.start_offset }}
+        run: |
+          set -euo pipefail
+          next_offset=$((NEXT_OFFSET + BATCH_SIZE))
+          gh workflow run nz_real_backfill_batch.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            -f source_run_id="$SOURCE_RUN_ID" \
+            -f start_offset="$next_offset" \
+            -f batch_size="$BATCH_SIZE" \
+            -f max_runtime_minutes="$MAX_RUNTIME_MINUTES" \
+            -f min_interval="$MIN_INTERVAL" \
+            -f auto_continue=true
