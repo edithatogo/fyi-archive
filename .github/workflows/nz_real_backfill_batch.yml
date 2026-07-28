@@ -118,9 +118,20 @@ jobs:
             --max-requests "$BATCH_SIZE" \
             --max-runtime-minutes "$MAX_RUNTIME_MINUTES" \
             --min-interval "$MIN_INTERVAL" \
-            --concurrency 1
+            --concurrency 1 \
+            --continue-on-error
           test -s data/_state/ledger.jsonl
           ! grep -q '"status": "failed"' data/_state/ledger.jsonl
+      - name: Retain failed capture ledger for requeue
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nz-real-backfill-failures-${{ inputs.start_offset }}-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          path: |
+            .tmp/batch_requests.jsonl
+            data/_state/ledger.jsonl
       - name: Build live manifest and process sidecars
         run: |
           set -euo pipefail
