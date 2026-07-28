@@ -240,15 +240,22 @@ def capture_with_fyi_cli(
         # ignores its own runtime option.
         timeout_seconds = max(1.0, caps.max_runtime_minutes * 60 + 30)
     creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-    popen_args = {
-        "stdout": subprocess.PIPE,
-        "stderr": subprocess.PIPE,
-        "text": True,
-        "creationflags": creationflags,
-    }
     if sys.platform != "win32":
-        popen_args["start_new_session"] = True
-    process = subprocess.Popen(command, **popen_args)
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            start_new_session=True,
+        )
+    else:
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            creationflags=creationflags,
+        )
     try:
         stdout, stderr = process.communicate(timeout=timeout_seconds)
     except subprocess.TimeoutExpired as error:
