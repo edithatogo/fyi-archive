@@ -273,16 +273,16 @@ def capture_with_fyi_cli(
             request_id=request.request_id,
             command=command,
             returncode=124,
-            stdout=stdout or str(error.stdout or ""),
-            stderr=stderr or str(error.stderr or "capture subprocess timed out"),
+            stdout=str(stdout or error.stdout or ""),
+            stderr=str(stderr or error.stderr or "capture subprocess timed out"),
         ) from error
     if process.returncode:
         raise CaptureError(
             request_id=request.request_id,
             command=command,
             returncode=process.returncode,
-            stdout=stdout or "",
-            stderr=stderr or "",
+            stdout=str(stdout or ""),
+            stderr=str(stderr or ""),
         )
     return json.loads(stdout)
 
