@@ -32,6 +32,15 @@ jobs:
           set -euo pipefail
           VALE_VERSION=3.15.1
           mkdir -p /tmp/vale
-          curl -sSL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o /tmp/vale.tar.gz
+          url="https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz"
+          for attempt in 1 2 3; do
+            if curl --fail --show-error --location --retry 3 --retry-all-errors "$url" -o /tmp/vale.tar.gz \
+              && gzip -t /tmp/vale.tar.gz; then
+              break
+            fi
+            [ "$attempt" = "3" ] && { echo "Vale archive download failed validation" >&2; exit 1; }
+            rm -f /tmp/vale.tar.gz
+            sleep $((attempt * 10))
+          done
           tar -xzf /tmp/vale.tar.gz -C /tmp/vale
           /tmp/vale/vale --config=.vale.ini docs README.md DATASET_CARD.md RELEASE_NOTES.md CONTRIBUTING.md SECURITY.md

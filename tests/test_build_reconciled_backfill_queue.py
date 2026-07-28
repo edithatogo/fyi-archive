@@ -32,3 +32,20 @@ def test_build_queue_rejects_incomplete_retrieval() -> None:
         assert "incomplete" in str(error)
     else:
         raise AssertionError("incomplete retrieval must fail closed")
+
+
+def test_build_queue_collapses_html_and_json_representations() -> None:
+    index = {
+        "records": [
+            {"source_url": "https://fyi.org.nz/request/42-title"},
+            {"source_url": "https://fyi.org.nz/request/42-title.json"},
+        ]
+    }
+    retrieval = {"retrieval_status": "complete", "pagination_complete": True}
+    assert build_queue(index, retrieval) == [
+        {
+            "request_id": "42-title",
+            "url_title": "42-title",
+            "source_url": "https://fyi.org.nz/request/42-title",
+        }
+    ]
