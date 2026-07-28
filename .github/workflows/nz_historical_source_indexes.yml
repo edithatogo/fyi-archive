@@ -107,6 +107,22 @@ jobs:
             resume_args=(--resume --resume-source-run-id "$continuation_source_run_id")
             sleep $((attempt * 30))
           done
+      - name: Validate checkpoint and evidence parity
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          evidence = json.loads(Path(".tmp/nz-historical-source-inputs/internet_archive_retrieval.json").read_text())
+          checkpoint = json.loads(Path(".tmp/nz-historical-source-inputs/internet_archive_cdx.pages/checkpoint.json").read_text())
+          recorded = evidence.get("checkpoint") or {}
+          for key in ("config_sha256", "completed_pages", "next_page", "next_resume_key"):
+              if recorded.get(key) != checkpoint.get(key):
+                  raise SystemExit(f"checkpoint/evidence mismatch for {key}")
+          if evidence.get("record_count") != checkpoint.get("record_count"):
+              raise SystemExit("checkpoint/evidence mismatch for record_count")
+          PY
       - name: Fail closed on incomplete snapshot
         run: |
           set -euo pipefail
