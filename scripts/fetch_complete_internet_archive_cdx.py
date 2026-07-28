@@ -151,7 +151,10 @@ def main() -> int:
     )
     if args.resume and start_chunk > 0 and next_resume_key is None:
         # A completed checkpoint is authoritative; it has no resume key to query.
-        rows = [header or ["original", "timestamp", "digest", "statuscode", "length"], *existing_rows]
+        rows = [
+            header or ["original", "timestamp", "digest", "statuscode", "length"],
+            *existing_rows,
+        ]
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(rows, indent=2) + "\n", encoding="utf-8")
         _write_json(
@@ -172,7 +175,11 @@ def main() -> int:
                 },
             },
         )
-        print(json.dumps({"event": "cdx-complete-checkpoint-reused", "record_count": len(existing_rows)}))
+        print(
+            json.dumps(
+                {"event": "cdx-complete-checkpoint-reused", "record_count": len(existing_rows)}
+            )
+        )
         return 0
 
     def save_page(
