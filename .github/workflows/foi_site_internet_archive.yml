@@ -25,7 +25,7 @@ on:
         default: "1000"
         type: string
       max_runtime_seconds:
-        description: Whole-run deadline per URL pattern
+        description: Whole-pattern deadline; named-site runs may use up to 7200 seconds
         required: true
         default: "1800"
         type: string
@@ -93,7 +93,7 @@ jobs:
   snapshot:
     needs: enumerate
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 135
     strategy:
       fail-fast: false
       max-parallel: 2
@@ -105,6 +105,8 @@ jobs:
       MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds || '1800' }}
       PAGE_SIZE: ${{ inputs.page_size || '1000' }}
       REQUESTED_RESUME_RUN_ID: ${{ inputs.resume_run_id || '' }}
+      TARGET_SITE_ID: ${{ inputs.site_id || '' }}
+      TARGET_SITE_IDS: ${{ inputs.site_ids || '' }}
       SITE_COUNTRY: ${{ matrix.site.country }}
       SITE_ID: ${{ matrix.site.id }}
       SITE_KIND: ${{ matrix.site.kind }}
@@ -126,7 +128,10 @@ jobs:
           case "$MAX_RUNTIME_SECONDS" in ''|*[!0-9]*) exit 1;; esac
           test "$PAGE_SIZE" -ge 1 && test "$PAGE_SIZE" -le 5000
           test "$MAX_PAGES" -ge 1 && test "$MAX_PAGES" -le 10000
-          test "$MAX_RUNTIME_SECONDS" -ge 30 && test "$MAX_RUNTIME_SECONDS" -le 2400
+          test "$MAX_RUNTIME_SECONDS" -ge 30 && test "$MAX_RUNTIME_SECONDS" -le 7200
+          if [ "$MAX_RUNTIME_SECONDS" -gt 2400 ]; then
+            test -n "${TARGET_SITE_ID}${TARGET_SITE_IDS}"
+          fi
           case "$CAPTURE_MODE" in url_index|all_captures) ;; *) exit 1;; esac
           if [ -n "$REQUESTED_RESUME_RUN_ID" ]; then
             [[ "$REQUESTED_RESUME_RUN_ID" =~ ^[0-9]+$ ]]

@@ -72,3 +72,16 @@
 - [ ] Acceptance remains open: CA, DE, NZ, and UK advanced but remained
   fail-closed and resumable. They resume on the existing weekly schedule; no
   additional targeted retry loop is authorized or planned.
+
+## Guarded long-budget continuation
+
+- [x] Diagnose the four remaining failures as whole-pattern deadline exhaustion
+  with valid resume keys, rather than checkpoint or completeness failures.
+- [x] Preserve the 1,800-second default and 2,400-second ceiling for scheduled
+  or full-matrix work.
+- [x] Allow only an explicitly named-site run to request a bounded deadline up
+  to 7,200 seconds, with a correspondingly bounded job timeout.
+- [ ] Run repository and hosted quality gates.
+- [ ] Execute at most one four-site continuation from run `30382291280` and
+  reconcile its retained evidence without an automatic retry loop.
+- [ ] Acceptance remains open until CA, DE, NZ, and UK are all complete.
