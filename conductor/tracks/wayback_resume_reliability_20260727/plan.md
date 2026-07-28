@@ -83,10 +83,11 @@
   to 7,200 seconds, with a correspondingly bounded job timeout.
 - [x] Replace the Wayback artifact upload action's deprecated Node.js 20 runtime
   with its pinned Node.js 24 release after run `30391530911` exposed the warning.
-- [x] Run repository and hosted quality gates: 394 passed, 1 skipped; Ruff,
-  ty, Actionlint, targeted-workflow Zizmor, required PR checks, Codecov, and
-  CodeQL passed. The pre-existing repository-wide formatter and Zizmor
-  baselines remain red outside this track's changes.
+- [ ] Complete repository and hosted quality gates for the final evidence PR.
+  Local verification has 394 passed and 1 skipped, with Ruff, ty, Actionlint,
+  and targeted-workflow Zizmor passing. The pre-existing repository-wide
+  formatter and Zizmor baselines remain red outside this track's changes;
+  required PR checks, Codecov, and CodeQL still await publication.
 - [x] Execute at most one four-site continuation from run `30382291280` and
   reconcile its retained evidence without an automatic retry loop.
 - [ ] Acceptance remains open: NZ completed, while CA, DE, and UK remain
