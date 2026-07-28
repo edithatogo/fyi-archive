@@ -60,7 +60,7 @@ jobs:
             [[ "$value" =~ ^[0-9]+$ ]]
           done
           test "$PAGE_SIZE" -ge 100 && test "$PAGE_SIZE" -le 10000
-          test "$MAX_PAGES" -ge 1 && test "$MAX_PAGES" -le 100
+          test "$MAX_PAGES" -ge 1 && test "$MAX_PAGES" -le 1000
           test "$MAX_RUNTIME_SECONDS" -ge 60 && test "$MAX_RUNTIME_SECONDS" -le 900
           if [ -n "$RESUME_RUN_ID" ]; then
             [[ "$RESUME_RUN_ID" =~ ^[0-9]+$ ]]
