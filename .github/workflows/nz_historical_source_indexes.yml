@@ -37,7 +37,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 55
     env:
       PAGE_SIZE: ${{ github.event_name == 'schedule' && '1000' || inputs.page_size }}
       MAX_PAGES: ${{ github.event_name == 'schedule' && '100' || inputs.max_pages }}
@@ -81,17 +81,31 @@ jobs:
           if [ -n "$RESUME_RUN_ID" ]; then
             resume_args+=(--resume --resume-source-run-id "$RESUME_RUN_ID")
           fi
-          uv run python scripts/fetch_complete_internet_archive_cdx.py \
-            --instance-id nz-fyi \
-            --host www.fyi.org.nz \
-            --url-pattern "www.fyi.org.nz/request/*" \
-            --capture-mode url_index \
-            --page-size "$PAGE_SIZE" \
-            --max-pages "$MAX_PAGES" \
-            --max-runtime-seconds "$MAX_RUNTIME_SECONDS" \
-            "${resume_args[@]}" \
-            --output .tmp/nz-historical-source-inputs/internet_archive_cdx.json \
+          export_args=(
+            --instance-id nz-fyi
+            --host www.fyi.org.nz
+            --url-pattern "www.fyi.org.nz/request/*"
+            --capture-mode url_index
+            --page-size "$PAGE_SIZE"
+            --max-pages "$MAX_PAGES"
+            --max-runtime-seconds "$MAX_RUNTIME_SECONDS"
+            --output .tmp/nz-historical-source-inputs/internet_archive_cdx.json
             --evidence .tmp/nz-historical-source-inputs/internet_archive_retrieval.json
+          )
+          continuation_source_run_id="${RESUME_RUN_ID:-$GITHUB_RUN_ID}"
+          max_attempts=3
+          for attempt in $(seq 1 "$max_attempts"); do
+            echo "CDX continuation attempt ${attempt}/${max_attempts}"
+            if uv run python scripts/fetch_complete_internet_archive_cdx.py "${export_args[@]}" "${resume_args[@]}"; then
+              break
+            fi
+            if [ "$attempt" -eq "$max_attempts" ]; then
+              echo "CDX continuation budget exhausted; retaining checkpoint and failing closed" >&2
+              exit 1
+            fi
+            resume_args=(--resume --resume-source-run-id "$continuation_source_run_id")
+            sleep $((attempt * 30))
+          done
       - name: Fail closed on incomplete snapshot
         run: |
           set -euo pipefail
