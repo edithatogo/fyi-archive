@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -238,13 +240,15 @@ def capture_with_fyi_cli(
         # ignores its own runtime option.
         timeout_seconds = max(1.0, caps.max_runtime_minutes * 60 + 30)
     creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        creationflags=creationflags,
-    )
+    popen_args = {
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "text": True,
+        "creationflags": creationflags,
+    }
+    if sys.platform != "win32":
+        popen_args["start_new_session"] = True
+    process = subprocess.Popen(command, **popen_args)
     try:
         stdout, stderr = process.communicate(timeout=timeout_seconds)
     except subprocess.TimeoutExpired as error:
@@ -256,8 +260,15 @@ def capture_with_fyi_cli(
                 text=True,
             )
         else:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                process.kill()
+        try:
+            stdout, stderr = process.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
             process.kill()
-        stdout, stderr = process.communicate()
+            stdout, stderr = process.communicate()
         raise CaptureError(
             request_id=request.request_id,
             command=command,
