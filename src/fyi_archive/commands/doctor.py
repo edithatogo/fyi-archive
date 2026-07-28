@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 from datetime import UTC, datetime
@@ -14,6 +15,8 @@ import typer
 from fyi_archive import __version__
 from fyi_archive.health import live_mirror_counts, manifest_count, parity_report
 from fyi_archive.instances import DEFAULT_INSTANCE_ID, get_instance
+
+logger = logging.getLogger(__name__)
 
 app = typer.Typer(name="doctor", help="Check archive health and parity.")
 
@@ -53,8 +56,8 @@ def get_manifest_counts(
                 "instance_id": instance_id,
                 "jurisdiction": requested_jurisdiction,
             }
-        except (OSError, json.JSONDecodeError):
-            pass
+        except (OSError, json.JSONDecodeError) as e:
+            logger.warning("Failed to load local manifest at %s, falling back to Hugging Face", manifest_path, exc_info=e)
 
     # Fall back to the live HF dataset when local manifests are absent (monitor checkout).
     mirrors = live_mirror_counts()
