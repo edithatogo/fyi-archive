@@ -112,7 +112,7 @@ jobs:
         run: |
           set -euo pipefail
           test -s .tmp/batch_requests.jsonl
-          request_url="$(jq -r 'select(.request_url != null) | .request_url' .tmp/batch_requests.jsonl | head -n 1)"
+          request_url="$(jq -r 'select(.source_url != null) | .source_url' .tmp/batch_requests.jsonl | head -n 1)"
           test -n "$request_url" && test "$request_url" != "null"
           curl_exit=0
           status="$(curl --location --silent --show-error --output /dev/null \
