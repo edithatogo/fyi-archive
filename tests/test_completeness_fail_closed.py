@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from fyi_archive.completeness import load_inventory, reconcile_completeness
 
 
@@ -18,7 +20,7 @@ def test_empty_enumeration_never_proves_completeness(tmp_path) -> None:
     )
 
     assert report["denominator"]["count"] == 0
-    assert report["channels"]["primary"]["percent"] == 0.0
+    assert report["channels"]["primary"]["percent"] == pytest.approx(0.0)
     assert report["channels"]["primary"]["complete"] is False
     assert report["channels"]["internet_archive"]["complete"] is False
     assert report["complete"] is False
