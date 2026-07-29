@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
 import urllib.parse
 import urllib.request
@@ -15,6 +16,25 @@ CDX_ENDPOINT = "https://web.archive.org/cdx/search/cdx"
 CAPTURE_MODES = frozenset({"url_index", "all_captures"})
 REQUEST_ATTEMPTS = 32
 MAX_RETRY_BACKOFF_SECONDS = 60.0
+CDX_TIMESTAMP = re.compile(r"^\d{1,14}$")
+
+
+def _time_range_params(
+    from_timestamp: str | None, to_timestamp: str | None
+) -> list[tuple[str, str]]:
+    for name, value in (("from_timestamp", from_timestamp), ("to_timestamp", to_timestamp)):
+        if value is not None and not CDX_TIMESTAMP.fullmatch(value):
+            raise ValueError(f"{name} must contain 1 to 14 digits")
+    if from_timestamp is not None and to_timestamp is not None:
+        width = max(len(from_timestamp), len(to_timestamp))
+        if from_timestamp.ljust(width, "0") > to_timestamp.ljust(width, "9"):
+            raise ValueError("from_timestamp must not be later than to_timestamp")
+    params: list[tuple[str, str]] = []
+    if from_timestamp is not None:
+        params.append(("from", from_timestamp))
+    if to_timestamp is not None:
+        params.append(("to", to_timestamp))
+    return params
 
 
 def fetch_complete_cdx(
@@ -99,6 +119,10 @@ def fetch_complete_cdx_with_resume_key(
     max_pages: int,
     capture_mode: str = "url_index",
     max_runtime_seconds: float = 180.0,
+    max_stall_seconds: float | None = None,
+    from_timestamp: str | None = None,
+    to_timestamp: str | None = None,
+    include_urlkey: bool = False,
     opener: Callable[..., Any] = urllib.request.urlopen,  # noqa: S310
     start_chunk: int = 0,
     resume_key: str | None = None,
@@ -115,14 +139,25 @@ def fetch_complete_cdx_with_resume_key(
         raise ValueError("start_chunk must be within the configured chunk cap")
     if start_chunk and not resume_key:
         raise ValueError("resume_key is required when resuming completed chunks")
+    if max_stall_seconds is not None and max_stall_seconds <= 0:
+        raise ValueError("max_stall_seconds must be positive")
     deadline = time.monotonic() + max_runtime_seconds
+    stall_deadline = time.monotonic() + max_stall_seconds if max_stall_seconds is not None else None
     base = [
         ("url", url_pattern),
         ("output", "json"),
         ("filter", "statuscode:200"),
-        ("fl", "original,timestamp,digest,statuscode,length"),
+        (
+            "fl",
+            (
+                "urlkey,original,timestamp,digest,statuscode,length"
+                if include_urlkey
+                else "original,timestamp,digest,statuscode,length"
+            ),
+        ),
         ("limit", str(page_size)),
         ("showResumeKey", "true"),
+        *_time_range_params(from_timestamp, to_timestamp),
     ]
     if capture_mode == "url_index":
         base.append(("collapse", "urlkey"))
@@ -136,12 +171,26 @@ def fetch_complete_cdx_with_resume_key(
         params = [*base]
         if current_key:
             params.append(("resumeKey", current_key))
-        payload = _fetch(params, opener, deadline=deadline)
+        request_deadline = min(deadline, stall_deadline) if stall_deadline is not None else deadline
+        try:
+            payload = _fetch(params, opener, deadline=request_deadline)
+        except RuntimeError as error:
+            if (
+                stall_deadline is not None
+                and stall_deadline <= deadline
+                and time.monotonic() >= stall_deadline
+            ):
+                raise RuntimeError("CDX acquisition exceeded progress-stall deadline") from error
+            raise
         if payload == []:
             return [
                 header
                 or expected_header
-                or ["original", "timestamp", "digest", "statuscode", "length"],
+                or (
+                    ["urlkey", "original", "timestamp", "digest", "statuscode", "length"]
+                    if include_urlkey
+                    else ["original", "timestamp", "digest", "statuscode", "length"]
+                ),
                 *rows,
             ]
         if not isinstance(payload, list) or not isinstance(payload[0], list):
@@ -174,8 +223,18 @@ def fetch_complete_cdx_with_resume_key(
             rows.extend(chunk_rows)
             if chunk_callback is not None:
                 chunk_callback(chunk, next_key, current_header, chunk_rows, fingerprint)
+            if max_stall_seconds is not None:
+                stall_deadline = time.monotonic() + max_stall_seconds
         if next_key is None:
-            return [header or ["original", "timestamp", "digest", "statuscode", "length"], *rows]
+            return [
+                header
+                or (
+                    ["urlkey", "original", "timestamp", "digest", "statuscode", "length"]
+                    if include_urlkey
+                    else ["original", "timestamp", "digest", "statuscode", "length"]
+                ),
+                *rows,
+            ]
         if next_key in seen_keys:
             raise RuntimeError("CDX resumption key repeated during acquisition")
         seen_keys.add(next_key)

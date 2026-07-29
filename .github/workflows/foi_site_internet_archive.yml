@@ -29,6 +29,11 @@ on:
         required: true
         default: "1800"
         type: string
+      max_stall_seconds:
+        description: Fail closed after this many seconds without a new checkpoint
+        required: true
+        default: "900"
+        type: string
       resume_run_id:
         description: Optional prior run containing compatible site checkpoints
         required: false
@@ -46,7 +51,7 @@ on:
         type: string
 
 permissions:
-  actions: read
+  actions: read # Download retained artifacts from an explicitly selected prior run.
   contents: read
 
 concurrency:
@@ -55,6 +60,7 @@ concurrency:
 
 jobs:
   enumerate:
+    name: Enumerate archive sites
     runs-on: ubuntu-latest
     outputs:
       sites: ${{ steps.sites.outputs.sites }}
@@ -91,6 +97,7 @@ jobs:
           PY
 
   snapshot:
+    name: Snapshot ${{ matrix.site.site_id }}
     needs: enumerate
     runs-on: ubuntu-latest
     timeout-minutes: 135
@@ -103,6 +110,7 @@ jobs:
       CAPTURE_MODE: ${{ inputs.capture_mode || 'url_index' }}
       MAX_PAGES: ${{ inputs.max_pages || '1000' }}
       MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds || '1800' }}
+      MAX_STALL_SECONDS: ${{ inputs.max_stall_seconds || '900' }}
       PAGE_SIZE: ${{ inputs.page_size || '1000' }}
       REQUESTED_RESUME_RUN_ID: ${{ inputs.resume_run_id || '' }}
       TARGET_SITE_ID: ${{ inputs.site_id || '' }}
@@ -126,9 +134,12 @@ jobs:
           case "$PAGE_SIZE" in ''|*[!0-9]*) exit 1;; esac
           case "$MAX_PAGES" in ''|*[!0-9]*) exit 1;; esac
           case "$MAX_RUNTIME_SECONDS" in ''|*[!0-9]*) exit 1;; esac
+          case "$MAX_STALL_SECONDS" in ''|*[!0-9]*) exit 1;; esac
           test "$PAGE_SIZE" -ge 1 && test "$PAGE_SIZE" -le 5000
           test "$MAX_PAGES" -ge 1 && test "$MAX_PAGES" -le 10000
           test "$MAX_RUNTIME_SECONDS" -ge 30 && test "$MAX_RUNTIME_SECONDS" -le 7200
+          test "$MAX_STALL_SECONDS" -ge 60 && test "$MAX_STALL_SECONDS" -le 2400
+          test "$MAX_STALL_SECONDS" -le "$MAX_RUNTIME_SECONDS"
           if [ "$MAX_RUNTIME_SECONDS" -gt 2400 ]; then
             test -n "${TARGET_SITE_ID}${TARGET_SITE_IDS}"
           fi
@@ -247,6 +258,7 @@ jobs:
                   "--page-size", os.environ["PAGE_SIZE"],
                   "--max-pages", os.environ["MAX_PAGES"],
                   "--max-runtime-seconds", os.environ["MAX_RUNTIME_SECONDS"],
+                  "--max-stall-seconds", os.environ["MAX_STALL_SECONDS"],
                   "--output", str(output),
                   "--evidence", str(evidence),
               ]
@@ -316,6 +328,7 @@ jobs:
                   "mode": "resume_key",
                   "continuation": "showResumeKey/resumeKey",
                   "chunk_limit": int(os.environ["MAX_PAGES"]),
+                  "progress_stall_seconds": int(os.environ["MAX_STALL_SECONDS"]),
               },
               "capture_mode": os.environ["CAPTURE_MODE"],
               "complete": not failures and all(
@@ -340,7 +353,7 @@ jobs:
           PY
       - name: Retain independent site evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: foi-site-wayback-${{ matrix.site.id }}-${{ github.run_id }}
           retention-days: 90

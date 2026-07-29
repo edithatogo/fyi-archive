@@ -47,6 +47,9 @@ def test_separate_site_workflow_auto_restores_latest_checkpoint() -> None:
     assert "actions: read" in workflow
     assert "max-parallel: 2" in workflow
     assert "MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds || '1800' }}" in workflow
+    assert "MAX_STALL_SECONDS: ${{ inputs.max_stall_seconds || '900' }}" in workflow
+    assert '"--max-stall-seconds", os.environ["MAX_STALL_SECONDS"]' in workflow
+    assert 'test "$MAX_STALL_SECONDS" -le "$MAX_RUNTIME_SECONDS"' in workflow
     assert "timeout-minutes: 135" in workflow
     assert 'test "$MAX_RUNTIME_SECONDS" -ge 30 && test "$MAX_RUNTIME_SECONDS" -le 7200' in workflow
     assert 'if [ "$MAX_RUNTIME_SECONDS" -gt 2400 ]; then' in workflow

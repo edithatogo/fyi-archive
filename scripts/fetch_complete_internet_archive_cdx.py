@@ -44,6 +44,17 @@ def _config_hash(
         "capture_mode": args.capture_mode,
         "pagination_mode": "resume_key",
         "endpoint": CDX_ENDPOINT,
+        **(
+            {"from_timestamp": args.from_timestamp}
+            if getattr(args, "from_timestamp", None) is not None
+            else {}
+        ),
+        **(
+            {"to_timestamp": args.to_timestamp}
+            if getattr(args, "to_timestamp", None) is not None
+            else {}
+        ),
+        **({"include_urlkey": True} if getattr(args, "include_urlkey", False) else {}),
     }
     return hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
 
@@ -98,6 +109,10 @@ def main() -> int:
     parser.add_argument("--max-pages", type=int, default=100)
     parser.add_argument("--capture-mode", choices=sorted(CAPTURE_MODES), default="url_index")
     parser.add_argument("--max-runtime-seconds", type=float, default=180.0)
+    parser.add_argument("--max-stall-seconds", type=float)
+    parser.add_argument("--from-timestamp")
+    parser.add_argument("--to-timestamp")
+    parser.add_argument("--include-urlkey", action="store_true")
     parser.add_argument(
         "--resume",
         action="store_true",
@@ -116,6 +131,10 @@ def main() -> int:
         "url_pattern": args.url_pattern,
         "capture_mode": args.capture_mode,
         "pagination_mode": "resume_key",
+        "page_size": args.page_size,
+        "from_timestamp": args.from_timestamp,
+        "to_timestamp": args.to_timestamp,
+        "include_urlkey": args.include_urlkey,
         "retrieved_at": retrieved_at,
         "eligible_for_empirical_freeze": False,
         "publication": False,
@@ -236,6 +255,10 @@ def main() -> int:
             max_pages=args.max_pages,
             capture_mode=args.capture_mode,
             max_runtime_seconds=args.max_runtime_seconds,
+            max_stall_seconds=args.max_stall_seconds,
+            from_timestamp=args.from_timestamp,
+            to_timestamp=args.to_timestamp,
+            include_urlkey=args.include_urlkey,
             start_chunk=start_chunk,
             resume_key=next_resume_key,
             existing_rows=existing_rows,
@@ -268,7 +291,7 @@ def main() -> int:
         raise
     raw = json.dumps(rows, indent=2) + "\n"
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(raw, encoding="utf-8")
+    args.output.write_bytes(raw.encode())
     evidence = {
         **base_evidence,
         "retrieval_status": "complete",

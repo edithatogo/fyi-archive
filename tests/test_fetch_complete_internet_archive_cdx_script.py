@@ -89,6 +89,13 @@ def test_resumes_hash_verified_page_checkpoint(
         str(output),
         "--evidence",
         str(evidence),
+        "--max-stall-seconds",
+        "60",
+        "--from-timestamp",
+        "2015",
+        "--to-timestamp",
+        "2019",
+        "--include-urlkey",
         "--resume",
         "--resume-source-run-id",
         "12345",
@@ -120,7 +127,16 @@ def test_resumes_hash_verified_page_checkpoint(
     assert observed["start_chunk"] == 1
     assert observed["resume_key"] == "cursor-1"
     assert observed["existing_rows"] == [["https://example.test/request/1"]]
-    assert json.loads(evidence.read_text())["resume_source_run_id"] == "12345"
+    payload = json.loads(evidence.read_text())
+    assert payload["resume_source_run_id"] == "12345"
+    assert payload["page_size"] == 1000
+    assert payload["from_timestamp"] == "2015"
+    assert payload["to_timestamp"] == "2019"
+    assert payload["include_urlkey"] is True
+    assert observed["max_stall_seconds"] == 60
+    assert observed["from_timestamp"] == "2015"
+    assert observed["to_timestamp"] == "2019"
+    assert observed["include_urlkey"] is True
     progress = capsys.readouterr().out
     assert '"event": "cdx-start"' in progress
     assert '"event": "cdx-checkpoint"' in progress
