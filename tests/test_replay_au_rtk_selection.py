@@ -6,13 +6,13 @@ import httpx
 import pytest
 
 from scripts import replay_au_rtk_selection as replay
-from scripts.replay_au_rtk_selection import _assert_archive_url, _parse_json, record_from_raw
+from scripts.replay_au_rtk_selection import record_from_raw
 
 
 def test_archive_url_boundary_rejects_origin() -> None:
-    _assert_archive_url("https://web.archive.org/web/1id_/https://example.test")
+    replay._assert_archive_url("https://web.archive.org/web/1id_/https://example.test")
     with pytest.raises(ValueError, match="escaped Internet Archive"):
-        _assert_archive_url("https://www.righttoknow.org.au/request/example")
+        replay._assert_archive_url("https://www.righttoknow.org.au/request/example")
 
 
 def test_json_parser_extracts_authority_without_following_links() -> None:
@@ -23,7 +23,9 @@ def test_json_parser_extracts_authority_without_following_links() -> None:
         "archive_digest": "ABC",
         "canonical_slug": "example",
     }
-    result = _parse_json(raw, selected=selected, replay_url="https://web.archive.org/example")
+    result = replay._parse_json(
+        raw, selected=selected, replay_url="https://web.archive.org/example"
+    )
     assert result["authority"] == "Agency"
     assert result["authority_slug"] == "agency"
     assert result["authority_tags"] == ["nsw"]

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import operator
 import os
 import tempfile
 import time
@@ -48,6 +49,17 @@ def _default_port(parsed: SplitResult) -> bool:
         return False
     expected_port = 80 if parsed.scheme == "http" else 443
     return parsed.username is None and parsed.password is None and port in {None, expected_port}
+
+
+def _is_exact_canonical_url(actual: SplitResult, expected: SplitResult) -> bool:
+    """Return whether a CDX URL is exactly the authorized canonical URL."""
+    if actual.scheme not in {"http", "https"} or not _default_port(actual):
+        return False
+    if (actual.hostname or "").lower() != (expected.hostname or "").lower():
+        return False
+    if actual.path != expected.path:
+        return False
+    return not actual.query and not actual.fragment
 
 
 def _atomic_write(path: Path, value: bytes) -> None:
@@ -121,14 +133,7 @@ def validate_response_rows(query: dict[str, str], rows: object) -> list[list[str
         ):
             raise ValueError("CDX response row is malformed")
         actual = urlsplit(row[0])
-        if (
-            actual.scheme not in {"http", "https"}
-            or not _default_port(actual)
-            or (actual.hostname or "").lower() != (expected.hostname or "").lower()
-            or actual.path != expected.path
-            or actual.query
-            or actual.fragment
-        ):
+        if not _is_exact_canonical_url(actual, expected):
             raise ValueError("CDX response escaped the authorized exact canonical URL")
         if row[3] != "200":
             raise ValueError("CDX response contains a non-success capture")
@@ -218,7 +223,7 @@ def build_completion_replay_selection(
             raise ValueError("completion result records are invalid")
         validated = validate_response_rows(result, [HEADER, *records])
         if validated:
-            latest = max(validated, key=lambda row: row[1])
+            latest = max(validated, key=operator.itemgetter(1))
             options[media_kind] = {
                 "canonical_slug": slug,
                 "media_kind": media_kind,
@@ -292,14 +297,8 @@ def validate_completion_replay_selection(selection: dict[str, Any]) -> None:
         slug = record["canonical_slug"]
         suffix = ".json" if record["media_kind"] == "json" else ""
         parsed = urlsplit(record["source_url"])
-        if (
-            parsed.scheme not in {"http", "https"}
-            or not _default_port(parsed)
-            or (parsed.hostname or "").lower() != "www.righttoknow.org.au"
-            or parsed.path != f"/request/{slug}{suffix}"
-            or parsed.query
-            or parsed.fragment
-        ):
+        expected = urlsplit(f"https://www.righttoknow.org.au/request/{slug}{suffix}")
+        if not _is_exact_canonical_url(parsed, expected):
             raise ValueError("completion replay record escaped its exact canonical URL")
 
 
@@ -442,7 +441,7 @@ def run(
                 time.sleep(max(0.0, launch_delay_seconds))
             for future in as_completed(futures):
                 results.append(future.result())
-    results.sort(key=lambda item: (item["canonical_slug"], item["media_kind"]))
+    results.sort(key=operator.itemgetter("canonical_slug", "media_kind"))
     candidate = {
         "schema": "fyi-archive.au-rtk-canonical-cdx-completion-candidate.v1",
         "status": "candidate_pending_replay_approval",
