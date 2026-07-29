@@ -386,8 +386,8 @@ def run(
     plan = json.loads(plan_path.read_text(encoding="utf-8"))
     if plan.get("query_count") != EXPECTED_QUERY_COUNT:
         raise ValueError("query plan count mismatch")
-    results = []
-    pending = []
+    results: list[dict[str, Any]] = []
+    pending: list[dict[str, str]] = []
     for query in plan["queries"]:
         key = f"{query['canonical_slug']}.{query['media_kind']}"
         checkpoint = output_root / "responses" / f"{key}.json"
