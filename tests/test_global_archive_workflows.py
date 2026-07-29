@@ -36,3 +36,46 @@ def test_live_capture_uses_repository_readiness_not_dispatch_prompts() -> None:
         assert "confirm_live:" not in workflow
         assert "AUTONOMOUS_AU_CAPTURE_ENABLED" in workflow
         assert "environment: au-live-capture" in workflow
+
+
+def test_nz_historical_replay_pilot_is_bounded_and_non_publishing() -> None:
+    workflow = (WORKFLOWS / "nz_historical_replay_pilot.yml").read_text(encoding="utf-8")
+
+    assert "source_run_id:" in workflow
+    assert 'test "$REPLAY_LIMIT" -le 25' in workflow
+    assert 'test "$DELAY_SECONDS" -ge 1' in workflow
+    assert "actions/download-artifact" in workflow
+    assert "enrich_historical_core.py" in workflow
+    assert '"origin_contacted": False' in workflow
+    assert '"publication": "none"' in workflow
+
+
+def test_nz_historical_replay_batch_is_resumable_and_bounded() -> None:
+    workflow = (WORKFLOWS / "nz_historical_replay_batch.yml").read_text(encoding="utf-8")
+
+    assert "start_offset:" in workflow
+    assert 'test "$REPLAY_LIMIT" -le 10' in workflow
+    assert 'test "$RETRIES" -le 1' in workflow
+    assert '--start-offset "$START_OFFSET"' in workflow
+    assert '--retries "$RETRIES"' in workflow
+    assert '"failed_record_count"' in workflow
+    assert '"origin_contacted": False' in workflow
+    assert '"publication": "none"' in workflow
+
+
+def test_nz_source_index_uses_resumable_complete_cdx_export() -> None:
+    workflow = (WORKFLOWS / "nz_historical_source_indexes.yml").read_text(encoding="utf-8")
+
+    assert "cdx_limit:" not in workflow
+    assert "page_size:" in workflow
+    assert "max_pages:" in workflow
+    assert "resume_run_id:" in workflow
+    assert "actions: read" in workflow
+    assert "fetch_complete_internet_archive_cdx.py" in workflow
+    assert "--capture-mode url_index" in workflow
+    assert "Fail closed on incomplete snapshot" in workflow
+    assert "if: always()" in workflow
+    assert "path: .tmp\n          github-token:" in workflow
+    assert "--attachments-output dist/process-events/attachments.jsonl" in (
+        WORKFLOWS / "historical_backfill_batch.yml"
+    ).read_text(encoding="utf-8")

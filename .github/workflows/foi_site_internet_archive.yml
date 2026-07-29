@@ -20,12 +20,17 @@ on:
         default: "1000"
         type: string
       max_pages:
-        description: Fail-closed page ceiling; never treated as partial success
+        description: Fail-closed resume-key chunk ceiling; never partial success
         required: true
         default: "1000"
         type: string
       max_runtime_seconds:
-        description: Whole-run deadline per URL pattern
+        description: Whole-pattern deadline; named-site runs may use up to 7200 seconds
+        required: true
+        default: "1800"
+        type: string
+      max_stall_seconds:
+        description: Fail closed after this many seconds without a new checkpoint
         required: true
         default: "900"
         type: string
@@ -34,9 +39,19 @@ on:
         required: false
         default: ""
         type: string
+      site_id:
+        description: Optional configured site id for a bounded targeted retry
+        required: false
+        default: ""
+        type: string
+      site_ids:
+        description: Optional comma-separated configured ids for one bounded targeted matrix
+        required: false
+        default: ""
+        type: string
 
 permissions:
-  actions: read
+  actions: read # Download retained artifacts from an explicitly selected prior run.
   contents: read
 
 concurrency:
@@ -45,6 +60,7 @@ concurrency:
 
 jobs:
   enumerate:
+    name: Enumerate archive sites
     runs-on: ubuntu-latest
     outputs:
       sites: ${{ steps.sites.outputs.sites }}
@@ -60,28 +76,45 @@ jobs:
       - name: Validate normalized source graph
         run: uv run python scripts/build_archive_source_graph.py --check
       - id: sites
+        env:
+          TARGET_SITE_ID: ${{ inputs.site_id || '' }}
+          TARGET_SITE_IDS: ${{ inputs.site_ids || '' }}
         run: |
           uv run python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
+          import os
           from fyi_archive.internet_archive_sites import internet_archive_matrix
-          print("sites=" + json.dumps(internet_archive_matrix(), separators=(",", ":")))
+          site_id = os.environ["TARGET_SITE_ID"] or None
+          raw_site_ids = os.environ["TARGET_SITE_IDS"]
+          site_ids = tuple(value.strip() for value in raw_site_ids.split(",") if value.strip())
+          print("sites=" + json.dumps(
+              internet_archive_matrix(
+                  site_id=site_id,
+                  site_ids=site_ids if raw_site_ids else None,
+              ),
+              separators=(",", ":"),
+          ))
           PY
 
   snapshot:
+    name: Snapshot ${{ matrix.site.site_id }}
     needs: enumerate
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 135
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 2
       matrix:
         site: ${{ fromJSON(needs.enumerate.outputs.sites) }}
     env:
       CAPTURE_MODE: ${{ inputs.capture_mode || 'url_index' }}
       MAX_PAGES: ${{ inputs.max_pages || '1000' }}
-      MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds || '900' }}
+      MAX_RUNTIME_SECONDS: ${{ inputs.max_runtime_seconds || '1800' }}
+      MAX_STALL_SECONDS: ${{ inputs.max_stall_seconds || '900' }}
       PAGE_SIZE: ${{ inputs.page_size || '1000' }}
-      RESUME_RUN_ID: ${{ inputs.resume_run_id || '' }}
+      REQUESTED_RESUME_RUN_ID: ${{ inputs.resume_run_id || '' }}
+      TARGET_SITE_ID: ${{ inputs.site_id || '' }}
+      TARGET_SITE_IDS: ${{ inputs.site_ids || '' }}
       SITE_COUNTRY: ${{ matrix.site.country }}
       SITE_ID: ${{ matrix.site.id }}
       SITE_KIND: ${{ matrix.site.kind }}
@@ -101,20 +134,95 @@ jobs:
           case "$PAGE_SIZE" in ''|*[!0-9]*) exit 1;; esac
           case "$MAX_PAGES" in ''|*[!0-9]*) exit 1;; esac
           case "$MAX_RUNTIME_SECONDS" in ''|*[!0-9]*) exit 1;; esac
+          case "$MAX_STALL_SECONDS" in ''|*[!0-9]*) exit 1;; esac
           test "$PAGE_SIZE" -ge 1 && test "$PAGE_SIZE" -le 5000
           test "$MAX_PAGES" -ge 1 && test "$MAX_PAGES" -le 10000
-          test "$MAX_RUNTIME_SECONDS" -ge 30 && test "$MAX_RUNTIME_SECONDS" -le 2400
+          test "$MAX_RUNTIME_SECONDS" -ge 30 && test "$MAX_RUNTIME_SECONDS" -le 7200
+          test "$MAX_STALL_SECONDS" -ge 60 && test "$MAX_STALL_SECONDS" -le 2400
+          test "$MAX_STALL_SECONDS" -le "$MAX_RUNTIME_SECONDS"
+          if [ "$MAX_RUNTIME_SECONDS" -gt 2400 ]; then
+            test -n "${TARGET_SITE_ID}${TARGET_SITE_IDS}"
+          fi
           case "$CAPTURE_MODE" in url_index|all_captures) ;; *) exit 1;; esac
-          if [ -n "$RESUME_RUN_ID" ]; then [[ "$RESUME_RUN_ID" =~ ^[0-9]+$ ]]; fi
-      - name: Restore prior site checkpoint
-        if: env.RESUME_RUN_ID != ''
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
-        with:
-          name: ${{ format('foi-site-wayback-{0}-{1}', matrix.site.id, inputs.resume_run_id) }}
-          path: .tmp/sites/${{ matrix.site.id }}
-          github-token: ${{ github.token }}
-          run-id: ${{ inputs.resume_run_id }}
+          if [ -n "$REQUESTED_RESUME_RUN_ID" ]; then
+            [[ "$REQUESTED_RESUME_RUN_ID" =~ ^[0-9]+$ ]]
+          fi
+      - name: Resolve prior site checkpoint
+        id: resume
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          root=".tmp/sites/$SITE_ID"
+          restore=".tmp/restore-$SITE_ID"
+          mkdir -p "$root" "$restore"
+          if [ -n "$REQUESTED_RESUME_RUN_ID" ]; then
+            candidates=("$REQUESTED_RESUME_RUN_ID")
+            reason="explicit-resume-run"
+          else
+            mapfile -t candidates < <(
+              gh run list --repo "$GITHUB_REPOSITORY" \
+                --workflow foi_site_internet_archive.yml \
+                --branch "$GITHUB_REF_NAME" \
+                --status completed \
+                --limit 50 \
+                --json databaseId \
+                --jq '.[].databaseId'
+            )
+            reason="latest-compatible-checkpoint"
+          fi
+          for run_id in "${candidates[@]}"; do
+            candidate="$restore/$run_id"
+            rm -rf "$candidate"
+            mkdir -p "$candidate"
+            if ! gh run download "$run_id" \
+              --repo "$GITHUB_REPOSITORY" \
+              --name "foi-site-wayback-$SITE_ID-$run_id" \
+              --dir "$candidate" >/dev/null 2>&1; then
+              continue
+            fi
+            manifest="$(find "$candidate" -type f -name manifest.json -print -quit)"
+            [ -n "$manifest" ] || continue
+            if ! manifest_state="$(uv run python -c '
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as handle:
+              p = json.load(handle)
+          print("capture-match=" + str(p.get("capture_mode") == sys.argv[2]).lower())
+          print("complete=" + str(p.get("complete") is True).lower())
+          print("pagination-match=" + str(p.get("pagination", {}).get("mode") == "resume_key").lower())
+          ' "$manifest" "$CAPTURE_MODE")"; then
+              continue
+            fi
+            grep -qx "capture-match=true" <<< "$manifest_state" || continue
+            grep -qx "pagination-match=true" <<< "$manifest_state" || continue
+            if grep -qx "complete=true" <<< "$manifest_state"; then
+              [ -z "$REQUESTED_RESUME_RUN_ID" ] || continue
+              echo "run_id=" >> "$GITHUB_OUTPUT"
+              echo "reason=latest-complete-refresh" >> "$GITHUB_OUTPUT"
+              echo "Latest compatible $SITE_ID inventory is complete; refreshing from scratch"
+              exit 0
+            fi
+            checkpoint="$(find "$candidate" -type f -path '*/cdx-*.pages/checkpoint.json' -print -quit)"
+            [ -n "$checkpoint" ] || continue
+            cp -a "$candidate/." "$root/"
+            echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+            echo "reason=$reason" >> "$GITHUB_OUTPUT"
+            echo "Restored $SITE_ID checkpoint from run $run_id ($reason)"
+            exit 0
+          done
+          if [ -n "$REQUESTED_RESUME_RUN_ID" ]; then
+            echo "Explicit resume run has no compatible checkpoint for $SITE_ID" >&2
+            exit 1
+          fi
+          echo "run_id=" >> "$GITHUB_OUTPUT"
+          echo "reason=no-compatible-checkpoint" >> "$GITHUB_OUTPUT"
+          echo "No compatible prior checkpoint found for $SITE_ID"
       - name: Build complete cumulative Wayback snapshot
+        env:
+          RESUME_SOURCE_RUN_ID: ${{ steps.resume.outputs.run_id }}
+          RESUME_REASON: ${{ steps.resume.outputs.reason }}
         run: |
           set -euo pipefail
           root=".tmp/sites/$SITE_ID"
@@ -133,7 +241,7 @@ jobs:
           patterns = json.loads(os.environ["URL_PATTERNS"])
           artifacts = []
           failures = []
-          resumed = bool(os.environ["RESUME_RUN_ID"])
+          resumed = bool(os.environ["RESUME_SOURCE_RUN_ID"])
           for index, pattern in enumerate(patterns):
               output = root / f"cdx-{index:02d}.json"
               evidence = root / f"retrieval-{index:02d}.json"
@@ -150,20 +258,42 @@ jobs:
                   "--page-size", os.environ["PAGE_SIZE"],
                   "--max-pages", os.environ["MAX_PAGES"],
                   "--max-runtime-seconds", os.environ["MAX_RUNTIME_SECONDS"],
+                  "--max-stall-seconds", os.environ["MAX_STALL_SECONDS"],
                   "--output", str(output),
                   "--evidence", str(evidence),
               ]
               if resumed and output.with_name(f"{output.stem}.pages").exists():
                   command.extend([
                       "--resume",
-                      "--resume-source-run-id", os.environ["RESUME_RUN_ID"],
+                      "--resume-source-run-id", os.environ["RESUME_SOURCE_RUN_ID"],
                   ])
-              completed = subprocess.run(command, check=False)
+              process = subprocess.Popen(command)
+              while True:
+                  try:
+                      returncode = process.wait(timeout=60)
+                      break
+                  except subprocess.TimeoutExpired:
+                      checkpoint_path = output.with_name(
+                          f"{output.stem}.pages"
+                      ) / "checkpoint.json"
+                      progress = {
+                          "event": "cdx-heartbeat",
+                          "site_id": os.environ["SITE_ID"],
+                          "pattern_index": index,
+                          "process_alive": process.poll() is None,
+                      }
+                      if checkpoint_path.exists():
+                          checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+                          progress.update({
+                              "completed_chunks": checkpoint.get("completed_pages", 0),
+                              "record_count": checkpoint.get("record_count", 0),
+                          })
+                      print(json.dumps(progress, sort_keys=True), flush=True)
               retrieval = json.loads(evidence.read_text(encoding="utf-8"))
-              if completed.returncode or retrieval["retrieval_status"] != "complete":
+              if returncode or retrieval["retrieval_status"] != "complete":
                   failures.append({
                       "pattern": pattern,
-                      "returncode": completed.returncode,
+                      "returncode": returncode,
                       "retrieval_status": retrieval["retrieval_status"],
                       "failure": retrieval.get("failure"),
                   })
@@ -181,7 +311,7 @@ jobs:
                   artifact["sha256"] = hashlib.sha256(output.read_bytes()).hexdigest()
               artifacts.append(artifact)
           manifest = {
-              "schema": "fyi-archive.separate-foi-site-wayback.v2",
+              "schema": "fyi-archive.separate-foi-site-wayback.v3",
               "site_id": os.environ["SITE_ID"],
               "site_kind": os.environ["SITE_KIND"],
               "country": os.environ["SITE_COUNTRY"],
@@ -189,12 +319,23 @@ jobs:
               "source": "https://web.archive.org/cdx/search/cdx",
               "origin_contacted": False,
               "snapshot_semantics": "complete-paginated-cumulative-refresh",
+              "resume": {
+                  "source_run_id": os.environ["RESUME_SOURCE_RUN_ID"] or None,
+                  "reason": os.environ["RESUME_REASON"],
+                  "checkpoint_hash_validation": "required-by-fetch-wrapper",
+              },
+              "pagination": {
+                  "mode": "resume_key",
+                  "continuation": "showResumeKey/resumeKey",
+                  "chunk_limit": int(os.environ["MAX_PAGES"]),
+                  "progress_stall_seconds": int(os.environ["MAX_STALL_SECONDS"]),
+              },
               "capture_mode": os.environ["CAPTURE_MODE"],
               "complete": not failures and all(
                   artifact["pagination_complete"] for artifact in artifacts
               ),
               "transformation": {
-                  "id": "complete-wayback-site-inventory-v2",
+                  "id": "complete-wayback-site-inventory-v3",
                   "collapse": "urlkey" if os.environ["CAPTURE_MODE"] == "url_index" else None,
                   "inference": "none",
               },
@@ -212,7 +353,7 @@ jobs:
           PY
       - name: Retain independent site evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: foi-site-wayback-${{ matrix.site.id }}-${{ github.run_id }}
           retention-days: 90

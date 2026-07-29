@@ -298,6 +298,7 @@ jobs:
           uv run fyi export-process-events \
             --derived-dir "$derived_dir" \
             --output dist/process-events/events.jsonl \
+            --attachments-output dist/process-events/attachments.jsonl \
             --captured-at "$captured_at"
 
       - name: Build and verify chunk process projection

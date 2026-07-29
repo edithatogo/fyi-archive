@@ -4,13 +4,13 @@ import json
 from email.message import Message
 from io import BytesIO
 from typing import Self
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request
 
 import pytest
 
 from fyi_archive import internet_archive_cdx
-from fyi_archive.internet_archive_cdx import fetch_complete_cdx
+from fyi_archive.internet_archive_cdx import fetch_complete_cdx, fetch_complete_cdx_with_resume_key
 
 
 class _Response:
@@ -25,6 +25,20 @@ class _Response:
 
     def read(self) -> bytes:
         return json.dumps(self.payload).encode()
+
+
+class _RawResponse:
+    def __init__(self, payload: bytes) -> None:
+        self.payload = payload
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        return None
+
+    def read(self) -> bytes:
+        return self.payload
 
 
 def test_fetches_all_reported_pages() -> None:
@@ -269,3 +283,328 @@ def test_fetch_rejects_deadlines_and_bounded_retries(monkeypatch: pytest.MonkeyP
 
     with pytest.raises(RuntimeError, match="bounded retries"):
         internet_archive_cdx._fetch([], unavailable, deadline=10.0)
+
+
+def test_transient_failures_use_patient_attempts_with_capped_backoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+    sleeps: list[float] = []
+    monkeypatch.setattr(internet_archive_cdx.time, "monotonic", lambda: 0.0)
+    monkeypatch.setattr(internet_archive_cdx.time, "sleep", sleeps.append)
+
+    def unavailable(request: Request, timeout: int) -> _Response:
+        nonlocal attempts
+        attempts += 1
+        raise HTTPError(
+            request.full_url, 503, "unavailable", hdrs=Message(), fp=BytesIO(b"unavailable")
+        )
+
+    with pytest.raises(RuntimeError, match="bounded retries"):
+        internet_archive_cdx._fetch([], unavailable, deadline=10_000.0)
+
+    assert attempts == internet_archive_cdx.REQUEST_ATTEMPTS
+    assert len(sleeps) == internet_archive_cdx.REQUEST_ATTEMPTS - 1
+    assert max(sleeps) == internet_archive_cdx.MAX_RETRY_BACKOFF_SECONDS
+
+
+def test_retries_page_level_http_400_but_not_count_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(internet_archive_cdx.time, "sleep", lambda _: None)
+    page_attempts = 0
+
+    def transient_page(request: Request, timeout: int) -> _Response:
+        nonlocal page_attempts
+        if "showNumPages" in request.full_url:
+            return _Response([["blocks"], ["1"]])
+        page_attempts += 1
+        if page_attempts == 1:
+            raise HTTPError(
+                request.full_url,
+                400,
+                "transient CDX page failure",
+                hdrs=Message(),
+                fp=BytesIO(b""),
+            )
+        return _Response([["original"], ["https://example.test/request/1"]])
+
+    rows = fetch_complete_cdx(
+        "example.test/request/*", page_size=10, max_pages=2, opener=transient_page
+    )
+    assert len(rows) == 2
+    assert page_attempts == 2
+
+    count_attempts = 0
+
+    def invalid_count_query(request: Request, timeout: int) -> _Response:
+        nonlocal count_attempts
+        count_attempts += 1
+        raise HTTPError(request.full_url, 400, "bad query", hdrs=Message(), fp=BytesIO(b""))
+
+    with pytest.raises(HTTPError, match="HTTP Error 400"):
+        fetch_complete_cdx(
+            "example.test/request/*", page_size=10, max_pages=2, opener=invalid_count_query
+        )
+    assert count_attempts == 1
+
+
+def test_resume_key_paginator_follows_cursor_and_reports_chunks() -> None:
+    requests: list[str] = []
+    chunks: list[tuple[int, str | None, list[str], list[list[str]], str]] = []
+
+    def opener(request: Request, timeout: int) -> _Response:
+        requests.append(request.full_url)
+        if "resumeKey" not in request.full_url:
+            return _Response([
+                ["original"],
+                ["https://example.test/request/1"],
+                [],
+                ["next%21"],
+            ])
+        return _Response([["original"], ["https://example.test/request/2"]])
+
+    rows = fetch_complete_cdx_with_resume_key(
+        "example.test/request/*",
+        page_size=1,
+        max_pages=3,
+        chunk_callback=lambda *values: chunks.append(values),
+        opener=opener,
+    )
+
+    assert rows[1:] == [
+        ["https://example.test/request/1"],
+        ["https://example.test/request/2"],
+    ]
+    assert "showResumeKey=true" in requests[0]
+    assert "resumeKey=next%2521" in requests[1]
+    assert [chunk[:2] for chunk in chunks] == [(0, "next%21"), (1, None)]
+
+
+def test_resume_key_paginator_applies_deterministic_time_partition() -> None:
+    requests: list[str] = []
+
+    def opener(request: Request, timeout: int) -> _Response:
+        requests.append(request.full_url)
+        return _Response([["original"], ["https://example.test/request/1"]])
+
+    fetch_complete_cdx_with_resume_key(
+        "example.test/request/*",
+        page_size=1,
+        max_pages=2,
+        from_timestamp="2015",
+        to_timestamp="2019",
+        opener=opener,
+    )
+
+    assert "from=2015" in requests[0]
+    assert "to=2019" in requests[0]
+
+
+@pytest.mark.parametrize("value", ["", "20x5", "123456789012345"])
+def test_resume_key_paginator_rejects_invalid_partition_timestamp(value: str) -> None:
+    with pytest.raises(ValueError, match="1 to 14 digits"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*",
+            page_size=1,
+            max_pages=2,
+            from_timestamp=value,
+        )
+
+
+def test_resume_key_paginator_fails_closed_after_progress_stall(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clock = 0.0
+
+    def monotonic() -> float:
+        return clock
+
+    def sleep(seconds: float) -> None:
+        nonlocal clock
+        clock += seconds
+
+    monkeypatch.setattr(internet_archive_cdx.time, "monotonic", monotonic)
+    monkeypatch.setattr(internet_archive_cdx.time, "sleep", sleep)
+
+    def unavailable(_: Request, timeout: int) -> _Response:
+        raise URLError("temporarily unavailable")
+
+    with pytest.raises(RuntimeError, match="progress-stall deadline"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*",
+            page_size=1,
+            max_pages=2,
+            max_runtime_seconds=100,
+            max_stall_seconds=3,
+            opener=unavailable,
+        )
+
+
+def test_resume_key_paginator_resumes_verified_rows() -> None:
+    prior = [["https://example.test/request/1"]]
+    fingerprint = internet_archive_cdx.hashlib.sha256(
+        json.dumps(prior, sort_keys=True).encode()
+    ).hexdigest()
+
+    def opener(request: Request, timeout: int) -> _Response:
+        assert "resumeKey=cursor" in request.full_url
+        return _Response([["original"], ["https://example.test/request/2"]])
+
+    rows = fetch_complete_cdx_with_resume_key(
+        "example.test/request/*",
+        page_size=1,
+        max_pages=3,
+        start_chunk=1,
+        resume_key="cursor",
+        existing_rows=prior,
+        expected_header=["original"],
+        existing_fingerprints={fingerprint},
+        opener=opener,
+    )
+    assert len(rows) == 3
+
+
+def test_resume_key_paginator_accepts_empty_zero_result_payload() -> None:
+    rows = fetch_complete_cdx_with_resume_key(
+        "example.test/request/*",
+        page_size=10,
+        max_pages=2,
+        opener=lambda *_args, **_kwargs: _Response([]),
+    )
+
+    assert rows == [["original", "timestamp", "digest", "statuscode", "length"]]
+
+
+def test_resume_key_paginator_rejects_repeated_cursor() -> None:
+    def opener(request: Request, timeout: int) -> _Response:
+        row = "two" if "resumeKey" in request.full_url else "one"
+        return _Response([["original"], [row], [], ["same"]])
+
+    with pytest.raises(RuntimeError, match="resumption key repeated"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*", page_size=1, max_pages=3, opener=opener
+        )
+
+
+def test_retries_malformed_json_with_patient_bounded_backoff(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    attempts = 0
+    sleeps: list[float] = []
+    monkeypatch.setattr(internet_archive_cdx.time, "monotonic", lambda: 0.0)
+    monkeypatch.setattr(internet_archive_cdx.time, "sleep", sleeps.append)
+
+    def malformed_then_valid(request: Request, timeout: int) -> _RawResponse:
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            return _RawResponse(b"")
+        return _RawResponse(b'[["blocks"], ["0"]]')
+
+    assert internet_archive_cdx._fetch([], malformed_then_valid, deadline=60.0) == [
+        ["blocks"],
+        ["0"],
+    ]
+    assert attempts == 3
+    assert sleeps == [2, 4]
+
+
+@pytest.mark.parametrize(
+    ("capture_mode", "start_chunk", "resume_key", "message"),
+    [
+        ("invalid", 0, None, "unsupported CDX capture mode"),
+        ("url_index", -1, None, "start_chunk"),
+        ("url_index", 1, None, "resume_key is required"),
+    ],
+)
+def test_resume_key_paginator_rejects_invalid_configuration(
+    capture_mode: str,
+    start_chunk: int,
+    resume_key: str | None,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*",
+            page_size=1,
+            max_pages=2,
+            capture_mode=capture_mode,
+            start_chunk=start_chunk,
+            resume_key=resume_key,
+        )
+
+    with pytest.raises(ValueError, match="positive"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*",
+            page_size=1,
+            max_pages=2,
+            max_stall_seconds=0,
+        )
+
+    with pytest.raises(ValueError, match="must not be later"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*",
+            page_size=1,
+            max_pages=2,
+            from_timestamp="2025",
+            to_timestamp="2024",
+        )
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"invalid": True}, "invalid resume-key payload"),
+        ([["original"], ["one"], [], []], "invalid resumption key"),
+        ([["original"], [], ["one"], ["tail"]], "malformed resumption-key separator"),
+        ([["original"], [], ["cursor"]], "without records"),
+    ],
+)
+def test_resume_key_paginator_rejects_malformed_payloads(payload: object, message: str) -> None:
+    with pytest.raises(RuntimeError, match=message):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*",
+            page_size=1,
+            max_pages=2,
+            opener=lambda *_args, **_kwargs: _Response(payload),
+        )
+
+
+def test_resume_key_paginator_rejects_changed_header_and_repeated_chunk() -> None:
+    calls = 0
+
+    def changed_header(_: Request, timeout: int) -> _Response:
+        nonlocal calls
+        calls += 1
+        payload = [["original" if calls == 1 else "timestamp"], [str(calls)]]
+        if calls == 1:
+            payload.extend([[], ["next"]])
+        return _Response(payload)
+
+    with pytest.raises(RuntimeError, match="header changed"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*", page_size=1, max_pages=2, opener=changed_header
+        )
+
+    def repeated(_: Request, timeout: int) -> _Response:
+        return _Response([["original"], ["same"], [], ["next"]])
+
+    with pytest.raises(RuntimeError, match="chunk repeated"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*", page_size=1, max_pages=2, opener=repeated
+        )
+
+
+def test_resume_key_paginator_fails_closed_at_chunk_cap() -> None:
+    counter = 0
+
+    def endless(_: Request, timeout: int) -> _Response:
+        nonlocal counter
+        counter += 1
+        return _Response([["original"], [str(counter)], [], [f"next-{counter}"]])
+
+    with pytest.raises(RuntimeError, match="configured chunk cap"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*", page_size=1, max_pages=2, opener=endless
+        )

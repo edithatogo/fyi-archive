@@ -74,6 +74,10 @@ fyi-archive/
 | **OSF** | project + components mirror | optional monthly publish |
 | **GitHub Releases** | code releases via release-please with SBOM/provenance | per release |
 
+The 23 independently scoped Hugging Face repositories are grouped in a dedicated
+[fyi-archive collection](https://huggingface.co/collections/edithatogo/fyi-archive-global-public-information-request-archives-6a6946d45c8cc5852a1d62d4).
+See the [catalog reconciliation and viewer boundary](docs/huggingface-archive-catalog.md).
+
 `fyi-archive publish verify` verifies local manifests/artifacts against remote
 Hugging Face, Zenodo, and OSF evidence, then writes:
 

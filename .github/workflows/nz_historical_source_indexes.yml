@@ -5,51 +5,165 @@ on:
     - cron: "31 18 * * 0"
   workflow_dispatch:
     inputs:
-      cdx_limit:
-        description: Maximum distinct Internet Archive URLs to request
+      page_size:
+        description: CDX rows per page
         required: true
-        default: "5000"
+        default: "1000"
+        type: string
+      max_pages:
+        description: Hard CDX page cap; the workflow fails rather than emitting a partial index
+        required: true
+        default: "100"
+        type: string
+      max_runtime_seconds:
+        description: Whole-run CDX deadline
+        required: true
+        default: "600"
+        type: string
+      resume_run_id:
+        description: Optional failed NZ source-index run containing a compatible page checkpoint
+        required: false
+        default: ""
         type: string
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
   group: nz-historical-source-index
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      CDX_LIMIT: ${{ inputs.cdx_limit || '5000' }}
+      PAGE_SIZE: ${{ github.event_name == 'schedule' && '1000' || inputs.page_size }}
+      MAX_PAGES: ${{ github.event_name == 'schedule' && '100' || inputs.max_pages }}
+      MAX_RUNTIME_SECONDS: ${{ github.event_name == 'schedule' && '600' || inputs.max_runtime_seconds }}
+      RESUME_RUN_ID: ${{ github.event_name == 'schedule' && '' || inputs.resume_run_id }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
       - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+        timeout-minutes: 5
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
       - name: Install dependencies
-        run: uv sync --extra dev --frozen
-      - name: Download Internet Archive CDX candidates
+        run: timeout --signal=TERM --kill-after=15s 300s uv sync --extra dev --frozen
+      - name: Validate complete-inventory settings
+        run: |
+          set -euo pipefail
+          for value in "$PAGE_SIZE" "$MAX_PAGES" "$MAX_RUNTIME_SECONDS"; do
+            [[ "$value" =~ ^[0-9]+$ ]]
+          done
+          test "$PAGE_SIZE" -ge 100 && test "$PAGE_SIZE" -le 10000
+          test "$MAX_PAGES" -ge 1 && test "$MAX_PAGES" -le 1000
+          test "$MAX_RUNTIME_SECONDS" -ge 60 && test "$MAX_RUNTIME_SECONDS" -le 900
+          if [ -n "$RESUME_RUN_ID" ]; then
+            [[ "$RESUME_RUN_ID" =~ ^[0-9]+$ ]]
+          fi
+      - name: Restore prior page checkpoint
+        if: inputs.resume_run_id != ''
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
+        with:
+          name: ${{ format('nz-historical-source-index-{0}', inputs.resume_run_id) }}
+          path: .tmp
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.resume_run_id }}
+      - name: Export complete Internet Archive CDX inventory
+        timeout-minutes: 50
         run: |
           set -euo pipefail
           mkdir -p .tmp/nz-historical-source-inputs
-          curl --fail-with-body --location --silent --show-error \
-            --retry 2 --retry-delay 30 --max-time 300 \
-            -A "fyi-archive-nz-historical-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
-            --get "https://web.archive.org/cdx/search/cdx" \
-            --data-urlencode "url=www.fyi.org.nz/request/*" \
-            --data-urlencode "output=json" \
-            --data-urlencode "filter=statuscode:200" \
-            --data-urlencode "fl=original,timestamp,digest" \
-            --data-urlencode "collapse=urlkey" \
-            --data-urlencode "limit=${CDX_LIMIT}" \
+          resume_args=()
+          if [ -n "$RESUME_RUN_ID" ]; then
+            resume_args+=(--resume --resume-source-run-id "$RESUME_RUN_ID")
+          fi
+          export_args=(
+            --instance-id nz-fyi
+            --host www.fyi.org.nz
+            --url-pattern "www.fyi.org.nz/request/*"
+            --capture-mode url_index
+            --page-size "$PAGE_SIZE"
+            --max-pages "$MAX_PAGES"
+            --max-runtime-seconds "$MAX_RUNTIME_SECONDS"
             --output .tmp/nz-historical-source-inputs/internet_archive_cdx.json
-          test -s .tmp/nz-historical-source-inputs/internet_archive_cdx.json
+            --evidence .tmp/nz-historical-source-inputs/internet_archive_retrieval.json
+          )
+          continuation_source_run_id="${RESUME_RUN_ID:-$GITHUB_RUN_ID}"
+          max_attempts=3
+          for attempt in $(seq 1 "$max_attempts"); do
+            echo "CDX continuation attempt ${attempt}/${max_attempts}"
+            if timeout --signal=TERM --kill-after=15s 180s uv run python scripts/fetch_complete_internet_archive_cdx.py "${export_args[@]}" "${resume_args[@]}"; then
+              break
+            else
+              timeout_status=$?
+              echo "CDX exporter exited with status ${timeout_status}; synchronizing checkpoint evidence" >&2
+          python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          evidence_path = Path(".tmp/nz-historical-source-inputs/internet_archive_retrieval.json")
+          checkpoint_path = Path(".tmp/nz-historical-source-inputs/internet_archive_cdx.pages/checkpoint.json")
+          checkpoint = json.loads(checkpoint_path.read_text())
+          if evidence_path.exists():
+              evidence = json.loads(evidence_path.read_text())
+          else:
+              evidence = {
+                  "instance_id": "nz-fyi",
+                  "pagination_complete": False,
+                  "retrieval_status": "failed",
+              }
+          evidence["checkpoint"] = checkpoint
+          evidence["record_count"] = checkpoint.get("record_count", 0)
+          evidence["retrieved_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+          evidence["retrieval_status"] = "failed"
+          evidence["pagination_complete"] = False
+          evidence["failure"] = {"type": "TimeoutError", "message": "CDX continuation attempt timed out or exited"}
+          evidence_path.write_text(json.dumps(evidence, indent=2) + "\n")
+          PY
+              if [ "$attempt" -eq "$max_attempts" ]; then
+                echo "CDX continuation budget exhausted; retaining checkpoint and failing closed" >&2
+                exit 1
+              fi
+              resume_args=(--resume --resume-source-run-id "$continuation_source_run_id")
+              sleep $((attempt * 30))
+            fi
+          done
+      - name: Validate checkpoint and evidence parity
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          evidence = json.loads(Path(".tmp/nz-historical-source-inputs/internet_archive_retrieval.json").read_text())
+          checkpoint = json.loads(Path(".tmp/nz-historical-source-inputs/internet_archive_cdx.pages/checkpoint.json").read_text())
+          recorded = evidence.get("checkpoint") or {}
+          for key in ("config_sha256", "completed_pages", "next_page", "next_resume_key"):
+              if recorded.get(key) != checkpoint.get(key):
+                  raise SystemExit(f"checkpoint/evidence mismatch for {key}")
+          if evidence.get("record_count") != checkpoint.get("record_count"):
+              raise SystemExit("checkpoint/evidence mismatch for record_count")
+          PY
+      - name: Fail closed on incomplete snapshot
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          from pathlib import Path
+
+          evidence = json.loads(
+              Path(".tmp/nz-historical-source-inputs/internet_archive_retrieval.json").read_text()
+          )
+          if evidence.get("retrieval_status") != "complete" or not evidence.get("pagination_complete"):
+              raise SystemExit("Internet Archive source inventory is incomplete")
+          PY
       - name: Download current public manifest
         run: |
           set -euo pipefail
@@ -58,7 +172,7 @@ jobs:
             "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/manifests/latest_manifest.json" \
             --output .tmp/nz-historical-source-inputs/latest_manifest.json
           test -s .tmp/nz-historical-source-inputs/latest_manifest.json
-      - name: Build and reconcile historical candidates
+      - name: Build and reconcile complete historical candidates
         run: |
           set -euo pipefail
           uv run python scripts/import_historical_sources.py \
@@ -70,6 +184,7 @@ jobs:
             --manifest .tmp/nz-historical-source-inputs/latest_manifest.json \
             --output .tmp/nz-source-reconciliation.json
       - name: Retain NZ historical evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nz-historical-source-index-${{ github.run_id }}

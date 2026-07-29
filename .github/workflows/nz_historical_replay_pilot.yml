@@ -1,0 +1,114 @@
+name: NZ historical replay pilot
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: Successful NZ historical source-index workflow run ID
+        required: true
+        type: string
+      replay_limit:
+        description: Maximum Internet Archive request pages to replay
+        required: true
+        default: "25"
+        type: string
+      delay_seconds:
+        description: Delay between Internet Archive replay requests
+        required: true
+        default: "3"
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: nz-historical-replay-pilot
+  cancel-in-progress: false
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+      REPLAY_LIMIT: ${{ inputs.replay_limit }}
+      DELAY_SECONDS: ${{ inputs.delay_seconds }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+      - name: Validate bounded replay settings
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_RUN_ID" =~ ^[0-9]+$ ]]
+          [[ "$REPLAY_LIMIT" =~ ^[0-9]+$ ]]
+          [[ "$DELAY_SECONDS" =~ ^[0-9]+$ ]]
+          test "$REPLAY_LIMIT" -ge 1 && test "$REPLAY_LIMIT" -le 25
+          test "$DELAY_SECONDS" -ge 1 && test "$DELAY_SECONDS" -le 10
+      - name: Download source-index evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
+        with:
+          name: nz-historical-source-index-${{ inputs.source_run_id }}
+          path: .tmp/source-index
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.source_run_id }}
+      - name: Replay bounded request-page sample
+        run: |
+          set -euo pipefail
+          root=.tmp/nz-historical-replay
+          mkdir -p "$root"
+          input=.tmp/source-index/nz-historical-source-index.json
+          test -s "$input"
+          cp "$input" "$root/source-index.json"
+          uv run python scripts/filter_historical_request_pages.py \
+            --input "$root/source-index.json" \
+            --output "$root/request-pages-index.json"
+          uv run python scripts/enrich_historical_core.py \
+            --historical-index "$root/request-pages-index.json" \
+            --instance-id nz-fyi \
+            --limit "$REPLAY_LIMIT" \
+            --delay-seconds "$DELAY_SECONDS" \
+            --timeout-seconds 15 \
+            --user-agent "fyi-archive-nz-historical-replay/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
+            --output "$root/historical-core.json"
+          uv run python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          root = Path(".tmp/nz-historical-replay")
+          core = json.loads((root / "historical-core.json").read_text(encoding="utf-8"))
+          payload = {
+              "schema": "fyi-archive.nz-historical-replay-pilot.v1",
+              "generated_at": datetime.now(timezone.utc).isoformat(),
+              "source_run_id": os.environ["SOURCE_RUN_ID"],
+              "replay_limit": int(os.environ["REPLAY_LIMIT"]),
+              "delay_seconds": int(os.environ["DELAY_SECONDS"]),
+              "processed_record_count": core["processed_record_count"],
+              "extracted_record_count": core["extracted_record_count"],
+              "source_index_sha256": hashlib.sha256((root / "source-index.json").read_bytes()).hexdigest(),
+              "historical_core_sha256": hashlib.sha256((root / "historical-core.json").read_bytes()).hexdigest(),
+              "origin_contacted": False,
+              "publication": "none",
+              "raw_content_retained": False,
+          }
+          (root / "replay-evidence.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+          )
+          PY
+      - name: Retain replay evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nz-historical-replay-pilot-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          path: .tmp/nz-historical-replay/

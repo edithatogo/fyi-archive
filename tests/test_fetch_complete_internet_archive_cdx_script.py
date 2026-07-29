@@ -28,7 +28,7 @@ def test_writes_failure_evidence_without_a_partial_export(
     stale_checkpoint = tmp_path / "nested" / "cdx.pages"
     stale_checkpoint.mkdir(parents=True)
     (stale_checkpoint / "stale").write_text("discard me")
-    monkeypatch.setattr(fetch_script, "fetch_complete_cdx", fail)
+    monkeypatch.setattr(fetch_script, "fetch_complete_cdx_with_resume_key", fail)
     monkeypatch.setattr(
         sys,
         "argv",
@@ -71,7 +71,7 @@ def test_writes_failure_evidence_without_a_partial_export(
 
 
 def test_resumes_hash_verified_page_checkpoint(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     output = tmp_path / "cdx.json"
     evidence = tmp_path / "retrieval.json"
@@ -89,6 +89,13 @@ def test_resumes_hash_verified_page_checkpoint(
         str(output),
         "--evidence",
         str(evidence),
+        "--max-stall-seconds",
+        "60",
+        "--from-timestamp",
+        "2015",
+        "--to-timestamp",
+        "2019",
+        "--include-urlkey",
         "--resume",
         "--resume-source-run-id",
         "12345",
@@ -99,13 +106,13 @@ def test_resumes_hash_verified_page_checkpoint(
 
     def first_fetch(
         *_: object,
-        page_callback: Callable[[int, int | None, list[str], list[list[str]], str], None],
+        chunk_callback: Callable[[int, str | None, list[str], list[list[str]], str], None],
         **__: object,
     ) -> list[list[str]]:
-        page_callback(0, 2, ["original"], rows, fingerprint)
+        chunk_callback(0, "cursor-1", ["original"], rows, fingerprint)
         raise RuntimeError("deadline")
 
-    monkeypatch.setattr(fetch_script, "fetch_complete_cdx", first_fetch)
+    monkeypatch.setattr(fetch_script, "fetch_complete_cdx_with_resume_key", first_fetch)
     with pytest.raises(RuntimeError, match="deadline"):
         fetch_script.main()
 
@@ -115,11 +122,86 @@ def test_resumes_hash_verified_page_checkpoint(
         observed.update(kwargs)
         return [["original"], ["https://example.test/request/1"]]
 
-    monkeypatch.setattr(fetch_script, "fetch_complete_cdx", resumed_fetch)
+    monkeypatch.setattr(fetch_script, "fetch_complete_cdx_with_resume_key", resumed_fetch)
     assert fetch_script.main() == 0
-    assert observed["start_page"] == 1
+    assert observed["start_chunk"] == 1
+    assert observed["resume_key"] == "cursor-1"
     assert observed["existing_rows"] == [["https://example.test/request/1"]]
-    assert json.loads(evidence.read_text())["resume_source_run_id"] == "12345"
+    payload = json.loads(evidence.read_text())
+    assert payload["resume_source_run_id"] == "12345"
+    assert payload["page_size"] == 1000
+    assert payload["from_timestamp"] == "2015"
+    assert payload["to_timestamp"] == "2019"
+    assert payload["include_urlkey"] is True
+    assert observed["max_stall_seconds"] == 60
+    assert observed["from_timestamp"] == "2015"
+    assert observed["to_timestamp"] == "2019"
+    assert observed["include_urlkey"] is True
+    progress = capsys.readouterr().out
+    assert '"event": "cdx-start"' in progress
+    assert '"event": "cdx-checkpoint"' in progress
+    assert '"next_resume_key_sha256"' in progress
+    assert "cursor-1" not in progress
+
+
+def test_reuses_completed_checkpoint_without_a_resume_key(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    output = tmp_path / "cdx.json"
+    evidence = tmp_path / "retrieval.json"
+    checkpoint = tmp_path / "cdx.pages"
+    checkpoint.mkdir()
+    rows = [["https://example.test/request/1"]]
+    fingerprint = fetch_script.hashlib.sha256(json.dumps(rows, sort_keys=True).encode()).hexdigest()
+    config_sha256 = fetch_script._config_hash(  # noqa: SLF001
+        fetch_script.argparse.Namespace(
+            url_pattern="example.test/request/*",
+            instance_id="example",
+            host="example.test",
+            page_size=1000,
+            max_pages=100,
+            capture_mode="all_captures",
+        )
+    )
+    (checkpoint / "checkpoint.json").write_text(
+        json.dumps({
+            "config_sha256": config_sha256,
+            "completed_pages": 1,
+            "next_page": 1,
+            "next_resume_key": None,
+            "record_count": 1,
+        })
+    )
+    (checkpoint / "page-000000.json").write_text(
+        json.dumps({"page": 0, "header": ["original"], "rows": rows, "fingerprint": fingerprint})
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "fetch_complete_internet_archive_cdx.py",
+            "--url-pattern",
+            "example.test/request/*",
+            "--instance-id",
+            "example",
+            "--host",
+            "example.test",
+            "--capture-mode",
+            "all_captures",
+            "--output",
+            str(output),
+            "--evidence",
+            str(evidence),
+            "--resume",
+            "--resume-source-run-id",
+            "12345",
+        ],
+    )
+    assert fetch_script.main() == 0
+    assert json.loads(output.read_text())[1:] == rows
+    payload = json.loads(evidence.read_text())
+    assert payload["pagination_complete"] is True
+    assert payload["checkpoint"]["resumable"] is False
 
 
 def test_rejects_tampered_checkpoint_page(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -1,0 +1,66 @@
+# Specification: Wayback resume reliability
+
+## Evidence
+
+Run `30241894770` retained evidence for all 29 registered sites, but 23 targets
+failed closed after transient CDX transport errors, page-level HTTP 400
+responses, or the whole-run deadline.
+Automatic continuation run `30250397882` proved checkpoint restoration across
+all 29 site artifacts. Twelve targets advanced by 34,674 records and 37 pages,
+including New Zealand from 25,564 to 27,564 records. Six zero-record inventories
+completed, while 23 remained fail-closed because of transport errors, malformed
+responses, or the deadline. This evidence requires patient retries and reduced
+request concurrency, without weakening completeness semantics.
+
+
+Run `30252925334` retained all 29 artifacts and advanced 11 sites by 88,004
+records. New Zealand advanced from 27,564 to 53,564 records but remained
+incomplete at the whole-run deadline. Eight sites encountered page-level HTTP
+400 responses. The hosted evidence therefore supports sequential CDX resumption
+keys as the primary completeness mechanism while retaining the legacy page
+paginator for compatibility.
+
+## Requirements
+
+- Retry observed transient page failures within the existing deadline.
+- Restore the newest compatible per-site checkpoint automatically.
+- Preserve an explicit resume run as the highest-priority override.
+- Validate checkpoint configuration and hashes before continuing.
+- Retry malformed or empty JSON responses with patient bounded backoff.
+- Limit hosted CDX enumeration to two concurrent sites.
+- Allow one targeted workflow run to select multiple configured sites while
+  retaining the two-site concurrency ceiling and global workflow serialization.
+- Allow 1,800 seconds per URL pattern within the existing job timeout.
+- Keep scheduled and full-matrix runs capped at 2,400 seconds, while allowing an
+  explicitly named-site continuation up to 7,200 seconds within a bounded job
+  timeout.
+- Emit bounded progress heartbeats without exposing raw resume keys.
+- Use the available whole-run deadline for patient transient retries with a
+  capped backoff.
+- Refresh from scratch when the newest compatible inventory is already complete.
+- Keep site evidence separate and fail closed until pagination completes.
+- Record the selected resume source in provenance.
+- Use `showResumeKey` and `resumeKey` for complete snapshot traversal.
+- Persist each cursor chunk, next key, fingerprint, and configuration hash.
+- Support deterministic inclusive time partitions whose range is part of the
+  checkpoint configuration hash.
+- Merge partitions only when every partition is complete and hash-valid,
+  deduplicating by CDX `urlkey` with a deterministic earliest-capture rule.
+- Provide a reusable verifier that checks manifests, retrieval evidence,
+  checkpoints, page fingerprints, exports, and prior-run count deltas.
+- Fail closed after a configurable interval without checkpoint progress while
+  retaining the existing whole-run deadline.
+- Reject legacy page checkpoints when the workflow requires cursor semantics.
+- Retain the legacy page paginator for other callers.
+- Never contact origin FOI sites or broaden GitHub token permissions.
+
+## Acceptance criteria
+
+- Focused retry and workflow-resume regression tests pass.
+- Repository quality gates pass without weakening completeness semantics.
+- A hosted continuation retains per-site evidence and demonstrates safe progress.
+- Targeted batches reject unknown or duplicate ids before acquisition and do not
+  create cancellation-prone queues of independent workflow runs.
+- Partition merges reject incomplete inputs before creating an output.
+- Verification output labels record counts as observed progress and never
+  infers corpus coverage without a defensible denominator.
