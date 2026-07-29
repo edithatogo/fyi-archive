@@ -249,18 +249,16 @@ def test_completion_replay_selection_prefers_latest_json_and_remains_unauthorize
                         "2",
                     ],
                 ]
-            results.append(
-                {
-                    "canonical_slug": slug,
-                    "media_kind": media_kind,
-                    "exact_url": (
-                        f"https://www.righttoknow.org.au/request/{slug}"
-                        f"{'.json' if media_kind == 'json' else ''}"
-                    ),
-                    "status": "complete",
-                    "records": records,
-                }
-            )
+            results.append({
+                "canonical_slug": slug,
+                "media_kind": media_kind,
+                "exact_url": (
+                    f"https://www.righttoknow.org.au/request/{slug}"
+                    f"{'.json' if media_kind == 'json' else ''}"
+                ),
+                "status": "complete",
+                "records": records,
+            })
     candidate = {
         "failed_query_count": 0,
         "pending_query_count": 0,
