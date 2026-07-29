@@ -15,6 +15,9 @@ def request_slug(url: object) -> str:
     if not path.startswith(prefix):
         return ""
     slug = path.removeprefix(prefix)
+    # HTML and JSON representations identify the same logical request.
+    if slug.endswith(".json"):
+        slug = slug.removesuffix(".json")
     return slug if slug and "/" not in slug else ""
 
 
@@ -34,7 +37,11 @@ def build_queue(
         slug = request_slug(source_url)
         if not slug:
             continue
-        queue[slug] = {"request_id": slug, "url_title": slug, "source_url": source_url}
+        candidate = {"request_id": slug, "url_title": slug, "source_url": source_url}
+        existing = queue.get(slug)
+        # Prefer the canonical HTML URL when both representations are present.
+        if existing is None or str(existing["source_url"]).endswith(".json"):
+            queue[slug] = candidate
     if not queue:
         raise ValueError("completed source inventory has no canonical request URLs")
     return [queue[key] for key in sorted(queue)]

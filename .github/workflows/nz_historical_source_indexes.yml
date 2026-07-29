@@ -32,12 +32,12 @@ permissions:
 
 concurrency:
   group: nz-historical-source-index
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 55
+    timeout-minutes: 15
     env:
       PAGE_SIZE: ${{ github.event_name == 'schedule' && '1000' || inputs.page_size }}
       MAX_PAGES: ${{ github.event_name == 'schedule' && '100' || inputs.max_pages }}
@@ -103,15 +103,22 @@ jobs:
             else
               timeout_status=$?
               echo "CDX exporter exited with status ${timeout_status}; synchronizing checkpoint evidence" >&2
-              python - <<'PY'
+          python - <<'PY'
           import json
           from datetime import datetime, timezone
           from pathlib import Path
 
           evidence_path = Path(".tmp/nz-historical-source-inputs/internet_archive_retrieval.json")
           checkpoint_path = Path(".tmp/nz-historical-source-inputs/internet_archive_cdx.pages/checkpoint.json")
-          evidence = json.loads(evidence_path.read_text())
           checkpoint = json.loads(checkpoint_path.read_text())
+          if evidence_path.exists():
+              evidence = json.loads(evidence_path.read_text())
+          else:
+              evidence = {
+                  "instance_id": "nz-fyi",
+                  "pagination_complete": False,
+                  "retrieval_status": "failed",
+              }
           evidence["checkpoint"] = checkpoint
           evidence["record_count"] = checkpoint.get("record_count", 0)
           evidence["retrieved_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
