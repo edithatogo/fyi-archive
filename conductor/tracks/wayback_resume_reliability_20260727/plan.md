@@ -84,11 +84,29 @@
 - [x] Replace the Wayback artifact upload action's deprecated Node.js 20 runtime
   with its pinned Node.js 24 release after run `30391530911` exposed the warning.
 - [ ] Complete repository and hosted quality gates for the final evidence PR.
-  Local verification has 394 passed and 1 skipped, with Ruff, ty, Actionlint,
-  and targeted-workflow Zizmor passing. The pre-existing repository-wide
+  Local verification has 413 passed and 1 skipped, with stable and preview
+  Ruff, ty, Actionlint, changed-file formatting, and targeted-workflow Zizmor
+  passing. The pre-existing repository-wide
   formatter and Zizmor baselines remain red outside this track's changes;
   required PR checks, Codecov, and CodeQL still await publication.
 - [x] Execute at most one four-site continuation from run `30382291280` and
   reconcile its retained evidence without an automatic retry loop.
 - [ ] Acceptance remains open: NZ completed, while CA, DE, and UK remain
   fail-closed and resumable on the existing weekly schedule.
+
+## Partitioning, verification, and stall hardening
+
+- [x] Add deterministic closed-year plus open-ended time partition planning.
+- [x] Include partition time bounds and optional `urlkey` output in checkpoint
+  configuration identity without invalidating legacy unpartitioned checkpoints.
+- [x] Add complete-only partition merging with response-hash validation,
+  consistent headers, `urlkey` deduplication, and deterministic earliest-capture
+  selection.
+- [x] Add a reusable artifact verifier and machine-readable progress index with
+  hashed cursors, prior-run deltas, and an explicit no-denominator coverage note.
+- [x] Verify the new tool against all four artifacts from run `30391530911`.
+- [x] Add a configurable progress-stall deadline to the fetch wrapper and
+  workflow while preserving the whole-run deadline and retained checkpoints.
+- [ ] Exercise partition acquisition and merge in one bounded named-site hosted
+  run before enabling partition plans for the weekly schedule.
+- [ ] Complete required PR checks, Codecov, and CodeQL for this hardening.

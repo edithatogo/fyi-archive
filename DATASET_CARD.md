@@ -1,8 +1,14 @@
 ---
 pretty_name: "fyi-archive-nz"
-license: mit
+license: other
 language:
   - en
+task_categories:
+  - text-retrieval
+annotations_creators:
+  - no-annotation
+source_datasets:
+  - other
 tags:
   - new-zealand
   - oia
@@ -83,13 +89,20 @@ GROUP BY 1, 2 ORDER BY n DESC;
 
 ## Intended use
 
-Research, legal-tech NLP, journalism, and government-transparency workloads.
+Public-interest and policy research, journalism, reproducible historical preservation,
+and government-transparency analysis. The archive is not published for model training
+or generative-AI input.
 
 ## Limitations
 
 - A point-in-time snapshot of a live site; the authoritative record is the live
   `fyi.org.nz` site. See [`NOTICE.md`](https://github.com/edithatogo/fyi-archive/blob/main/NOTICE.md).
 - Not affiliated with or endorsed by the operators of fyi.org.nz.
+- In the current verified snapshot, `attachments`, `attribution`, `first_seen`,
+  `last_updated`, and per-record `license` have no non-null values; `state` is also
+  largely unavailable. These fields are retained in the contract but are not inferred.
+- The repository contains static Croissant metadata, but the Hub Dataset Server's
+  generated Croissant endpoint is not currently available.
 
 ## Copyright & licensing
 

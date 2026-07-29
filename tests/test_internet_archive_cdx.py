@@ -4,7 +4,7 @@ import json
 from email.message import Message
 from io import BytesIO
 from typing import Self
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.request import Request
 
 import pytest
@@ -92,11 +92,13 @@ def test_all_captures_mode_preserves_versions_without_url_collapse() -> None:
         requests.append(request.full_url)
         if "showNumPages" in request.full_url:
             return _Response([["blocks"], ["1"]])
-        return _Response([
-            ["original", "timestamp"],
-            ["https://example.test/request/1", "20200101000000"],
-            ["https://example.test/request/1", "20210101000000"],
-        ])
+        return _Response(
+            [
+                ["original", "timestamp"],
+                ["https://example.test/request/1", "20200101000000"],
+                ["https://example.test/request/1", "20210101000000"],
+            ]
+        )
 
     rows = fetch_complete_cdx(
         "example.test/request/*",
@@ -356,12 +358,14 @@ def test_resume_key_paginator_follows_cursor_and_reports_chunks() -> None:
     def opener(request: Request, timeout: int) -> _Response:
         requests.append(request.full_url)
         if "resumeKey" not in request.full_url:
-            return _Response([
-                ["original"],
-                ["https://example.test/request/1"],
-                [],
-                ["next%21"],
-            ])
+            return _Response(
+                [
+                    ["original"],
+                    ["https://example.test/request/1"],
+                    [],
+                    ["next%21"],
+                ]
+            )
         return _Response([["original"], ["https://example.test/request/2"]])
 
     rows = fetch_complete_cdx_with_resume_key(
@@ -379,6 +383,66 @@ def test_resume_key_paginator_follows_cursor_and_reports_chunks() -> None:
     assert "showResumeKey=true" in requests[0]
     assert "resumeKey=next%2521" in requests[1]
     assert [chunk[:2] for chunk in chunks] == [(0, "next%21"), (1, None)]
+
+
+def test_resume_key_paginator_applies_deterministic_time_partition() -> None:
+    requests: list[str] = []
+
+    def opener(request: Request, timeout: int) -> _Response:
+        requests.append(request.full_url)
+        return _Response([["original"], ["https://example.test/request/1"]])
+
+    fetch_complete_cdx_with_resume_key(
+        "example.test/request/*",
+        page_size=1,
+        max_pages=2,
+        from_timestamp="2015",
+        to_timestamp="2019",
+        opener=opener,
+    )
+
+    assert "from=2015" in requests[0]
+    assert "to=2019" in requests[0]
+
+
+@pytest.mark.parametrize("value", ["", "20x5", "123456789012345"])
+def test_resume_key_paginator_rejects_invalid_partition_timestamp(value: str) -> None:
+    with pytest.raises(ValueError, match="1 to 14 digits"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*",
+            page_size=1,
+            max_pages=2,
+            from_timestamp=value,
+        )
+
+
+def test_resume_key_paginator_fails_closed_after_progress_stall(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clock = 0.0
+
+    def monotonic() -> float:
+        return clock
+
+    def sleep(seconds: float) -> None:
+        nonlocal clock
+        clock += seconds
+
+    monkeypatch.setattr(internet_archive_cdx.time, "monotonic", monotonic)
+    monkeypatch.setattr(internet_archive_cdx.time, "sleep", sleep)
+
+    def unavailable(_: Request, timeout: int) -> _Response:
+        raise URLError("temporarily unavailable")
+
+    with pytest.raises(RuntimeError, match="progress-stall deadline"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*",
+            page_size=1,
+            max_pages=2,
+            max_runtime_seconds=100,
+            max_stall_seconds=3,
+            opener=unavailable,
+        )
 
 
 def test_resume_key_paginator_resumes_verified_rows() -> None:
@@ -472,6 +536,23 @@ def test_resume_key_paginator_rejects_invalid_configuration(
             capture_mode=capture_mode,
             start_chunk=start_chunk,
             resume_key=resume_key,
+        )
+
+    with pytest.raises(ValueError, match="positive"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*",
+            page_size=1,
+            max_pages=2,
+            max_stall_seconds=0,
+        )
+
+    with pytest.raises(ValueError, match="must not be later"):
+        fetch_complete_cdx_with_resume_key(
+            "example.test/request/*",
+            page_size=1,
+            max_pages=2,
+            from_timestamp="2025",
+            to_timestamp="2024",
         )
 
 

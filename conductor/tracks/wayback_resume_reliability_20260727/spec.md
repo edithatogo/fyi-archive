@@ -42,6 +42,14 @@ paginator for compatibility.
 - Record the selected resume source in provenance.
 - Use `showResumeKey` and `resumeKey` for complete snapshot traversal.
 - Persist each cursor chunk, next key, fingerprint, and configuration hash.
+- Support deterministic inclusive time partitions whose range is part of the
+  checkpoint configuration hash.
+- Merge partitions only when every partition is complete and hash-valid,
+  deduplicating by CDX `urlkey` with a deterministic earliest-capture rule.
+- Provide a reusable verifier that checks manifests, retrieval evidence,
+  checkpoints, page fingerprints, exports, and prior-run count deltas.
+- Fail closed after a configurable interval without checkpoint progress while
+  retaining the existing whole-run deadline.
 - Reject legacy page checkpoints when the workflow requires cursor semantics.
 - Retain the legacy page paginator for other callers.
 - Never contact origin FOI sites or broaden GitHub token permissions.
@@ -53,3 +61,6 @@ paginator for compatibility.
 - A hosted continuation retains per-site evidence and demonstrates safe progress.
 - Targeted batches reject unknown or duplicate ids before acquisition and do not
   create cancellation-prone queues of independent workflow runs.
+- Partition merges reject incomplete inputs before creating an output.
+- Verification output labels record counts as observed progress and never
+  infers corpus coverage without a defensible denominator.

@@ -272,3 +272,47 @@ loop is authorized. A future operator-controlled improvement should subdivide a
 named site into stable URL-prefix ranges or otherwise partition its CDX query,
 then merge only independently complete partitions. That design should be
 implemented and tested separately rather than increasing the deadline again.
+
+## Partitioning and verifier hardening
+
+The follow-up implementation adds inclusive CDX `from`/`to` ranges to the
+resume-key fetcher. Time bounds and optional `urlkey` output are included in the
+checkpoint configuration SHA-256 only when enabled, so existing unpartitioned
+checkpoints retain their original identity. Stable partition plans use closed
+year buckets plus one explicitly declared open-ended bucket.
+
+The partition merger fails before writing output unless every retrieval is
+complete and its response SHA-256 matches. It requires consistent headers and a
+`urlkey` field, deduplicates across time ranges by that key, and deterministically
+selects the earliest timestamp. This is implementation evidence only: no
+partitioned hosted acquisition has yet been dispatched or accepted.
+
+The reusable verifier checks every manifest-referenced retrieval, checkpoint,
+page, fingerprint, count, cursor state, evidence hash, and complete response
+hash. Running it over CA, DE, NZ, and UK from `30391530911` reproduced the
+independent reconciliation: four sites, one complete, 781 pages, and 780,826
+retained records. Its progress index reports `coverage_percentage=null` with an
+explicit statement that observed counts do not establish a corpus denominator.
+
+Acquisitions may now set a progress-stall deadline independently of the
+whole-pattern deadline. The workflow defaults to 900 seconds without a new
+checkpoint, requires the stall limit to be no greater than the whole-run
+deadline, and retains the same fail-closed evidence path.
+
+Hosted acceptance remains open. CA, DE, and UK continue on the existing weekly
+resume schedule until a separately bounded named-site partition trial has
+passed; the implementation does not authorize another deadline-only retry.
+
+## Parallel Hugging Face catalog reconciliation
+
+The distribution surface was reconciled separately from Wayback completeness on
+2026-07-29. A dedicated public `fyi-archive` collection now contains exactly all
+23 registered dataset repositories. Every repository has an instance-specific
+card, source and status boundaries, language metadata, and `license:other`;
+an idempotence rerun reported all 23 cards unchanged. The daily sync renderer
+now uses the selected instance instead of uploading the NZ card to other sites.
+
+This publication metadata does not alter Wayback acceptance. Empty repository
+shells deliberately advertise no Dataset Viewer split and make no record-count
+or completeness claim. CA, DE, and UK remain incomplete and resumable; NZ
+remains complete at 208,826 observed records without a percentage estimate.
