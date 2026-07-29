@@ -107,3 +107,39 @@ def test_law_used_comes_only_from_structured_request_header() -> None:
         archive_timestamp="20200101000000",
     )
     assert record["law_used"] == "gipa"
+
+
+def test_authority_extraction_deduplicates_public_body_selector_matches() -> None:
+    record = parse_archived_request(
+        """
+        <a class="public-body" href="/body/agency">Agency</a>
+        """,
+        source_url="https://example.test/request/example",
+        archive_url="https://web.archive.org/example",
+        archive_timestamp="20200101000000",
+    )
+    assert record["authority_slug"] == "agency"
+
+
+def test_law_used_recognizes_rti_and_foi_headers() -> None:
+    for phrase, expected in (
+        ("right to information", "rti"),
+        ("freedom of information", "foi"),
+    ):
+        record = parse_archived_request(
+            f'<p class="request-header__subtitle">Made this {phrase} request</p>',
+            source_url="https://example.test/request/example",
+            archive_url="https://web.archive.org/example",
+            archive_timestamp="20200101000000",
+        )
+        assert record["law_used"] == expected
+
+
+def test_missing_authority_uses_conservative_text_fallback() -> None:
+    record = parse_archived_request(
+        '<div class="request-authority">Fallback Authority</div>',
+        source_url="https://example.test/request/example",
+        archive_url="https://web.archive.org/example",
+        archive_timestamp="20200101000000",
+    )
+    assert record["authority"] == "Fallback Authority"
