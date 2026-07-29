@@ -137,3 +137,43 @@ def test_sequential_mode_opens_circuit_after_bounded_failures(tmp_path, monkeypa
     assert result["circuit_open"] is True
     assert result["record_count"] == 3
     assert result["pending_count"] == 2_079
+
+
+def test_chunk_mode_replays_only_requested_selection_slice(tmp_path, monkeypatch) -> None:
+    records = [
+        {
+            "canonical_slug": str(index),
+            "source_url": f"https://www.righttoknow.org.au/request/{index}",
+            "archive_timestamp": "20200101",
+            "archive_digest": "ABC",
+            "media_kind": "html",
+            "selection_reason": "latest_successful_primary_html_fallback",
+        }
+        for index in range(2_082)
+    ]
+    selection = tmp_path / "selection.json"
+    selection.write_text(json.dumps({"record_count": 2_082, "records": records}))
+    monkeypatch.setattr(replay, "sha256_file", lambda _path: replay.SELECTION_SHA256)
+    seen: list[str] = []
+
+    def fake_replay(selected, **_kwargs):
+        seen.append(selected["canonical_slug"])
+        return {**selected, "status": "captured", "parser_version": replay.PARSER_VERSION}
+
+    monkeypatch.setattr(replay, "replay_one", fake_replay)
+    result = replay.run(
+        selection,
+        output_root=tmp_path / "output",
+        workers=1,
+        launch_delay_seconds=0,
+        timeout_seconds=1,
+        retries=0,
+        circuit_breaker_failures=3,
+        offset=10,
+        limit=3,
+    )
+    assert seen == ["10", "11", "12"]
+    assert result["chunk_offset"] == 10
+    assert result["chunk_limit"] == 3
+    assert result["chunk_selection_count"] == 3
+    assert result["pending_count"] == 0

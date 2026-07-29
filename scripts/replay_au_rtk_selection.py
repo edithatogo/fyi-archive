@@ -219,14 +219,21 @@ def run(
     timeout_seconds: float,
     retries: int,
     circuit_breaker_failures: int,
+    offset: int = 0,
+    limit: int | None = None,
 ) -> dict[str, Any]:
     """Replay a selection with deterministic membership and resumable checkpoints."""
     if sha256_file(selection_path) != SELECTION_SHA256:
         raise ValueError("selection SHA-256 mismatch")
     selection = json.loads(selection_path.read_text(encoding="utf-8"))
-    records = selection["records"]
-    if selection.get("record_count") != 2_082 or len(records) != 2_082:
+    all_records = selection["records"]
+    if selection.get("record_count") != 2_082 or len(all_records) != 2_082:
         raise ValueError("selection record count mismatch")
+    if offset < 0 or offset >= len(all_records):
+        raise ValueError("offset must be within the complete selection")
+    records = all_records[offset:] if limit is None else all_records[offset : offset + limit]
+    if not records:
+        raise ValueError("chunk contains no records")
     output_root.mkdir(parents=True, exist_ok=True)
     complete: list[dict[str, Any]] = []
     pending: list[dict[str, str]] = []
@@ -308,9 +315,12 @@ def run(
         "status": "candidate_non_final",
         "selection_sha256": SELECTION_SHA256,
         "record_count": len(complete),
+        "chunk_offset": offset,
+        "chunk_limit": limit,
+        "chunk_selection_count": len(records),
         "captured_count": sum(record.get("status") == "captured" for record in complete),
         "failed_count": sum(record.get("status") != "captured" for record in complete),
-        "pending_count": selection["record_count"] - len(complete),
+        "pending_count": len(records) - len(complete),
         "circuit_open": circuit_open,
         "normalized_candidate_sha256": sha256_file(normalized),
         "publication": False,
@@ -331,6 +341,8 @@ def main() -> int:
     parser.add_argument("--timeout-seconds", type=float, default=30)
     parser.add_argument("--retries", type=int, default=2)
     parser.add_argument("--circuit-breaker-failures", type=int, default=5)
+    parser.add_argument("--offset", type=int, default=0)
+    parser.add_argument("--limit", type=int, default=None)
     args = parser.parse_args()
     summary = run(
         args.selection,
@@ -340,6 +352,8 @@ def main() -> int:
         timeout_seconds=args.timeout_seconds,
         retries=args.retries,
         circuit_breaker_failures=args.circuit_breaker_failures,
+        offset=args.offset,
+        limit=args.limit,
     )
     print(json.dumps(summary, sort_keys=True))
     return 0 if summary["failed_count"] == 0 else 2
