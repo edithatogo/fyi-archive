@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -104,4 +106,100 @@ def test_merge_rejects_gapped_or_closed_final_partition(tmp_path: Path) -> None:
             [items[0]],
             output=tmp_path / "closed.json",
             evidence_output=tmp_path / "closed-evidence.json",
+        )
+
+
+@pytest.mark.parametrize(
+    ("partition_id", "start", "end", "message"),
+    [
+        ("Bad Id", "2020", None, "kebab"),
+        ("bad", "20", None, "from_timestamp"),
+        ("bad", "2020", "20", "to_timestamp"),
+        ("bad", "2021", "2020", "must not exceed"),
+    ],
+)
+def test_time_partition_rejects_invalid_values(
+    partition_id: str, start: str, end: str | None, message: str
+) -> None:
+    with pytest.raises(ValueError, match=message):
+        TimePartition(partition_id, start, end)
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"start_year": 999, "open_from_year": 2020}, "four digits"),
+        ({"start_year": 2020, "open_from_year": 2020}, "must precede"),
+        ({"start_year": 2000, "open_from_year": 2020, "span_years": 0}, "positive"),
+    ],
+)
+def test_build_partitions_rejects_invalid_ranges(kwargs: dict[str, int], message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        build_year_partitions(**kwargs)
+
+
+def test_merge_rejects_empty_duplicate_and_nonfinal_open_plans(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="at least one"):
+        merge_complete_partition_exports(
+            [], output=tmp_path / "out.json", evidence_output=tmp_path / "evidence.json"
+        )
+    final = TimePartition("2025-open", "2025", None)
+    item = _partition_files(tmp_path, final, [])
+    with pytest.raises(ValueError, match="unique"):
+        merge_complete_partition_exports(
+            [item, item], output=tmp_path / "dup.json", evidence_output=tmp_path / "dup-e.json"
+        )
+    with pytest.raises(ValueError, match="only the final"):
+        merge_complete_partition_exports(
+            [item, _partition_files(tmp_path, TimePartition("2026-open", "2026", None), [])],
+            output=tmp_path / "open.json",
+            evidence_output=tmp_path / "open-e.json",
+        )
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (lambda value: value.update(from_timestamp="2000"), "time range"),
+        (lambda value: value.update(response_sha256="bad"), "response hash"),
+        (lambda value: value.update(record_count=99), "record count"),
+    ],
+)
+def test_merge_rejects_invalid_retrieval_evidence(
+    tmp_path: Path, mutation: Callable[[dict[str, Any]], None], message: str
+) -> None:
+    partition = TimePartition("2025-open", "2025", None)
+    item = _partition_files(tmp_path, partition, [])
+    retrieval = json.loads(item[2].read_text())
+    mutation(retrieval)
+    item[2].write_text(json.dumps(retrieval), encoding="utf-8")
+    with pytest.raises(RuntimeError, match=message):
+        merge_complete_partition_exports(
+            [item], output=tmp_path / "out.json", evidence_output=tmp_path / "evidence.json"
+        )
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"not": "a list"}, "malformed"),
+        ([["original", "timestamp"]], "requires urlkey"),
+        (
+            [["urlkey", "timestamp"], ["key-only"]],
+            "row width",
+        ),
+    ],
+)
+def test_merge_rejects_malformed_exports(tmp_path: Path, payload: object, message: str) -> None:
+    partition = TimePartition("2025-open", "2025", None)
+    item = _partition_files(tmp_path, partition, [])
+    raw = json.dumps(payload)
+    item[1].write_text(raw, encoding="utf-8")
+    retrieval = json.loads(item[2].read_text())
+    retrieval["response_sha256"] = hashlib.sha256(raw.encode()).hexdigest()
+    retrieval["record_count"] = len(payload) - 1 if isinstance(payload, list) else 0
+    item[2].write_text(json.dumps(retrieval), encoding="utf-8")
+    with pytest.raises(RuntimeError, match=message):
+        merge_complete_partition_exports(
+            [item], output=tmp_path / "out.json", evidence_output=tmp_path / "evidence.json"
         )
