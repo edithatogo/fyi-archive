@@ -1,0 +1,9 @@
+Scope: remediation of the three reviewed Wayback replay P1 integrity findings.
+
+Evidence:
+- RED: 13 targeted adversarial failures reproduced the prior host/content/payload, policy, and replacement-member bypasses.
+- GREEN: 74 focused replay tests passed.
+- Full suite: 524 passed, 1 skipped.
+- Ruff lint/format, ty, JSON Schema meta-validation, uv lock consistency, independent-verifier import isolation, and git diff integrity passed.
+
+Boundaries: transport-independent state only. No network replay, live-origin access, source retrieval, push, pull request, or merge.
