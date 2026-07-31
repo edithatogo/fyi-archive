@@ -1,0 +1,6 @@
+Issue: edithatogo/fyi-archive#317
+Base: cea43a097f8928d7eaa4295d284f0b8d3999637b
+Scope: transport-independent replay state only; fyi-cli remains network owner.
+Evidence: 511 tests passed, 1 skipped; focused replay and historical regression gate 125 passed; Ruff lint and changed-file format passed; ty passed; schemas passed Draft 2020-12 checks; independent verifier imports no producer.
+Boundaries: no Wayback or live-origin access; no restricted content; no push, PR, merge, publication, or manifest finalization.
+Known repository baselines: repository-wide format reports 35 untouched files; typos and taplo executables are unavailable; actionlint reports six findings in untouched workflows.

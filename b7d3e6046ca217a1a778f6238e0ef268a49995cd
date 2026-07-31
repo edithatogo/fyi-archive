@@ -1,0 +1,19 @@
+Wayback replay authority remediation evidence
+
+RED evidence:
+- resealed archive_hosts, allowed_content_types, and max_payload_bytes were accepted by configuration validation
+- replacement_candidate accepted caller-supplied hashes without loading a pinned CDX artifact
+- focused reproduction: 5 failures
+
+GREEN evidence:
+- exact packaged boundary-registry byte SHA-256: 71045c0446973cc28b12e41eb2201e6c8c896f53b0b59a51ba2f8b6063d3a7ea
+- replacement candidates require a regular local CDX artifact, exact artifact hash, schema-valid unique row, row hash, failed member, canonical URL, archive URL, capture timestamp, and retrieval-time consistency
+- focused replay suites: 81 passed
+- full suite: 531 passed, 1 skipped
+- Ruff changed-file checks: passed
+- ty src checks: passed
+- wheel package-data smoke: passed
+- git diff check: passed
+
+Boundary receipt:
+No network, source retrieval, replay, live-origin access, push, pull request, merge, publication, or release occurred.
