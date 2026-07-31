@@ -1,0 +1,1 @@
+Final CI remediation for fyi-archive PR #320. Coverage is 94.04% with 140 focused tests; full suite 590 passed, 1 skipped; Ruff preview, ty strict, and formatting pass. No retrieval, replay, source, publication, or release operation occurred.
