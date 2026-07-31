@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 
+import fyi_archive.wayback_cdx_approvals as approval_module
 import fyi_archive.wayback_replay as replay_module
 from fyi_archive.wayback_replay import (
     ReplayObservation,
@@ -32,6 +33,8 @@ from fyi_archive.wayback_replay import (
 
 ROOT = Path(__file__).parents[1]
 FIXTURE = ROOT / "tests" / "fixtures" / "wayback_replay_configuration.json"
+APPROVED_CDX_METADATA = ROOT / "tests" / "fixtures" / "wayback-approved-cdx-metadata.json"
+APPROVED_CDX_EVIDENCE = ROOT / "tests" / "fixtures" / "wayback-approved-cdx-retrieval-evidence.json"
 NOW = datetime(2026, 7, 31, tzinfo=UTC)
 
 
@@ -41,6 +44,17 @@ def configuration() -> dict[str, Any]:
 
 def repin_policy(config: dict[str, Any]) -> None:
     config["replay_policy_sha256"] = content_hash(config["policy"])
+
+
+def approved_cdx_evidence() -> tuple[Path, str, str, Path, str]:
+    artifact = json.loads(APPROVED_CDX_METADATA.read_text())
+    return (
+        APPROVED_CDX_METADATA,
+        sha256_bytes(APPROVED_CDX_METADATA.read_bytes()),
+        str(artifact["rows"][0]["row_sha256"]),
+        APPROVED_CDX_EVIDENCE,
+        sha256_bytes(APPROVED_CDX_EVIDENCE.read_bytes()),
+    )
 
 
 def write_cdx_metadata(
@@ -62,6 +76,9 @@ def write_cdx_metadata(
     artifact = {
         "schema": "fyi-archive.wayback-cdx-metadata-artifact.v1",
         "source": "Internet Archive CDX",
+        "endpoint": "https://web.archive.org/cdx/search/cdx",
+        "query_scope": canonical_url,
+        "producer_id": "caller-controlled-producer",
         "retrieved_at": "2026-07-31T00:00:00Z",
         "rows": [row],
     }
@@ -427,7 +444,9 @@ def test_producer_and_independent_verifier_reject_invalid_policy(
 )
 def test_replacement_candidates_reject_any_url_change(tmp_path: Path, url: str) -> None:
     config = configuration()
-    metadata_path, metadata_sha256, row_sha256 = write_cdx_metadata(tmp_path)
+    metadata_path, metadata_sha256, row_sha256, evidence_path, evidence_sha256 = (
+        approved_cdx_evidence()
+    )
     checkpoint = {
         "checkpoint_sha256": "c" * 64,
         "member_states": {"synthetic-001": "terminal"},
@@ -442,6 +461,8 @@ def test_replacement_candidates_reject_any_url_change(tmp_path: Path, url: str) 
             source_metadata_path=metadata_path,
             source_metadata_sha256=metadata_sha256,
             source_row_sha256=row_sha256,
+            retrieval_evidence_path=evidence_path,
+            retrieval_evidence_sha256=evidence_sha256,
         )
 
 
@@ -460,7 +481,9 @@ def test_candidate_cannot_activate_replay_membership(tmp_path: Path) -> None:
         rng=random.Random(1),
     )
     before = json.loads(json.dumps(checkpoint))
-    metadata_path, metadata_sha256, row_sha256 = write_cdx_metadata(tmp_path)
+    metadata_path, metadata_sha256, row_sha256, evidence_path, evidence_sha256 = (
+        approved_cdx_evidence()
+    )
     candidate = replacement_candidate(
         configuration=config,
         checkpoint=checkpoint,
@@ -470,6 +493,8 @@ def test_candidate_cannot_activate_replay_membership(tmp_path: Path) -> None:
         source_metadata_path=metadata_path,
         source_metadata_sha256=metadata_sha256,
         source_row_sha256=row_sha256,
+        retrieval_evidence_path=evidence_path,
+        retrieval_evidence_sha256=evidence_sha256,
     )
     assert candidate["status"] == "pending_replay_approval"
     assert candidate["configuration_sha256"] == content_hash(config)
@@ -491,6 +516,8 @@ def test_replacement_candidate_rejects_arbitrary_or_nonfailed_member(
         member_id=member_id,
         canonical_url="https://example.test/request/synthetic-002",
     )
+    evidence_path = APPROVED_CDX_EVIDENCE
+    evidence_sha256 = sha256_bytes(evidence_path.read_bytes())
     with pytest.raises(ReplayStateError, match=r"failed member|configured population"):
         replacement_candidate(
             configuration=config,
@@ -501,6 +528,8 @@ def test_replacement_candidate_rejects_arbitrary_or_nonfailed_member(
             source_metadata_path=metadata_path,
             source_metadata_sha256=metadata_sha256,
             source_row_sha256=row_sha256,
+            retrieval_evidence_path=evidence_path,
+            retrieval_evidence_sha256=evidence_sha256,
         )
 
 
@@ -518,7 +547,9 @@ def test_replacement_merge_rejects_wrong_configuration_or_checkpoint(tmp_path: P
         now=NOW,
         rng=random.Random(1),
     )
-    metadata_path, metadata_sha256, row_sha256 = write_cdx_metadata(tmp_path)
+    metadata_path, metadata_sha256, row_sha256, evidence_path, evidence_sha256 = (
+        approved_cdx_evidence()
+    )
     candidate = replacement_candidate(
         configuration=config,
         checkpoint=checkpoint,
@@ -528,6 +559,8 @@ def test_replacement_merge_rejects_wrong_configuration_or_checkpoint(tmp_path: P
         source_metadata_path=metadata_path,
         source_metadata_sha256=metadata_sha256,
         source_row_sha256=row_sha256,
+        retrieval_evidence_path=evidence_path,
+        retrieval_evidence_sha256=evidence_sha256,
     )
     changed = configuration()
     changed["producer_version"] = "changed"
@@ -565,6 +598,8 @@ def test_replacement_candidate_rejects_fabricated_or_unbound_cdx_metadata(
         tmp_path,
         capture_timestamp="2099-01-01T00:00:00Z",
     )
+    evidence_path = APPROVED_CDX_EVIDENCE
+    evidence_sha256 = sha256_bytes(evidence_path.read_bytes())
     for mutation in ("artifact_hash", "row_hash", "timestamp", "member"):
         kwargs: dict[str, object] = {
             "configuration": config,
@@ -575,6 +610,8 @@ def test_replacement_candidate_rejects_fabricated_or_unbound_cdx_metadata(
             "source_metadata_path": path,
             "source_metadata_sha256": artifact_sha256,
             "source_row_sha256": row_sha256,
+            "retrieval_evidence_path": evidence_path,
+            "retrieval_evidence_sha256": evidence_sha256,
         }
         if mutation == "artifact_hash":
             kwargs["source_metadata_sha256"] = "a" * 64
@@ -586,6 +623,150 @@ def test_replacement_candidate_rejects_fabricated_or_unbound_cdx_metadata(
             kwargs["member_id"] = "synthetic-002"
         with pytest.raises(ReplayStateError):
             replacement_candidate(**kwargs)  # type: ignore[arg-type]
+
+
+def test_self_hashed_caller_supplied_cdx_artifact_cannot_qualify(
+    tmp_path: Path,
+) -> None:
+    config = configuration()
+    checkpoint = write_initial_state(tmp_path, config)
+    checkpoint = record_observation(
+        root=tmp_path,
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id="synthetic-001",
+        occurrence_id="terminal-for-forged-cdx",
+        attempt_number=1,
+        observation=ReplayObservation(kind="http", status_code=404),
+        now=NOW,
+        rng=random.Random(1),
+    )
+    metadata_path, metadata_sha256, row_sha256 = write_cdx_metadata(tmp_path)
+    evidence_path = APPROVED_CDX_EVIDENCE
+    evidence_sha256 = sha256_bytes(evidence_path.read_bytes())
+
+    with pytest.raises(ReplayStateError, match="approved CDX artifact registry"):
+        replacement_candidate(
+            configuration=config,
+            checkpoint=checkpoint,
+            member_id="synthetic-001",
+            candidate_url=config["members"][0]["canonical_url"],
+            capture_timestamp="2025-01-01T00:00:00Z",
+            source_metadata_path=metadata_path,
+            source_metadata_sha256=metadata_sha256,
+            source_row_sha256=row_sha256,
+            retrieval_evidence_path=evidence_path,
+            retrieval_evidence_sha256=evidence_sha256,
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("endpoint", "https://example.test/cdx"),
+        ("query_scope", "https://example.test/request/other.json"),
+        ("producer_id", "caller-controlled-producer"),
+        ("retrieved_at", "2026-08-01T00:00:00Z"),
+    ],
+)
+def test_self_hashed_retrieval_receipt_cannot_redefine_provenance(
+    tmp_path: Path, field: str, value: str
+) -> None:
+    config = configuration()
+    checkpoint = write_initial_state(tmp_path, config)
+    checkpoint = record_observation(
+        root=tmp_path,
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id="synthetic-001",
+        occurrence_id=f"terminal-for-forged-{field}",
+        attempt_number=1,
+        observation=ReplayObservation(kind="http", status_code=404),
+        now=NOW,
+        rng=random.Random(1),
+    )
+    metadata_path, metadata_sha256, row_sha256, evidence_path, _ = approved_cdx_evidence()
+    forged = json.loads(evidence_path.read_text())
+    forged[field] = value
+    forged_path = tmp_path / f"forged-{field}.json"
+    forged_path.write_text(json.dumps(forged, separators=(",", ":"), sort_keys=True))
+
+    with pytest.raises(ReplayStateError, match="approved CDX artifact registry"):
+        replacement_candidate(
+            configuration=config,
+            checkpoint=checkpoint,
+            member_id="synthetic-001",
+            candidate_url=config["members"][0]["canonical_url"],
+            capture_timestamp="2025-01-01T00:00:00Z",
+            source_metadata_path=metadata_path,
+            source_metadata_sha256=metadata_sha256,
+            source_row_sha256=row_sha256,
+            retrieval_evidence_path=forged_path,
+            retrieval_evidence_sha256=sha256_bytes(forged_path.read_bytes()),
+        )
+
+
+def test_approval_registry_cannot_be_replaced_and_resealed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry = json.loads(approval_module.APPROVAL_REGISTRY_PATH.read_text())
+    registry["approvals"][0]["producer_id"] = "caller-controlled-producer"
+    forged_registry = tmp_path / "forged-approval-registry.json"
+    forged_registry.write_text(json.dumps(registry, separators=(",", ":"), sort_keys=True))
+    monkeypatch.setattr(approval_module, "APPROVAL_REGISTRY_PATH", forged_registry)
+    metadata_path, metadata_sha256, _, evidence_path, evidence_sha256 = approved_cdx_evidence()
+
+    with pytest.raises(approval_module.CdxApprovalError, match="registry pin"):
+        approval_module.load_approved_cdx_evidence(
+            artifact_path=metadata_path,
+            artifact_sha256=metadata_sha256,
+            retrieval_evidence_path=evidence_path,
+            retrieval_evidence_sha256=evidence_sha256,
+        )
+
+
+def test_resealed_candidate_cannot_redefine_registered_provenance(tmp_path: Path) -> None:
+    config = configuration()
+    checkpoint = write_initial_state(tmp_path, config)
+    checkpoint = record_observation(
+        root=tmp_path,
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id="synthetic-001",
+        occurrence_id="terminal-for-candidate-provenance",
+        attempt_number=1,
+        observation=ReplayObservation(kind="http", status_code=404),
+        now=NOW,
+        rng=random.Random(1),
+    )
+    metadata_path, metadata_sha256, row_sha256, evidence_path, evidence_sha256 = (
+        approved_cdx_evidence()
+    )
+    candidate = replacement_candidate(
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id="synthetic-001",
+        candidate_url=config["members"][0]["canonical_url"],
+        capture_timestamp="2025-01-01T00:00:00Z",
+        source_metadata_path=metadata_path,
+        source_metadata_sha256=metadata_sha256,
+        source_row_sha256=row_sha256,
+        retrieval_evidence_path=evidence_path,
+        retrieval_evidence_sha256=evidence_sha256,
+    )
+    candidate["producer_id"] = "caller-controlled-producer"
+    candidate.pop("candidate_sha256")
+    candidate["candidate_sha256"] = content_hash(candidate)
+
+    with pytest.raises(ReplayStateError, match="approved provenance"):
+        merge_replacement_candidates([candidate], configuration=config, checkpoint=checkpoint)
+
+    candidate["producer_id"] = "fyi-archive-test-fixture"
+    candidate["approval_registry_sha256"] = "0" * 64
+    candidate.pop("candidate_sha256")
+    candidate["candidate_sha256"] = content_hash(candidate)
+    with pytest.raises(ReplayStateError, match="approval-registry pin"):
+        merge_replacement_candidates([candidate], configuration=config, checkpoint=checkpoint)
 
 
 def test_open_circuit_rejects_premature_transport_observation(tmp_path: Path) -> None:

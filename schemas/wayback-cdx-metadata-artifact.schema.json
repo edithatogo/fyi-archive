@@ -4,10 +4,16 @@
   "title": "Pinned CDX metadata rows eligible for replacement review",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "source", "retrieved_at", "rows"],
+  "required": [
+    "schema", "source", "endpoint", "query_scope", "producer_id",
+    "retrieved_at", "rows"
+  ],
   "properties": {
     "schema": {"const": "fyi-archive.wayback-cdx-metadata-artifact.v1"},
     "source": {"const": "Internet Archive CDX"},
+    "endpoint": {"const": "https://web.archive.org/cdx/search/cdx"},
+    "query_scope": {"type": "string", "format": "uri", "pattern": "^https://"},
+    "producer_id": {"type": "string", "minLength": 1},
     "retrieved_at": {"type": "string", "format": "date-time"},
     "rows": {
       "type": "array",

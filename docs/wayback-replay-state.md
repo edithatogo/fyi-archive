@@ -21,12 +21,18 @@ The replay-state contract provides:
   internally consistent circuit windows;
 - exact-canonical-URL replacement metadata candidates bound to the immutable
   configuration, checkpoint and failed member state, and created only after a
-  concrete CDX metadata artifact and its unique row have passed artifact-hash,
-  row-hash, member, URL and capture-time verification; they remain
+  concrete CDX metadata artifact and separate retrieval-evidence receipt match
+  an exact pair in a package-pinned approval registry. The registry fixes both
+  byte hashes plus the Internet Archive endpoint, exact query scope, producer
+  identity and retrieval time. Artifact, receipt and registry must agree before
+  row-hash, member, URL and capture-time verification; candidates remain
   `pending_replay_approval`; and
 - a standalone verifier that imports no replay producer code.
 
 The package contains no HTTP client, origin discovery or archive replay
 command. A replacement candidate is metadata only and never changes active
-membership. The AU regression oracle contains only approved hashes and counts;
-it contains no retained or restricted source content and is not authorization.
+membership. Caller-created artifact or receipt hashes are not approvals: adding
+an approved pair requires a reviewed change to the package registry and its
+source-code pin. The AU regression oracle contains only approved hashes and
+counts; it contains no retained or restricted source content and is not
+authorization.

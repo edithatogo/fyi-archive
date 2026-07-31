@@ -24,6 +24,14 @@ from urllib.parse import urlsplit
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import ValidationError
 
+from fyi_archive.wayback_cdx_approvals import (
+    APPROVED_APPROVAL_REGISTRY_SHA256,
+    CdxApprovalError,
+    load_approved_cdx_evidence,
+    query_scope_allows_url,
+    registered_cdx_approval,
+)
+
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
 TERMINAL_STATUS = frozenset({404, 410})
@@ -668,6 +676,8 @@ def replacement_candidate(
     source_metadata_path: Path,
     source_metadata_sha256: str,
     source_row_sha256: str,
+    retrieval_evidence_path: Path,
+    retrieval_evidence_sha256: str,
 ) -> dict[str, Any]:
     """Create a replacement candidate from one verified, pinned CDX row."""
     normalized = validate_configuration(configuration)
@@ -688,16 +698,17 @@ def replacement_candidate(
         raise ReplayStateError("replacement candidate URL is not the exact canonical URL")
     expected_artifact_sha256 = _require_sha256(source_metadata_sha256, "source_metadata_sha256")
     expected_row_sha256 = _require_sha256(source_row_sha256, "source_row_sha256")
-    if source_metadata_path.is_symlink() or not source_metadata_path.is_file():
-        raise ReplayStateError("replacement CDX metadata artifact is missing or unsafe")
     try:
-        source_bytes = source_metadata_path.read_bytes()
-        source_metadata = json.loads(source_bytes.decode("utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
-        raise ReplayStateError("replacement CDX metadata artifact is unreadable") from error
-    if sha256_bytes(source_bytes) != expected_artifact_sha256:
-        raise ReplayStateError("replacement CDX metadata artifact hash does not match")
-    _validate_schema("wayback-cdx-metadata-artifact.schema.json", source_metadata)
+        approval, source_metadata, _retrieval_evidence = load_approved_cdx_evidence(
+            artifact_path=source_metadata_path,
+            artifact_sha256=expected_artifact_sha256,
+            retrieval_evidence_path=retrieval_evidence_path,
+            retrieval_evidence_sha256=retrieval_evidence_sha256,
+        )
+    except CdxApprovalError as error:
+        raise ReplayStateError(str(error)) from error
+    if not query_scope_allows_url(str(approval["query_scope"]), original):
+        raise ReplayStateError("replacement candidate URL is outside the approved CDX query scope")
     rows = cast("list[dict[str, Any]]", source_metadata["rows"])
     matching_rows: list[dict[str, Any]] = []
     for raw_row in rows:
@@ -743,8 +754,15 @@ def replacement_candidate(
         "failed_status": failed_status,
         "canonical_url": original,
         "capture_timestamp": candidate_timestamp,
+        "approval_id": approval["approval_id"],
+        "approval_registry_sha256": APPROVED_APPROVAL_REGISTRY_SHA256,
         "source_metadata_sha256": expected_artifact_sha256,
+        "retrieval_evidence_sha256": approval["retrieval_evidence_sha256"],
         "source_row_sha256": expected_row_sha256,
+        "endpoint": approval["endpoint"],
+        "query_scope": approval["query_scope"],
+        "producer_id": approval["producer_id"],
+        "retrieved_at": approval["retrieved_at"],
         "status": "pending_replay_approval",
     }
     value["candidate_sha256"] = content_hash(value)
@@ -790,6 +808,30 @@ def merge_replacement_candidates(
         member = members[member_id]
         if value.get("canonical_url") != member["canonical_url"]:
             raise ReplayStateError("replacement candidate exact URL binding does not match")
+        try:
+            approval = registered_cdx_approval(
+                str(value.get("source_metadata_sha256", "")),
+                str(value.get("retrieval_evidence_sha256", "")),
+            )
+        except CdxApprovalError as error:
+            raise ReplayStateError(str(error)) from error
+        for field in (
+            "approval_id",
+            "endpoint",
+            "query_scope",
+            "producer_id",
+            "retrieved_at",
+        ):
+            if value.get(field) != approval[field]:
+                raise ReplayStateError(
+                    f"replacement candidate approved provenance differs for {field}"
+                )
+        if value.get("approval_registry_sha256") != APPROVED_APPROVAL_REGISTRY_SHA256:
+            raise ReplayStateError("replacement candidate approval-registry pin does not match")
+        if not query_scope_allows_url(str(approval["query_scope"]), str(value["canonical_url"])):
+            raise ReplayStateError(
+                "replacement candidate URL is outside the approved CDX query scope"
+            )
         value["candidate_sha256"] = supplied
         unique[supplied] = value
     return [unique[digest] for digest in sorted(unique)]

@@ -7,7 +7,10 @@
   "required": [
     "schema", "configuration_sha256", "checkpoint_sha256", "member_id",
     "failed_status", "canonical_url", "capture_timestamp",
-    "source_metadata_sha256", "source_row_sha256", "status", "candidate_sha256"
+    "approval_id", "approval_registry_sha256", "source_metadata_sha256",
+    "retrieval_evidence_sha256",
+    "source_row_sha256", "endpoint", "query_scope", "producer_id",
+    "retrieved_at", "status", "candidate_sha256"
   ],
   "properties": {
     "schema": {"const": "fyi-archive.wayback-replacement-candidate.v1"},
@@ -17,8 +20,15 @@
     "failed_status": {"enum": ["retryable", "terminal"]},
     "canonical_url": {"type": "string", "format": "uri", "pattern": "^https://"},
     "capture_timestamp": {"type": "string", "format": "date-time"},
+    "approval_id": {"type": "string", "minLength": 1},
+    "approval_registry_sha256": {"$ref": "#/$defs/sha256"},
     "source_metadata_sha256": {"$ref": "#/$defs/sha256"},
+    "retrieval_evidence_sha256": {"$ref": "#/$defs/sha256"},
     "source_row_sha256": {"$ref": "#/$defs/sha256"},
+    "endpoint": {"const": "https://web.archive.org/cdx/search/cdx"},
+    "query_scope": {"type": "string", "format": "uri", "pattern": "^https://"},
+    "producer_id": {"type": "string", "minLength": 1},
+    "retrieved_at": {"type": "string", "format": "date-time"},
     "status": {"const": "pending_replay_approval"},
     "candidate_sha256": {"$ref": "#/$defs/sha256"}
   },
