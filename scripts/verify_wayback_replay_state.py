@@ -136,14 +136,14 @@ def verify_configuration(value: dict[str, Any]) -> tuple[str, list[dict[str, Any
             raise RuntimeError("configuration member IDs are empty or repeated")
         member_ids.add(member_id)
         url = urlsplit(str(member["canonical_url"]))
+        has_userinfo = url.username is not None or url.password is not None
+        has_canonical_host = bool(url.hostname) and url.hostname.lower() == url.hostname
         if (
             url.scheme != "https"
-            or not url.hostname
-            or url.hostname.lower() != url.hostname
-            or url.username is not None
-            or url.password is not None
+            or not has_canonical_host
+            or has_userinfo
             or url.fragment
-            or url.port not in (None, 443)
+            or url.port not in {None, 443}
         ):
             raise RuntimeError("configuration member URL is invalid")
         captured = datetime.fromisoformat(str(member["capture_timestamp"]))
@@ -300,14 +300,16 @@ def verify_journal(
                 final_port = final.port
             except ValueError as error:
                 raise RuntimeError("attempt final archive URL is invalid") from error
+            has_userinfo = final.username is not None or final.password is not None
+            has_allowed_host = bool(final.hostname) and final.hostname.lower() in set(
+                policy["archive_hosts"]
+            )
             if (
                 final.scheme != "https"
-                or not final.hostname
-                or final.username is not None
-                or final.password is not None
+                or not has_allowed_host
+                or has_userinfo
                 or final.fragment
-                or final_port not in (None, 443)
-                or final.hostname.lower() not in set(policy["archive_hosts"])
+                or final_port not in {None, 443}
             ):
                 raise RuntimeError("attempt escaped the configured archive host boundary")
             media_type = str(value.get("content_type") or "").split(";", 1)[0].strip().lower()
