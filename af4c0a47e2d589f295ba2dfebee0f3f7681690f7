@@ -1,0 +1,17 @@
+Wayback CDX external-approval remediation evidence
+
+RED evidence:
+- caller-created self-hashed CDX artifact produced pending candidate df76eb145952cb8c75fd642eefeb4feb99149e52b603b3d69f27b553aa8ecdf9
+- focused reproduction failed because no ReplayStateError was raised
+
+GREEN evidence:
+- package approval registry SHA-256 ea8042d6c27c8fd73b0d1f1a95491c0ffc0cbf1ed9fb2701a9d538ee022fc8eb
+- exact artifact and retrieval-evidence byte pair is externally registered
+- endpoint, query scope, producer identity, retrieval time, registry pin, artifact row, member, URL, and capture timestamp are cross-bound
+- forged artifact, forged receipt fields, resealed registry, and resealed candidate provenance are rejected
+- focused replay suites: 88 passed
+- full suite: 538 passed, 1 skipped
+- Ruff, ty, schema validation, registry-pin validation, wheel-content smoke, and diff checks passed
+
+Boundary receipt:
+Candidates remain pending_replay_approval and cannot alter replay membership. No network, source retrieval, replay, push, pull request, merge, publication, or release occurred.
