@@ -430,7 +430,7 @@ def test_retry_after_handles_naive_date_and_naive_now() -> None:
     )
 
 
-def test_retry_after_rejects_unparseable_nonexception_result(
+def test_retry_after_rejects_unparsable_nonexception_result(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(replay.email.utils, "parsedate_to_datetime", lambda _value: None)
@@ -479,38 +479,56 @@ def test_resume_rejects_missing_and_unreadable_configuration(
 def test_record_rejects_unknown_terminal_and_invalid_attempts(tmp_path: Path) -> None:
     config = configuration()
     checkpoint = replay.write_initial_state(tmp_path, config)
-    kwargs = {
-        "root": tmp_path,
-        "configuration": config,
-        "checkpoint": checkpoint,
-        "occurrence_id": "attempt",
-        "attempt_number": 1,
-        "observation": replay.ReplayObservation(kind="http", status_code=404),
-        "now": NOW,
-        "rng": random.Random(1),
-    }
+    observation = replay.ReplayObservation(kind="http", status_code=404)
+    rng = random.Random(1)
     with pytest.raises(replay.ReplayStateError, match="outside the configured population"):
-        replay.record_observation(member_id="unknown", **kwargs)
+        replay.record_observation(
+            root=tmp_path,
+            configuration=config,
+            checkpoint=checkpoint,
+            member_id="unknown",
+            occurrence_id="attempt",
+            attempt_number=1,
+            observation=observation,
+            now=NOW,
+            rng=rng,
+        )
 
-    terminal = replay.record_observation(member_id="synthetic-001", **kwargs)
+    terminal = replay.record_observation(
+        root=tmp_path,
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id="synthetic-001",
+        occurrence_id="attempt",
+        attempt_number=1,
+        observation=observation,
+        now=NOW,
+        rng=rng,
+    )
     with pytest.raises(replay.ReplayStateError, match="terminal member"):
         replay.record_observation(
+            root=tmp_path,
+            configuration=config,
             member_id="synthetic-001",
             checkpoint=terminal,
-            **{k: v for k, v in kwargs.items() if k != "checkpoint"},
+            occurrence_id="attempt-2",
+            attempt_number=2,
+            observation=observation,
+            now=NOW,
+            rng=rng,
         )
 
     with pytest.raises(replay.ReplayStateError, match="attempt number"):
         replay.record_observation(
+            root=tmp_path,
+            configuration=config,
             member_id="synthetic-002",
             checkpoint=terminal,
             occurrence_id="",
             attempt_number=0,
-            **{
-                k: v
-                for k, v in kwargs.items()
-                if k not in {"checkpoint", "occurrence_id", "attempt_number"}
-            },
+            observation=observation,
+            now=NOW,
+            rng=rng,
         )
 
 
