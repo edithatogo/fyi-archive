@@ -1,0 +1,1 @@
+Codecov remediation for fyi-archive PR #320. Test-only change. Direct replay/approval coverage is 92.45% (135 focused tests); full suite is 585 passed, 1 skipped; Ruff preview lint/format and diff checks pass. No retrieval, replay, source, publication, or release operation occurred.
