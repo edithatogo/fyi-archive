@@ -1,0 +1,21 @@
+{
+  "schema": "fyi-archive.wayback-replay-frozen-oracle.v1",
+  "description": "Metadata-only regression oracle. Contains no replayed or restricted source content.",
+  "source": {
+    "repository": "foi-o restricted-local evidence",
+    "selection_sha256": "a1c2308ecc81de3754f37b3c26f7ba7fc232ff5bac930b86b36fb10463178c51",
+    "failure_ledger_sha256": "0df9720ea56fe1882091093adbfbaf2d201ab7ab8f2b76ca9956ab2733ce4c50",
+    "parent_cdx_sha256": "954b0f80ad2a44038f364d240cc9baac815f252a43535c8403dec060ddb730bd"
+  },
+  "population": {
+    "selected": 2082,
+    "successful": 2073,
+    "explicit_http_404": 9
+  },
+  "restrictions": [
+    "metadata_only",
+    "no_restricted_content",
+    "not_an_active_replay_configuration",
+    "not_authorization"
+  ]
+}

@@ -1,0 +1,757 @@
+"""Transport-independent state machine for bounded Wayback replay.
+
+The module intentionally contains no HTTP client.  A network-owning caller such
+as ``fyi-cli`` supplies immutable :class:`ReplayObservation` values; this
+package persists and verifies the resulting acquisition state.
+"""
+
+from __future__ import annotations
+
+import email.utils
+import hashlib
+import json
+import math
+import os
+import re
+import tempfile
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, Literal, Protocol, cast
+from urllib.parse import urlsplit
+
+SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
+TERMINAL_STATUS = frozenset({404, 410})
+RETRYABLE_TRANSPORT = frozenset({"timeout", "connection"})
+TERMINAL_CODES = frozenset(
+    {
+        "redirect_escape",
+        "payload_too_large",
+        "scope_violation",
+        "integrity_mismatch",
+        "unsupported_content_type",
+        "malformed_content",
+    }
+)
+
+
+class ReplayStateError(RuntimeError):
+    """Raised when replay state would fail open or lose integrity."""
+
+
+class RandomSource(Protocol):
+    """Small injected random boundary used by deterministic pacing."""
+
+    def random(self) -> float:
+        """Return a value in the half-open interval [0, 1)."""
+
+
+@dataclass(frozen=True)
+class ReplayObservation:
+    """One immutable result supplied by the network-owning transport."""
+
+    kind: Literal["success", "http", "transport", "terminal"]
+    status_code: int | None = None
+    transport_code: str | None = None
+    terminal_code: str | None = None
+    response_bytes: bytes | None = None
+    response_sha256: str | None = None
+    retry_after: str | None = None
+    final_url: str | None = None
+    content_type: str | None = None
+
+
+class ObservationTransport(Protocol):
+    """Injected boundary implemented by the network-owning fyi-cli layer."""
+
+    def observe(self, member: Mapping[str, object]) -> ReplayObservation:
+        """Return one immutable observation for an authorized member."""
+        ...
+
+
+@dataclass(frozen=True)
+class Outcome:
+    """Stable classification of an observation."""
+
+    code: str
+    retry_disposition: Literal["retryable", "terminal", "complete"]
+
+
+@dataclass(frozen=True)
+class PacingDecision:
+    """Deterministic pacing and circuit state after one observation."""
+
+    delay_seconds: float
+    consecutive_failures: int
+    window: tuple[bool, ...]
+    circuit_open_until: str | None
+
+
+def canonical_json(value: object) -> bytes:
+    """Return the single canonical JSON representation used for all hashes."""
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        allow_nan=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+
+
+def sha256_bytes(value: bytes) -> str:
+    """Return the lowercase SHA-256 digest of bytes."""
+    return hashlib.sha256(value).hexdigest()
+
+
+def content_hash(value: object) -> str:
+    """Hash one JSON-compatible object canonically."""
+    return sha256_bytes(canonical_json(value))
+
+
+def _require_sha256(value: object, field: str) -> str:
+    digest = str(value)
+    if not SHA256_RE.fullmatch(digest):
+        raise ReplayStateError(f"{field} must be a lowercase SHA-256")
+    return digest
+
+
+def _number(value: object, field: str) -> float:
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        raise ReplayStateError(f"{field} must be a number")
+    result = float(value)
+    if not math.isfinite(result):
+        raise ReplayStateError(f"{field} must be finite")
+    return result
+
+
+def _integer(value: object, field: str) -> int:
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ReplayStateError(f"{field} must be an integer")
+    return value
+
+
+def _require_plain_directory(path: Path, *, create: bool = False) -> None:
+    if create:
+        path.mkdir(parents=True, exist_ok=True)
+    current = path
+    while current != current.parent:
+        if current.exists() and current.is_symlink():
+            raise ReplayStateError(f"symlink is not allowed in state path: {current}")
+        current = current.parent
+    if not path.is_dir():
+        raise ReplayStateError(f"state path is not a directory: {path}")
+
+
+def _atomic_write(path: Path, payload: bytes) -> None:
+    _require_plain_directory(path.parent, create=True)
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        temporary.replace(path)
+        directory_descriptor = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_descriptor)
+        finally:
+            os.close(directory_descriptor)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def store_object(root: Path, payload: bytes, *, expected_sha256: str | None = None) -> str:
+    """Store bytes in a protected SHA-256 content-addressed object directory."""
+    digest = sha256_bytes(payload)
+    if expected_sha256 is not None and digest != _require_sha256(
+        expected_sha256, "expected_sha256"
+    ):
+        raise ReplayStateError("object payload does not match expected SHA-256")
+    objects = root / "objects" / "sha256"
+    _require_plain_directory(objects, create=True)
+    destination = objects / digest[:2] / digest
+    _require_plain_directory(destination.parent, create=True)
+    if destination.exists() or destination.is_symlink():
+        if destination.is_symlink() or not destination.is_file():
+            raise ReplayStateError("existing object is not a regular file")
+        if sha256_bytes(destination.read_bytes()) != digest:
+            raise ReplayStateError("content-addressed object collision or corruption")
+        return digest
+    _atomic_write(destination, payload)
+    if destination.is_symlink() or sha256_bytes(destination.read_bytes()) != digest:
+        raise ReplayStateError("stored object failed integrity verification")
+    return digest
+
+
+def object_path(root: Path, digest: str) -> Path:
+    """Resolve a validated object digest without accepting arbitrary paths."""
+    valid = _require_sha256(digest, "object_sha256")
+    return root / "objects" / "sha256" / valid[:2] / valid
+
+
+def validate_canonical_url(value: str) -> str:
+    """Require one absolute, fragment-free canonical HTTPS URL."""
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.fragment
+        or parsed.port not in (None, 443)
+    ):
+        raise ReplayStateError("URL is not an absolute canonical HTTPS URL")
+    if parsed.hostname.lower() != parsed.hostname or "/../" in parsed.path or "/./" in parsed.path:
+        raise ReplayStateError("URL is not canonical")
+    return value
+
+
+def _validate_member(member: Mapping[str, object]) -> None:
+    if not str(member.get("member_id", "")).strip():
+        raise ReplayStateError("selection member_id is required")
+    validate_canonical_url(str(member.get("canonical_url", "")))
+    timestamp = str(member.get("capture_timestamp", ""))
+    try:
+        parsed = datetime.fromisoformat(timestamp)
+    except ValueError as error:
+        raise ReplayStateError("capture_timestamp must be an ISO date-time") from error
+    if parsed.tzinfo is None:
+        raise ReplayStateError("capture_timestamp must include a timezone")
+
+
+def _require_datetime(value: object, field: str) -> str:
+    rendered = str(value)
+    try:
+        parsed = datetime.fromisoformat(rendered)
+    except ValueError as error:
+        raise ReplayStateError(f"{field} must be an ISO date-time") from error
+    if parsed.tzinfo is None:
+        raise ReplayStateError(f"{field} must include a timezone")
+    return rendered
+
+
+def validate_configuration(configuration: Mapping[str, object]) -> dict[str, Any]:
+    """Validate and normalize an immutable replay configuration."""
+    required = {
+        "schema",
+        "selection_sha256",
+        "members",
+        "replay_policy_sha256",
+        "producer",
+        "producer_version",
+        "parser_version",
+        "jitter_seed",
+        "policy",
+    }
+    if set(configuration) != required:
+        raise ReplayStateError("configuration fields do not match the replay contract")
+    if configuration["schema"] != "fyi-archive.wayback-replay-configuration.v1":
+        raise ReplayStateError("unsupported replay configuration schema")
+    _require_sha256(configuration["selection_sha256"], "selection_sha256")
+    _require_sha256(configuration["replay_policy_sha256"], "replay_policy_sha256")
+    raw_members = configuration["members"]
+    if not isinstance(raw_members, list) or not raw_members:
+        raise ReplayStateError("members must be a non-empty ordered array")
+    members = cast("list[dict[str, object]]", raw_members)
+    ids: set[str] = set()
+    for member in members:
+        if not isinstance(member, dict):
+            raise ReplayStateError("every selection member must be an object")
+        _validate_member(member)
+        member_id = str(member["member_id"])
+        if member_id in ids:
+            raise ReplayStateError("selection member IDs must be unique")
+        ids.add(member_id)
+    computed_selection = content_hash(members)
+    if computed_selection != configuration["selection_sha256"]:
+        raise ReplayStateError("selection SHA-256 does not match ordered membership")
+    policy = configuration["policy"]
+    if not isinstance(policy, dict):
+        raise ReplayStateError("policy must be an object")
+    numeric_fields = (
+        "floor_seconds",
+        "ceiling_seconds",
+        "backoff_multiplier",
+        "jitter_fraction",
+        "decay_factor",
+        "circuit_seconds",
+        "failure_ratio",
+    )
+    integer_fields = ("circuit_consecutive_failures", "window_size", "minimum_window")
+    for field in numeric_fields:
+        _number(policy.get(field), f"policy {field}")
+    for field in integer_fields:
+        if _integer(policy.get(field), f"policy {field}") <= 0:
+            raise ReplayStateError(f"policy {field} must be a positive integer")
+    if not 0 <= _number(policy.get("jitter_fraction"), "policy jitter_fraction") <= 1:
+        raise ReplayStateError("policy jitter_fraction must be between zero and one")
+    if not 0 <= _number(policy.get("failure_ratio"), "policy failure_ratio") <= 1:
+        raise ReplayStateError("policy failure_ratio must be between zero and one")
+    if not 0 < _number(policy.get("decay_factor"), "policy decay_factor") <= 1:
+        raise ReplayStateError("policy decay_factor must be in (0, 1]")
+    if _number(policy.get("floor_seconds"), "policy floor_seconds") > _number(
+        policy.get("ceiling_seconds"), "policy ceiling_seconds"
+    ):
+        raise ReplayStateError("policy floor exceeds ceiling")
+    if content_hash(policy) != configuration["replay_policy_sha256"]:
+        raise ReplayStateError("replay policy SHA-256 does not match policy")
+    for field in ("producer", "producer_version", "parser_version"):
+        if not str(configuration[field]).strip():
+            raise ReplayStateError(f"{field} is required")
+    if not isinstance(configuration["jitter_seed"], int):
+        raise ReplayStateError("jitter_seed must be an integer")
+    return json.loads(canonical_json(configuration))
+
+
+def initial_checkpoint(configuration: Mapping[str, object]) -> dict[str, Any]:
+    """Create the first configuration-bound replay checkpoint."""
+    normalized = validate_configuration(configuration)
+    members = cast("list[dict[str, object]]", normalized["members"])
+    states = {str(member["member_id"]): "pending" for member in members}
+    checkpoint: dict[str, Any] = {
+        "schema": "fyi-archive.wayback-replay-checkpoint.v1",
+        "configuration_sha256": content_hash(normalized),
+        "selection_sha256": normalized["selection_sha256"],
+        "replay_policy_sha256": normalized["replay_policy_sha256"],
+        "producer": normalized["producer"],
+        "producer_version": normalized["producer_version"],
+        "parser_version": normalized["parser_version"],
+        "jitter_seed": normalized["jitter_seed"],
+        "member_states": states,
+        "counts": {
+            "population": len(members),
+            "pending": len(members),
+            "complete": 0,
+            "retryable": 0,
+            "terminal": 0,
+            "replacement_candidates": 0,
+        },
+        "journal_entry_count": 0,
+        "journal_tail_sha256": None,
+        "pacing": {
+            "delay_seconds": _number(
+                cast("dict[str, object]", normalized["policy"])["floor_seconds"],
+                "policy floor_seconds",
+            ),
+            "consecutive_failures": 0,
+            "window": [],
+            "circuit_open_until": None,
+        },
+    }
+    checkpoint["checkpoint_sha256"] = content_hash(checkpoint)
+    return checkpoint
+
+
+def verify_checkpoint(
+    checkpoint: Mapping[str, object], configuration: Mapping[str, object]
+) -> dict[str, Any]:
+    """Verify configuration binding, self-pin, state vocabulary, and conservation."""
+    normalized = validate_configuration(configuration)
+    value = dict(checkpoint)
+    supplied_pin = _require_sha256(value.pop("checkpoint_sha256", ""), "checkpoint_sha256")
+    if content_hash(value) != supplied_pin:
+        raise ReplayStateError("checkpoint self-pin does not match")
+    exact_bindings = {
+        "configuration_sha256": content_hash(normalized),
+        "selection_sha256": normalized["selection_sha256"],
+        "replay_policy_sha256": normalized["replay_policy_sha256"],
+        "producer": normalized["producer"],
+        "producer_version": normalized["producer_version"],
+        "parser_version": normalized["parser_version"],
+        "jitter_seed": normalized["jitter_seed"],
+    }
+    for field, expected in exact_bindings.items():
+        if value.get(field) != expected:
+            raise ReplayStateError(f"checkpoint {field} does not match configuration")
+    member_ids = [str(member["member_id"]) for member in normalized["members"]]
+    states = value.get("member_states")
+    if not isinstance(states, dict) or list(states) != member_ids:
+        raise ReplayStateError("checkpoint membership or ordering changed")
+    allowed_states = {"pending", "complete", "retryable", "terminal"}
+    if any(state not in allowed_states for state in states.values()):
+        raise ReplayStateError("checkpoint has an invalid member state")
+    counts = value.get("counts")
+    if not isinstance(counts, dict):
+        raise ReplayStateError("checkpoint counts are missing")
+    actual = {state: sum(item == state for item in states.values()) for state in allowed_states}
+    if _integer(counts.get("population", -1), "counts population") != len(member_ids):
+        raise ReplayStateError("checkpoint population count changed")
+    if any(
+        _integer(counts.get(state, -1), f"counts {state}") != actual[state]
+        for state in allowed_states
+    ):
+        raise ReplayStateError("checkpoint state counts do not match membership")
+    if sum(actual.values()) != len(member_ids):
+        raise ReplayStateError("checkpoint population conservation failed")
+    if _integer(counts.get("replacement_candidates", -1), "counts replacement_candidates") < 0:
+        raise ReplayStateError("replacement candidate count is invalid")
+    return dict(checkpoint)
+
+
+def classify_observation(observation: ReplayObservation) -> Outcome:
+    """Classify a transport observation into one stable retry disposition."""
+    if observation.kind == "success":
+        if observation.response_bytes is None:
+            raise ReplayStateError("successful observation has no response bytes")
+        if observation.response_sha256 is not None and sha256_bytes(
+            observation.response_bytes
+        ) != _require_sha256(observation.response_sha256, "response_sha256"):
+            return Outcome("integrity_mismatch", "terminal")
+        return Outcome("success", "complete")
+    if observation.kind == "http":
+        if observation.status_code in RETRYABLE_STATUS:
+            return Outcome(f"http_{observation.status_code}", "retryable")
+        if observation.status_code in TERMINAL_STATUS:
+            return Outcome(f"http_{observation.status_code}", "terminal")
+        raise ReplayStateError("unregistered HTTP status outcome")
+    if observation.kind == "transport":
+        if observation.transport_code in RETRYABLE_TRANSPORT:
+            return Outcome(str(observation.transport_code), "retryable")
+        raise ReplayStateError("unregistered transport outcome")
+    if observation.kind == "terminal" and observation.terminal_code in TERMINAL_CODES:
+        return Outcome(str(observation.terminal_code), "terminal")
+    raise ReplayStateError("unregistered observation outcome")
+
+
+def parse_retry_after(value: str | None, *, now: datetime, ceiling_seconds: float) -> float | None:
+    """Parse Retry-After seconds or HTTP-date and cap it to the policy ceiling."""
+    if value is None:
+        return None
+    stripped = value.strip()
+    if stripped.isdigit():
+        return min(float(stripped), ceiling_seconds)
+    try:
+        parsed = email.utils.parsedate_to_datetime(stripped)
+    except (TypeError, ValueError):
+        return None
+    if parsed is None:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    reference = now if now.tzinfo is not None else now.replace(tzinfo=UTC)
+    return min(max(0.0, (parsed - reference).total_seconds()), ceiling_seconds)
+
+
+def next_pacing(
+    *,
+    previous: Mapping[str, object],
+    outcome: Outcome,
+    policy: Mapping[str, object],
+    now: datetime,
+    rng: RandomSource,
+    retry_after: str | None = None,
+) -> PacingDecision:
+    """Compute deterministic adaptive pacing using injected time and randomness."""
+    floor = _number(policy["floor_seconds"], "policy floor_seconds")
+    ceiling = _number(policy["ceiling_seconds"], "policy ceiling_seconds")
+    previous_delay = _number(previous["delay_seconds"], "pacing delay_seconds")
+    failures = _integer(previous["consecutive_failures"], "pacing consecutive_failures")
+    window = tuple(bool(item) for item in cast("Sequence[object]", previous["window"]))
+    failed = outcome.retry_disposition == "retryable"
+    if failed:
+        failures += 1
+        base = max(
+            floor,
+            previous_delay * _number(policy["backoff_multiplier"], "policy backoff_multiplier"),
+        )
+        explicit = parse_retry_after(retry_after, now=now, ceiling_seconds=ceiling)
+        if explicit is not None:
+            base = max(base, explicit)
+        jitter_span = min(base, ceiling) * _number(
+            policy["jitter_fraction"], "policy jitter_fraction"
+        )
+        delay = min(ceiling, base + (rng.random() * jitter_span))
+    elif outcome.retry_disposition == "complete":
+        failures = 0
+        delay = max(
+            floor,
+            previous_delay * _number(policy["decay_factor"], "policy decay_factor"),
+        )
+    else:
+        failures = 0
+        delay = max(floor, previous_delay)
+    window_size = _integer(policy["window_size"], "policy window_size")
+    updated_window = (*window, failed)[-window_size:]
+    enough_window = len(updated_window) >= _integer(
+        policy["minimum_window"], "policy minimum_window"
+    )
+    ratio = sum(updated_window) / len(updated_window) if updated_window else 0.0
+    opens = failed and (
+        failures
+        >= _integer(policy["circuit_consecutive_failures"], "policy circuit_consecutive_failures")
+        or (enough_window and ratio >= _number(policy["failure_ratio"], "policy failure_ratio"))
+    )
+    circuit_open_until = None
+    if opens:
+        seconds = _number(policy["circuit_seconds"], "policy circuit_seconds")
+        circuit_open_until = (
+            datetime.fromtimestamp(now.timestamp() + seconds, tz=UTC)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+    return PacingDecision(delay, failures, updated_window, circuit_open_until)
+
+
+def append_attempt(journal_path: Path, entry: Mapping[str, object]) -> dict[str, Any]:
+    """Append one canonical, hash-chained journal entry and fsync it."""
+    _require_plain_directory(journal_path.parent, create=True)
+    if journal_path.exists() and (journal_path.is_symlink() or not journal_path.is_file()):
+        raise ReplayStateError("attempt journal is not a regular file")
+    previous_hash: str | None = None
+    sequence = 0
+    if journal_path.exists():
+        lines = journal_path.read_bytes().splitlines()
+        if lines:
+            previous = json.loads(lines[-1])
+            previous_hash = _require_sha256(previous.get("entry_sha256"), "entry_sha256")
+            sequence = int(previous["sequence"]) + 1
+    value = dict(entry)
+    forbidden = {"sequence", "previous_entry_sha256", "entry_sha256"}
+    if forbidden.intersection(value):
+        raise ReplayStateError("journal caller may not supply chain fields")
+    value["sequence"] = sequence
+    value["previous_entry_sha256"] = previous_hash
+    value["entry_sha256"] = content_hash(value)
+    encoded = canonical_json(value) + b"\n"
+    with journal_path.open("ab") as stream:
+        stream.write(encoded)
+        stream.flush()
+        os.fsync(stream.fileno())
+    return value
+
+
+def verify_journal(journal_path: Path) -> tuple[int, str | None, list[dict[str, Any]]]:
+    """Verify the complete append-only chain and return its count and tail."""
+    if not journal_path.exists():
+        return 0, None, []
+    if journal_path.is_symlink() or not journal_path.is_file():
+        raise ReplayStateError("attempt journal is not a regular file")
+    entries: list[dict[str, Any]] = []
+    previous_hash: str | None = None
+    for sequence, line in enumerate(journal_path.read_bytes().splitlines()):
+        try:
+            value = json.loads(line)
+        except json.JSONDecodeError as error:
+            raise ReplayStateError("attempt journal contains malformed JSON") from error
+        if value.get("sequence") != sequence or value.get("previous_entry_sha256") != previous_hash:
+            raise ReplayStateError("attempt journal sequence or chain is broken")
+        supplied = _require_sha256(value.pop("entry_sha256", ""), "entry_sha256")
+        if content_hash(value) != supplied:
+            raise ReplayStateError("attempt journal entry hash does not match")
+        value["entry_sha256"] = supplied
+        previous_hash = supplied
+        entries.append(value)
+    return len(entries), previous_hash, entries
+
+
+def replacement_candidate(
+    *,
+    member: Mapping[str, object],
+    candidate_url: str,
+    capture_timestamp: str,
+    source_metadata_sha256: str,
+    source_row_sha256: str,
+) -> dict[str, Any]:
+    """Create an exact-URL replacement candidate that can never auto-replay."""
+    original = validate_canonical_url(str(member["canonical_url"]))
+    if validate_canonical_url(candidate_url) != original:
+        raise ReplayStateError("replacement candidate URL is not the exact canonical URL")
+    value: dict[str, Any] = {
+        "schema": "fyi-archive.wayback-replacement-candidate.v1",
+        "member_id": str(member["member_id"]),
+        "canonical_url": original,
+        "capture_timestamp": _require_datetime(capture_timestamp, "capture_timestamp"),
+        "source_metadata_sha256": _require_sha256(source_metadata_sha256, "source_metadata_sha256"),
+        "source_row_sha256": _require_sha256(source_row_sha256, "source_row_sha256"),
+        "status": "pending_replay_approval",
+    }
+    value["candidate_sha256"] = content_hash(value)
+    return value
+
+
+def merge_replacement_candidates(
+    candidates: Sequence[Mapping[str, object]],
+) -> list[dict[str, Any]]:
+    """Deduplicate candidates by self-pin and return a deterministic ordering."""
+    unique: dict[str, dict[str, Any]] = {}
+    for candidate in candidates:
+        value = dict(candidate)
+        supplied = _require_sha256(value.pop("candidate_sha256", ""), "candidate_sha256")
+        if content_hash(value) != supplied:
+            raise ReplayStateError("replacement candidate self-pin does not match")
+        if value.get("status") != "pending_replay_approval":
+            raise ReplayStateError("replacement candidate is not pending approval")
+        value["candidate_sha256"] = supplied
+        unique[supplied] = value
+    return [unique[digest] for digest in sorted(unique)]
+
+
+def verify_resume_state(
+    root: Path,
+    configuration: Mapping[str, object],
+    checkpoint: Mapping[str, object],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Verify checkpoint, journal, and every referenced content object before resume."""
+    normalized = validate_configuration(configuration)
+    config_path = root / "configuration.json"
+    if config_path.is_symlink() or not config_path.is_file():
+        raise ReplayStateError("persisted replay configuration is missing or unsafe")
+    try:
+        persisted = json.loads(config_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ReplayStateError("persisted replay configuration is unreadable") from error
+    if persisted != normalized:
+        raise ReplayStateError("persisted replay configuration does not match resume input")
+    verified = verify_checkpoint(checkpoint, normalized)
+    count, tail, entries = verify_journal(root / "attempts.jsonl")
+    if count != verified["journal_entry_count"] or tail != verified["journal_tail_sha256"]:
+        raise ReplayStateError("checkpoint does not match attempt journal")
+    configured_members = {
+        str(member["member_id"]): member
+        for member in cast("list[dict[str, object]]", configuration["members"])
+    }
+    seen_occurrences: set[str] = set()
+    last_attempt: dict[str, int] = {}
+    derived_states = dict.fromkeys(configured_members, "pending")
+    for entry in entries:
+        member_id = str(entry.get("member_id", ""))
+        member = configured_members.get(member_id)
+        if member is None:
+            raise ReplayStateError("journal contains a member outside the selection")
+        if (
+            entry.get("canonical_url") != member["canonical_url"]
+            or entry.get("capture_timestamp") != member["capture_timestamp"]
+        ):
+            raise ReplayStateError("journal member identity differs from selection")
+        occurrence = str(entry.get("occurrence_id", ""))
+        if not occurrence or occurrence in seen_occurrences:
+            raise ReplayStateError("journal occurrence IDs must be unique")
+        seen_occurrences.add(occurrence)
+        attempt = int(entry.get("attempt_number", 0))
+        if attempt <= last_attempt.get(member_id, 0):
+            raise ReplayStateError("journal attempt numbers are not increasing")
+        last_attempt[member_id] = attempt
+        disposition = str(entry.get("retry_disposition", ""))
+        if disposition not in {"complete", "retryable", "terminal"}:
+            raise ReplayStateError("journal retry disposition is invalid")
+        object_digest = entry.get("object_sha256")
+        if (disposition == "complete") != (object_digest is not None):
+            raise ReplayStateError("journal object and retry disposition are inconsistent")
+        if object_digest is not None:
+            path = object_path(root, str(object_digest))
+            if path.is_symlink() or not path.is_file():
+                raise ReplayStateError("journal content object is missing or unsafe")
+            if sha256_bytes(path.read_bytes()) != object_digest:
+                raise ReplayStateError("journal content object failed integrity verification")
+        derived_states[member_id] = disposition
+    if cast("dict[str, str]", verified["member_states"]) != derived_states:
+        raise ReplayStateError("checkpoint member states do not match attempt journal")
+    if entries and verified["pacing"] != entries[-1].get("pacing"):
+        raise ReplayStateError("checkpoint pacing does not match attempt journal")
+    return verified, entries
+
+
+def record_observation(
+    *,
+    root: Path,
+    configuration: Mapping[str, object],
+    checkpoint: Mapping[str, object],
+    member_id: str,
+    occurrence_id: str,
+    attempt_number: int,
+    observation: ReplayObservation,
+    now: datetime,
+    rng: RandomSource,
+) -> dict[str, Any]:
+    """Persist an observation in object, journal, checkpoint commit order."""
+    normalized = validate_configuration(configuration)
+    current, entries = verify_resume_state(root, normalized, checkpoint)
+    states = cast("dict[str, str]", current["member_states"])
+    if member_id not in states:
+        raise ReplayStateError("attempt member is outside the configured population")
+    if states[member_id] in {"complete", "terminal"}:
+        raise ReplayStateError("terminal member cannot receive another attempt")
+    if attempt_number <= 0 or not occurrence_id.strip():
+        raise ReplayStateError("attempt number and occurrence ID are required")
+    open_until = cast("dict[str, object]", current["pacing"]).get("circuit_open_until")
+    if open_until is not None:
+        circuit_until = datetime.fromisoformat(str(open_until))
+        reference = now if now.tzinfo is not None else now.replace(tzinfo=UTC)
+        if circuit_until > reference:
+            raise ReplayStateError("host circuit is open; transport observation is premature")
+    if occurrence_id in {str(entry["occurrence_id"]) for entry in entries}:
+        raise ReplayStateError("attempt occurrence ID was already used")
+    previous_attempts = [
+        int(entry["attempt_number"]) for entry in entries if entry["member_id"] == member_id
+    ]
+    if previous_attempts and attempt_number <= max(previous_attempts):
+        raise ReplayStateError("attempt number must increase for the member")
+    outcome = classify_observation(observation)
+    member = next(item for item in normalized["members"] if str(item["member_id"]) == member_id)
+    object_sha256 = None
+    if outcome.retry_disposition == "complete":
+        object_sha256 = store_object(
+            root,
+            cast("bytes", observation.response_bytes),
+            expected_sha256=observation.response_sha256,
+        )
+    policy = cast("dict[str, object]", normalized["policy"])
+    decision = next_pacing(
+        previous=cast("dict[str, object]", current["pacing"]),
+        outcome=outcome,
+        policy=policy,
+        now=now,
+        rng=rng,
+        retry_after=observation.retry_after,
+    )
+    journal_entry = append_attempt(
+        root / "attempts.jsonl",
+        {
+            "schema": "fyi-archive.wayback-replay-attempt.v1",
+            "occurrence_id": occurrence_id,
+            "member_id": member_id,
+            "canonical_url": member["canonical_url"],
+            "capture_timestamp": member["capture_timestamp"],
+            "attempt_number": attempt_number,
+            "observed_at": now.astimezone(UTC).isoformat().replace("+00:00", "Z"),
+            "outcome_code": outcome.code,
+            "retry_disposition": outcome.retry_disposition,
+            "object_sha256": object_sha256,
+            "pacing": {
+                "delay_seconds": decision.delay_seconds,
+                "consecutive_failures": decision.consecutive_failures,
+                "window": list(decision.window),
+                "circuit_open_until": decision.circuit_open_until,
+            },
+        },
+    )
+    new_state = outcome.retry_disposition
+    states[member_id] = new_state
+    counts = cast("dict[str, int]", current["counts"])
+    for state in ("pending", "complete", "retryable", "terminal"):
+        counts[state] = sum(value == state for value in states.values())
+    current["journal_entry_count"] = int(journal_entry["sequence"]) + 1
+    current["journal_tail_sha256"] = journal_entry["entry_sha256"]
+    current["pacing"] = journal_entry["pacing"]
+    current.pop("checkpoint_sha256", None)
+    current["checkpoint_sha256"] = content_hash(current)
+    verified = verify_checkpoint(current, normalized)
+    _atomic_write(root / "checkpoint.json", canonical_json(verified) + b"\n")
+    return verified
+
+
+def write_initial_state(root: Path, configuration: Mapping[str, object]) -> dict[str, Any]:
+    """Persist a new configuration and its first atomic checkpoint."""
+    _require_plain_directory(root, create=True)
+    normalized = validate_configuration(configuration)
+    config_path = root / "configuration.json"
+    checkpoint_path = root / "checkpoint.json"
+    if config_path.exists() or checkpoint_path.exists() or (root / "attempts.jsonl").exists():
+        raise ReplayStateError("replay state already exists")
+    checkpoint = initial_checkpoint(normalized)
+    _atomic_write(config_path, canonical_json(normalized) + b"\n")
+    _atomic_write(checkpoint_path, canonical_json(checkpoint) + b"\n")
+    return checkpoint

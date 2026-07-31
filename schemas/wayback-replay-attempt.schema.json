@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/edithatogo/fyi-archive/schemas/wayback-replay-attempt.schema.json",
+  "title": "Wayback replay attempt journal entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "occurrence_id", "member_id", "canonical_url", "capture_timestamp",
+    "attempt_number", "observed_at", "outcome_code", "retry_disposition",
+    "object_sha256", "pacing", "sequence", "previous_entry_sha256", "entry_sha256"
+  ],
+  "properties": {
+    "schema": {"const": "fyi-archive.wayback-replay-attempt.v1"},
+    "occurrence_id": {"type": "string", "minLength": 1},
+    "member_id": {"type": "string", "minLength": 1},
+    "canonical_url": {"type": "string", "format": "uri", "pattern": "^https://"},
+    "capture_timestamp": {"type": "string", "format": "date-time"},
+    "attempt_number": {"type": "integer", "minimum": 1},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "outcome_code": {"type": "string", "minLength": 1},
+    "retry_disposition": {"enum": ["retryable", "terminal", "complete"]},
+    "object_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "pacing": {"type": "object"},
+    "sequence": {"type": "integer", "minimum": 0},
+    "previous_entry_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "entry_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

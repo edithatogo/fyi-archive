@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/edithatogo/fyi-archive/schemas/wayback-replay-checkpoint.schema.json",
+  "title": "Wayback replay checkpoint",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "configuration_sha256",
+    "selection_sha256",
+    "replay_policy_sha256",
+    "producer",
+    "producer_version",
+    "parser_version",
+    "jitter_seed",
+    "member_states",
+    "counts",
+    "journal_entry_count",
+    "journal_tail_sha256",
+    "pacing",
+    "checkpoint_sha256"
+  ],
+  "properties": {
+    "schema": {"const": "fyi-archive.wayback-replay-checkpoint.v1"},
+    "configuration_sha256": {"$ref": "#/$defs/sha256"},
+    "selection_sha256": {"$ref": "#/$defs/sha256"},
+    "replay_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "producer": {"type": "string", "minLength": 1},
+    "producer_version": {"type": "string", "minLength": 1},
+    "parser_version": {"type": "string", "minLength": 1},
+    "jitter_seed": {"type": "integer"},
+    "member_states": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "enum": ["pending", "complete", "retryable", "terminal"]
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["population", "pending", "complete", "retryable", "terminal", "replacement_candidates"],
+      "properties": {
+        "population": {"type": "integer", "minimum": 1},
+        "pending": {"type": "integer", "minimum": 0},
+        "complete": {"type": "integer", "minimum": 0},
+        "retryable": {"type": "integer", "minimum": 0},
+        "terminal": {"type": "integer", "minimum": 0},
+        "replacement_candidates": {"type": "integer", "minimum": 0}
+      }
+    },
+    "journal_entry_count": {"type": "integer", "minimum": 0},
+    "journal_tail_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "pacing": {"$ref": "#/$defs/pacing"},
+    "checkpoint_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "pacing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["delay_seconds", "consecutive_failures", "window", "circuit_open_until"],
+      "properties": {
+        "delay_seconds": {"type": "number", "minimum": 0},
+        "consecutive_failures": {"type": "integer", "minimum": 0},
+        "window": {"type": "array", "items": {"type": "boolean"}},
+        "circuit_open_until": {"type": ["string", "null"], "format": "date-time"}
+      }
+    }
+  }
+}

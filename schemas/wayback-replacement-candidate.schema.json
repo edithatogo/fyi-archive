@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/edithatogo/fyi-archive/schemas/wayback-replacement-candidate.schema.json",
+  "title": "Exact-URL Wayback replacement metadata candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "member_id", "canonical_url", "capture_timestamp",
+    "source_metadata_sha256", "source_row_sha256", "status", "candidate_sha256"
+  ],
+  "properties": {
+    "schema": {"const": "fyi-archive.wayback-replacement-candidate.v1"},
+    "member_id": {"type": "string", "minLength": 1},
+    "canonical_url": {"type": "string", "format": "uri", "pattern": "^https://"},
+    "capture_timestamp": {"type": "string", "format": "date-time"},
+    "source_metadata_sha256": {"$ref": "#/$defs/sha256"},
+    "source_row_sha256": {"$ref": "#/$defs/sha256"},
+    "status": {"const": "pending_replay_approval"},
+    "candidate_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}
