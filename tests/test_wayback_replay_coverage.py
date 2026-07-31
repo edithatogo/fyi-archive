@@ -145,6 +145,30 @@ def test_approved_cdx_evidence_rejects_unbound_artifact(
         )
 
 
+def test_approved_cdx_evidence_rejects_provenance_drift(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    artifact = tmp_path / "artifact.json"
+    evidence = tmp_path / "evidence.json"
+    artifact_value = json.loads(CDX_METADATA.read_text())
+    artifact_value["producer_id"] = "drifted-producer"
+    write_json(artifact, artifact_value)
+    evidence_value = json.loads(CDX_EVIDENCE.read_text())
+    evidence_value["artifact_sha256"] = approvals._sha256_bytes(artifact.read_bytes())
+    write_json(evidence, evidence_value)
+    approval = dict(json.loads(approvals.APPROVAL_REGISTRY_PATH.read_text())["approvals"][0])
+    approval["artifact_sha256"] = approvals._sha256_bytes(artifact.read_bytes())
+    approval["retrieval_evidence_sha256"] = approvals._sha256_bytes(evidence.read_bytes())
+    monkeypatch.setattr(approvals, "registered_cdx_approval", lambda *_args: approval)
+    with pytest.raises(approvals.CdxApprovalError, match="provenance differs"):
+        approvals.load_approved_cdx_evidence(
+            artifact_path=artifact,
+            artifact_sha256=approval["artifact_sha256"],
+            retrieval_evidence_path=evidence,
+            retrieval_evidence_sha256=approval["retrieval_evidence_sha256"],
+        )
+
+
 def test_query_scope_requires_exact_or_prefix_match() -> None:
     assert approvals.query_scope_allows_url(
         "https://example.test/request/*", "https://example.test/request/1"
@@ -284,6 +308,9 @@ def test_boundary_registry_rejects_missing_unreadable_and_unknown_profile(
         ("failure_ratio", "between zero and one"),
         ("decay", r"in \(0, 1\]"),
         ("floor_over_ceiling", "floor exceeds ceiling"),
+        ("floor_nonpositive", "floor_seconds must be positive"),
+        ("backoff", "backoff_multiplier must be at least one"),
+        ("circuit", "circuit_seconds must be nonnegative"),
         ("producer", "producer is required"),
         ("jitter_seed", "jitter_seed must be an integer"),
     ],
@@ -321,6 +348,15 @@ def test_configuration_semantics_fail_closed_beyond_schema(
     elif mutation == "floor_over_ceiling":
         config["policy"]["floor_seconds"] = 61
         repin_policy(config)
+    elif mutation == "floor_nonpositive":
+        config["policy"]["floor_seconds"] = 0
+        repin_policy(config)
+    elif mutation == "backoff":
+        config["policy"]["backoff_multiplier"] = 0.5
+        repin_policy(config)
+    elif mutation == "circuit":
+        config["policy"]["circuit_seconds"] = -1
+        repin_policy(config)
     elif mutation == "producer":
         config["producer"] = ""
     else:
@@ -355,6 +391,20 @@ def test_checkpoint_rejects_invalid_structural_state(monkeypatch: pytest.MonkeyP
     with pytest.raises(replay.ReplayStateError, match="candidate count"):
         replay.verify_checkpoint(changed, config)
 
+    changed = json.loads(json.dumps(checkpoint))
+    changed["counts"] = "not-an-object"
+    changed.pop("checkpoint_sha256")
+    changed["checkpoint_sha256"] = replay.content_hash(changed)
+    with pytest.raises(replay.ReplayStateError, match="counts are missing"):
+        replay.verify_checkpoint(changed, config)
+
+    changed = json.loads(json.dumps(checkpoint))
+    changed["counts"]["population"] = 99
+    changed.pop("checkpoint_sha256")
+    changed["checkpoint_sha256"] = replay.content_hash(changed)
+    with pytest.raises(replay.ReplayStateError, match="population count changed"):
+        replay.verify_checkpoint(changed, config)
+
 
 def test_invalid_archive_port_and_success_without_policy_fail_closed() -> None:
     observation = replay.ReplayObservation(
@@ -380,11 +430,20 @@ def test_retry_after_handles_naive_date_and_naive_now() -> None:
     )
 
 
+def test_retry_after_rejects_unparseable_nonexception_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(replay.email.utils, "parsedate_to_datetime", lambda _value: None)
+    assert replay.parse_retry_after("invalid", now=NOW, ceiling_seconds=60) is None
+
+
 def test_append_and_verify_journal_reject_unsafe_input(tmp_path: Path) -> None:
     journal = tmp_path / "attempts.jsonl"
     journal.mkdir()
     with pytest.raises(replay.ReplayStateError, match="not a regular file"):
         replay.append_attempt(journal, {})
+    with pytest.raises(replay.ReplayStateError, match="not a regular file"):
+        replay.verify_journal(journal)
     journal.rmdir()
     with pytest.raises(replay.ReplayStateError, match="chain fields"):
         replay.append_attempt(journal, {"sequence": 1})
