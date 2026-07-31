@@ -13,7 +13,7 @@
       "capture_timestamp": "2026-01-02T00:00:00Z"
     }
   ],
-  "replay_policy_sha256": "e773ddbdf5925819eb720287566fb7f80d30f49316ceaa72f2f1fb2646b34c68",
+  "replay_policy_sha256": "7d059e01beb8d8392609081f44698260dadad796da4363bc2b29bc9bedc17476",
   "producer": "fyi-cli-observation-boundary",
   "producer_version": "1.2.1",
   "parser_version": "wayback-replay-state-v1",
@@ -28,6 +28,9 @@
     "circuit_consecutive_failures": 3,
     "failure_ratio": 0.75,
     "window_size": 4,
-    "minimum_window": 4
+    "minimum_window": 4,
+    "archive_hosts": ["web.archive.org"],
+    "allowed_content_types": ["application/json", "text/html"],
+    "max_payload_bytes": 32
   }
 }

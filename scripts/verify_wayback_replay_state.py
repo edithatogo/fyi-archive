@@ -16,8 +16,12 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+from jsonschema import Draft202012Validator, FormatChecker
+from jsonschema.exceptions import ValidationError
+
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ALLOWED_STATES = frozenset({"pending", "complete", "retryable", "terminal"})
+SCHEMA_DIRECTORY = Path(__file__).parents[1] / "schemas"
 
 
 def canonical_json(value: object) -> bytes:
@@ -34,6 +38,15 @@ def canonical_json(value: object) -> bytes:
 def content_hash(value: object) -> str:
     """Hash a JSON-compatible value."""
     return hashlib.sha256(canonical_json(value)).hexdigest()
+
+
+def verify_schema(filename: str, value: object) -> None:
+    """Independently enforce one published replay schema."""
+    schema = json.loads((SCHEMA_DIRECTORY / filename).read_text(encoding="utf-8"))
+    try:
+        Draft202012Validator(schema, format_checker=FormatChecker()).validate(value)
+    except ValidationError as error:
+        raise RuntimeError(f"{filename} schema validation failed: {error.message}") from error
 
 
 def require_hash(value: object, field: str) -> str:
@@ -56,6 +69,7 @@ def load_object(path: Path) -> dict[str, Any]:
 
 def verify_configuration(value: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
     """Verify the closed configuration shape and exact content pins."""
+    verify_schema("wayback-replay-configuration.schema.json", value)
     fields = {
         "schema",
         "selection_sha256",
@@ -114,9 +128,39 @@ def verify_configuration(value: dict[str, Any]) -> tuple[str, list[dict[str, Any
         "failure_ratio",
         "window_size",
         "minimum_window",
+        "archive_hosts",
+        "allowed_content_types",
+        "max_payload_bytes",
     }
     if set(policy) != expected_policy:
         raise RuntimeError("configuration policy shape is invalid")
+    numbers = {
+        field: policy.get(field)
+        for field in (
+            "floor_seconds",
+            "ceiling_seconds",
+            "backoff_multiplier",
+            "jitter_fraction",
+            "decay_factor",
+            "circuit_seconds",
+            "failure_ratio",
+        )
+    }
+    if any(
+        not isinstance(number, (int, float)) or isinstance(number, bool)
+        for number in numbers.values()
+    ):
+        raise RuntimeError("configuration policy numeric field is invalid")
+    if numbers["floor_seconds"] <= 0 or numbers["ceiling_seconds"] <= 0:
+        raise RuntimeError("configuration policy pacing must be positive")
+    if numbers["floor_seconds"] > numbers["ceiling_seconds"]:
+        raise RuntimeError("configuration policy floor exceeds ceiling")
+    if numbers["backoff_multiplier"] < 1:
+        raise RuntimeError("configuration policy backoff is invalid")
+    if numbers["circuit_seconds"] < 0:
+        raise RuntimeError("configuration policy circuit duration is invalid")
+    if policy["minimum_window"] > policy["window_size"]:
+        raise RuntimeError("configuration policy windows are inconsistent")
     if content_hash(policy) != require_hash(value["replay_policy_sha256"], "policy digest"):
         raise RuntimeError("policy digest does not match")
     if not all(
@@ -130,7 +174,7 @@ def verify_configuration(value: dict[str, Any]) -> tuple[str, list[dict[str, Any
 
 
 def verify_journal(
-    root: Path, members: list[dict[str, Any]]
+    root: Path, members: list[dict[str, Any]], policy: dict[str, Any]
 ) -> tuple[int, str | None, list[dict[str, Any]]]:
     """Verify journal chain, identities, attempt ordering, and content objects."""
     path = root / "attempts.jsonl"
@@ -145,6 +189,7 @@ def verify_journal(
     attempts: dict[str, int] = {}
     for sequence, raw in enumerate(path.read_bytes().splitlines()):
         value = json.loads(raw)
+        verify_schema("wayback-replay-attempt.schema.json", value)
         supplied = require_hash(value.pop("entry_sha256", ""), "entry_sha256")
         expected_fields = {
             "schema",
@@ -157,6 +202,9 @@ def verify_journal(
             "outcome_code",
             "retry_disposition",
             "object_sha256",
+            "final_url",
+            "content_type",
+            "payload_bytes",
             "pacing",
             "sequence",
             "previous_entry_sha256",
@@ -199,8 +247,35 @@ def verify_journal(
             object_path = root / "objects" / "sha256" / digest[:2] / digest
             if object_path.is_symlink() or not object_path.is_file():
                 raise RuntimeError("referenced content object is unsafe or missing")
-            if hashlib.sha256(object_path.read_bytes()).hexdigest() != digest:
+            payload = object_path.read_bytes()
+            if hashlib.sha256(payload).hexdigest() != digest:
                 raise RuntimeError("referenced content object is corrupt")
+            if value.get("payload_bytes") != len(payload):
+                raise RuntimeError("attempt payload size differs from content object")
+            final = urlsplit(str(value.get("final_url") or ""))
+            try:
+                final_port = final.port
+            except ValueError as error:
+                raise RuntimeError("attempt final archive URL is invalid") from error
+            if (
+                final.scheme != "https"
+                or not final.hostname
+                or final.username is not None
+                or final.password is not None
+                or final.fragment
+                or final_port not in (None, 443)
+                or final.hostname.lower() not in set(policy["archive_hosts"])
+            ):
+                raise RuntimeError("attempt escaped the configured archive host boundary")
+            media_type = str(value.get("content_type") or "").split(";", 1)[0].strip().lower()
+            if media_type not in set(policy["allowed_content_types"]):
+                raise RuntimeError("attempt content type is not allowed")
+            if len(payload) > int(policy["max_payload_bytes"]):
+                raise RuntimeError("attempt payload exceeds configured maximum")
+        elif any(
+            value.get(field) is not None for field in ("final_url", "content_type", "payload_bytes")
+        ):
+            raise RuntimeError("non-complete attempt contains response metadata")
         value["entry_sha256"] = supplied
         entries.append(value)
         previous = supplied
@@ -214,6 +289,7 @@ def verify(root: Path) -> dict[str, Any]:
     configuration = load_object(root / "configuration.json")
     configuration_hash, members = verify_configuration(configuration)
     checkpoint = load_object(root / "checkpoint.json")
+    verify_schema("wayback-replay-checkpoint.schema.json", checkpoint)
     supplied_checkpoint = require_hash(checkpoint.pop("checkpoint_sha256", ""), "checkpoint_sha256")
     expected_checkpoint_fields = {
         "schema",
@@ -275,7 +351,7 @@ def verify(root: Path) -> dict[str, Any]:
         raise RuntimeError("checkpoint state counts do not match")
     if sum(actual.values()) != len(members):
         raise RuntimeError("population conservation failed")
-    journal_count, journal_tail, entries = verify_journal(root, members)
+    journal_count, journal_tail, entries = verify_journal(root, members, configuration["policy"])
     if (
         checkpoint.get("journal_entry_count") != journal_count
         or checkpoint.get("journal_tail_sha256") != journal_tail

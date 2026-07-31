@@ -12,10 +12,15 @@ The replay-state contract provides:
 - atomically replaced checkpoints bound to the exact ordered selection,
   policy, producer, parser and jitter seed;
 - stable retryable, terminal and complete outcome classes;
+- pre-persistence enforcement of configured archive hosts, media types and
+  maximum payload bytes for every successful transport observation;
 - deterministic adaptive pacing, `Retry-After` handling and circuit state
   through injected time and random sources;
-- exact-canonical-URL replacement metadata candidates that remain
-  `pending_replay_approval`; and
+- schema-enforced replay policy with positive pacing, bounded backoff and
+  internally consistent circuit windows;
+- exact-canonical-URL replacement metadata candidates bound to the immutable
+  configuration, checkpoint, failed member state and source-metadata hashes;
+  they remain `pending_replay_approval`; and
 - a standalone verifier that imports no replay producer code.
 
 The package contains no HTTP client, origin discovery or archive replay

@@ -9,6 +9,7 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
@@ -35,7 +36,7 @@ FIXTURES = ROOT / "tests" / "fixtures"
 NOW = datetime(2026, 7, 31, 0, 0, tzinfo=UTC)
 
 
-def configuration() -> dict:
+def configuration() -> dict[str, Any]:
     return json.loads((FIXTURES / "wayback_replay_configuration.json").read_text())
 
 
@@ -73,6 +74,8 @@ def test_write_record_resume_and_independent_verifier(tmp_path: Path) -> None:
             kind="success",
             response_bytes=b'{"synthetic":true}',
             response_sha256=sha256_bytes(b'{"synthetic":true}'),
+            final_url="https://web.archive.org/web/20260101000000id_/https://example.test/",
+            content_type="application/json",
         ),
         now=NOW,
         rng=random.Random(20260731),
@@ -120,7 +123,16 @@ def test_write_record_resume_and_independent_verifier(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("observation", "code", "disposition"),
     [
-        (ReplayObservation(kind="success", response_bytes=b"x"), "success", "complete"),
+        (
+            ReplayObservation(
+                kind="success",
+                response_bytes=b"x",
+                final_url="https://web.archive.org/web/20260101000000id_/https://example.test/",
+                content_type="application/json",
+            ),
+            "success",
+            "complete",
+        ),
         (ReplayObservation(kind="http", status_code=429), "http_429", "retryable"),
         (ReplayObservation(kind="http", status_code=500), "http_500", "retryable"),
         (ReplayObservation(kind="http", status_code=502), "http_502", "retryable"),
@@ -162,13 +174,20 @@ def test_write_record_resume_and_independent_verifier(tmp_path: Path) -> None:
     ],
 )
 def test_typed_outcomes(observation, code: str, disposition: str) -> None:
-    outcome = classify_observation(observation)
+    outcome = classify_observation(observation, policy=configuration()["policy"])
     assert (outcome.code, outcome.retry_disposition) == (code, disposition)
 
 
 def test_integrity_mismatch_is_terminal() -> None:
     outcome = classify_observation(
-        ReplayObservation(kind="success", response_bytes=b"x", response_sha256="0" * 64)
+        ReplayObservation(
+            kind="success",
+            response_bytes=b"x",
+            response_sha256="0" * 64,
+            final_url="https://web.archive.org/web/20260101000000id_/https://example.test/",
+            content_type="application/json",
+        ),
+        policy=configuration()["policy"],
     )
     assert outcome.code == "integrity_mismatch"
     assert outcome.retry_disposition == "terminal"
@@ -215,7 +234,15 @@ def test_pacing_is_seeded_adaptive_and_opens_circuit() -> None:
             "window": first.window,
             "circuit_open_until": first.circuit_open_until,
         },
-        outcome=classify_observation(ReplayObservation(kind="success", response_bytes=b"x")),
+        outcome=classify_observation(
+            ReplayObservation(
+                kind="success",
+                response_bytes=b"x",
+                final_url="https://web.archive.org/web/20260101000000id_/https://example.test/",
+                content_type="application/json",
+            ),
+            policy=policy,
+        ),
         policy=policy,
         now=NOW,
         rng=random.Random(7),
@@ -226,17 +253,34 @@ def test_pacing_is_seeded_adaptive_and_opens_circuit() -> None:
     assert success.circuit_open_until is None
 
 
-def test_replacement_candidate_is_exact_pinned_pending_and_deduplicated() -> None:
-    member = configuration()["members"][0]
+def test_replacement_candidate_is_exact_pinned_pending_and_deduplicated(tmp_path: Path) -> None:
+    config = configuration()
+    member = config["members"][0]
+    checkpoint = write_initial_state(tmp_path, config)
+    checkpoint = record_observation(
+        root=tmp_path,
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id=member["member_id"],
+        occurrence_id="terminal-404",
+        attempt_number=1,
+        observation=ReplayObservation(kind="http", status_code=404),
+        now=NOW,
+        rng=random.Random(1),
+    )
     candidate = replacement_candidate(
-        member=member,
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id=member["member_id"],
         candidate_url=member["canonical_url"],
         capture_timestamp="2025-12-31T23:59:59Z",
         source_metadata_sha256="a" * 64,
         source_row_sha256="b" * 64,
     )
     assert candidate["status"] == "pending_replay_approval"
-    assert merge_replacement_candidates([candidate, candidate]) == [candidate]
+    assert merge_replacement_candidates(
+        [candidate, candidate], configuration=config, checkpoint=checkpoint
+    ) == [candidate]
     schema = json.loads(
         (ROOT / "schemas" / "wayback-replacement-candidate.schema.json").read_text()
     )

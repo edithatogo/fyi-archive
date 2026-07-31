@@ -8,17 +8,21 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from fyi_archive.wayback_replay import (
     ReplayObservation,
     ReplayStateError,
+    classify_observation,
     content_hash,
+    merge_replacement_candidates,
     object_path,
     record_observation,
     replacement_candidate,
     store_object,
+    validate_configuration,
     verify_journal,
     verify_resume_state,
     write_initial_state,
@@ -29,11 +33,15 @@ FIXTURE = ROOT / "tests" / "fixtures" / "wayback_replay_configuration.json"
 NOW = datetime(2026, 7, 31, tzinfo=UTC)
 
 
-def configuration() -> dict:
+def configuration() -> dict[str, Any]:
     return json.loads(FIXTURE.read_text())
 
 
-def rewrite_checkpoint(root: Path, checkpoint: dict) -> None:
+def repin_policy(config: dict[str, Any]) -> None:
+    config["replay_policy_sha256"] = content_hash(config["policy"])
+
+
+def rewrite_checkpoint(root: Path, checkpoint: dict[str, Any]) -> None:
     value = dict(checkpoint)
     value.pop("checkpoint_sha256", None)
     value["checkpoint_sha256"] = content_hash(value)
@@ -42,7 +50,7 @@ def rewrite_checkpoint(root: Path, checkpoint: dict) -> None:
     )
 
 
-def one_attempt(root: Path) -> tuple[dict, dict]:
+def one_attempt(root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     config = configuration()
     checkpoint = write_initial_state(root, config)
     checkpoint = record_observation(
@@ -52,7 +60,12 @@ def one_attempt(root: Path) -> tuple[dict, dict]:
         member_id="synthetic-001",
         occurrence_id="occurrence-1",
         attempt_number=1,
-        observation=ReplayObservation(kind="success", response_bytes=b"synthetic"),
+        observation=ReplayObservation(
+            kind="success",
+            response_bytes=b"synthetic",
+            final_url="https://web.archive.org/web/20260101000000id_/https://example.test/",
+            content_type="application/json",
+        ),
         now=NOW,
         rng=random.Random(1),
     )
@@ -191,10 +204,122 @@ def test_checkpoint_state_cannot_diverge_from_journal(tmp_path: Path) -> None:
     ],
 )
 def test_unknown_or_incomplete_observations_fail_closed(observation: ReplayObservation) -> None:
-    from fyi_archive.wayback_replay import classify_observation
-
     with pytest.raises(ReplayStateError):
-        classify_observation(observation)
+        classify_observation(observation, policy=configuration()["policy"])
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("final_url", "https://righttoknow.example/request/1", "archive host"),
+        ("final_url", "https://user@web.archive.org/web/1", "archive URL"),
+        ("content_type", "application/octet-stream", "content type"),
+        ("response_bytes", b"x" * 33, "payload"),
+    ],
+)
+def test_success_boundary_fails_before_cas_persistence(
+    tmp_path: Path, field: str, value: str | bytes, message: str
+) -> None:
+    config = configuration()
+    checkpoint = write_initial_state(tmp_path, config)
+    response_bytes = (
+        value if field == "response_bytes" and isinstance(value, bytes) else b"synthetic"
+    )
+    final_url = (
+        value
+        if field == "final_url" and isinstance(value, str)
+        else "https://web.archive.org/web/20260101000000id_/https://example.test/"
+    )
+    content_type = (
+        value
+        if field == "content_type" and isinstance(value, str)
+        else "application/json; charset=utf-8"
+    )
+    with pytest.raises(ReplayStateError, match=message):
+        record_observation(
+            root=tmp_path,
+            configuration=config,
+            checkpoint=checkpoint,
+            member_id="synthetic-001",
+            occurrence_id="bad-observation",
+            attempt_number=1,
+            observation=ReplayObservation(
+                kind="success",
+                response_bytes=response_bytes,
+                final_url=final_url,
+                content_type=content_type,
+            ),
+            now=NOW,
+            rng=random.Random(1),
+        )
+    assert not (tmp_path / "objects").exists()
+    assert not (tmp_path / "attempts.jsonl").exists()
+
+
+def test_rehashed_off_archive_attempt_fails_producer_and_independent_verifier(
+    tmp_path: Path,
+) -> None:
+    config, checkpoint = one_attempt(tmp_path)
+    journal_path = tmp_path / "attempts.jsonl"
+    entry = json.loads(journal_path.read_text())
+    entry["final_url"] = "https://live-origin.example/request/1"
+    entry.pop("entry_sha256")
+    entry["entry_sha256"] = content_hash(entry)
+    journal_path.write_text(json.dumps(entry, separators=(",", ":"), sort_keys=True) + "\n")
+    checkpoint["journal_tail_sha256"] = entry["entry_sha256"]
+    rewrite_checkpoint(tmp_path, checkpoint)
+    persisted_checkpoint = json.loads((tmp_path / "checkpoint.json").read_text())
+
+    with pytest.raises(ReplayStateError, match="archive host"):
+        verify_resume_state(tmp_path, config, persisted_checkpoint)
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "verify_wayback_replay_state.py"), str(tmp_path)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1
+    assert "archive host" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("floor_seconds", 0),
+        ("ceiling_seconds", 0),
+        ("backoff_multiplier", 0.5),
+        ("circuit_seconds", -1),
+        ("minimum_window", 5),
+    ],
+)
+def test_producer_and_independent_verifier_reject_invalid_policy(
+    tmp_path: Path, field: str, value: float
+) -> None:
+    config = configuration()
+    config["policy"][field] = value
+    repin_policy(config)
+    with pytest.raises(ReplayStateError):
+        validate_configuration(config)
+
+    valid = configuration()
+    checkpoint = write_initial_state(tmp_path, valid)
+    persisted = json.loads((tmp_path / "configuration.json").read_text())
+    persisted["policy"][field] = value
+    repin_policy(persisted)
+    (tmp_path / "configuration.json").write_text(json.dumps(persisted))
+    checkpoint["replay_policy_sha256"] = persisted["replay_policy_sha256"]
+    checkpoint["configuration_sha256"] = content_hash(persisted)
+    checkpoint.pop("checkpoint_sha256")
+    checkpoint["checkpoint_sha256"] = content_hash(checkpoint)
+    rewrite_checkpoint(tmp_path, checkpoint)
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "verify_wayback_replay_state.py"), str(tmp_path)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1
+    assert "policy" in result.stderr.lower() or "schema" in result.stderr.lower()
 
 
 @pytest.mark.parametrize(
@@ -209,9 +334,16 @@ def test_unknown_or_incomplete_observations_fail_closed(observation: ReplayObser
     ],
 )
 def test_replacement_candidates_reject_any_url_change(url: str) -> None:
+    config = configuration()
+    checkpoint = {
+        "checkpoint_sha256": "c" * 64,
+        "member_states": {"synthetic-001": "terminal"},
+    }
     with pytest.raises(ReplayStateError):
         replacement_candidate(
-            member=configuration()["members"][0],
+            configuration=config,
+            checkpoint=checkpoint,
+            member_id="synthetic-001",
             candidate_url=url,
             capture_timestamp="2025-01-01T00:00:00Z",
             source_metadata_sha256="a" * 64,
@@ -222,16 +354,91 @@ def test_replacement_candidates_reject_any_url_change(url: str) -> None:
 def test_candidate_cannot_activate_replay_membership(tmp_path: Path) -> None:
     config = configuration()
     checkpoint = write_initial_state(tmp_path, config)
+    checkpoint = record_observation(
+        root=tmp_path,
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id="synthetic-001",
+        occurrence_id="terminal-404",
+        attempt_number=1,
+        observation=ReplayObservation(kind="http", status_code=404),
+        now=NOW,
+        rng=random.Random(1),
+    )
+    before = json.loads(json.dumps(checkpoint))
     candidate = replacement_candidate(
-        member=config["members"][0],
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id="synthetic-001",
         candidate_url=config["members"][0]["canonical_url"],
         capture_timestamp="2025-01-01T00:00:00Z",
         source_metadata_sha256="a" * 64,
         source_row_sha256="b" * 64,
     )
     assert candidate["status"] == "pending_replay_approval"
+    assert candidate["configuration_sha256"] == content_hash(config)
+    assert candidate["checkpoint_sha256"] == checkpoint["checkpoint_sha256"]
+    assert candidate["failed_status"] == "terminal"
     assert checkpoint["counts"]["population"] == 2
     assert list(checkpoint["member_states"]) == ["synthetic-001", "synthetic-002"]
+    assert checkpoint == before
+
+
+@pytest.mark.parametrize("member_id", ["invented", "synthetic-002"])
+def test_replacement_candidate_rejects_arbitrary_or_nonfailed_member(
+    tmp_path: Path, member_id: str
+) -> None:
+    config = configuration()
+    checkpoint = write_initial_state(tmp_path, config)
+    with pytest.raises(ReplayStateError, match=r"failed member|configured population"):
+        replacement_candidate(
+            configuration=config,
+            checkpoint=checkpoint,
+            member_id=member_id,
+            candidate_url="https://example.test/request/synthetic-002",
+            capture_timestamp="2025-01-01T00:00:00Z",
+            source_metadata_sha256="a" * 64,
+            source_row_sha256="b" * 64,
+        )
+
+
+def test_replacement_merge_rejects_wrong_configuration_or_checkpoint(tmp_path: Path) -> None:
+    config = configuration()
+    checkpoint = write_initial_state(tmp_path, config)
+    checkpoint = record_observation(
+        root=tmp_path,
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id="synthetic-001",
+        occurrence_id="terminal-404",
+        attempt_number=1,
+        observation=ReplayObservation(kind="http", status_code=404),
+        now=NOW,
+        rng=random.Random(1),
+    )
+    candidate = replacement_candidate(
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id="synthetic-001",
+        candidate_url=config["members"][0]["canonical_url"],
+        capture_timestamp="2025-01-01T00:00:00Z",
+        source_metadata_sha256="a" * 64,
+        source_row_sha256="b" * 64,
+    )
+    changed = configuration()
+    changed["producer_version"] = "changed"
+    with pytest.raises(ReplayStateError, match="configuration"):
+        merge_replacement_candidates([candidate], configuration=changed, checkpoint=checkpoint)
+    other_checkpoint = dict(checkpoint)
+    other_checkpoint["checkpoint_sha256"] = "d" * 64
+    with pytest.raises(ReplayStateError, match="checkpoint"):
+        merge_replacement_candidates([candidate], configuration=config, checkpoint=other_checkpoint)
+    changed_url = dict(candidate)
+    changed_url["canonical_url"] = "https://example.test/request/other"
+    changed_url.pop("candidate_sha256")
+    changed_url["candidate_sha256"] = content_hash(changed_url)
+    with pytest.raises(ReplayStateError, match="exact URL"):
+        merge_replacement_candidates([changed_url], configuration=config, checkpoint=checkpoint)
 
 
 def test_open_circuit_rejects_premature_transport_observation(tmp_path: Path) -> None:

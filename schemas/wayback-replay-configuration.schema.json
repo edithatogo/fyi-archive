@@ -36,10 +36,11 @@
       "required": [
         "floor_seconds", "ceiling_seconds", "backoff_multiplier", "jitter_fraction",
         "decay_factor", "circuit_seconds", "circuit_consecutive_failures",
-        "failure_ratio", "window_size", "minimum_window"
+        "failure_ratio", "window_size", "minimum_window", "archive_hosts",
+        "allowed_content_types", "max_payload_bytes"
       ],
       "properties": {
-        "floor_seconds": {"type": "number", "minimum": 0},
+        "floor_seconds": {"type": "number", "exclusiveMinimum": 0},
         "ceiling_seconds": {"type": "number", "exclusiveMinimum": 0},
         "backoff_multiplier": {"type": "number", "minimum": 1},
         "jitter_fraction": {"type": "number", "minimum": 0, "maximum": 1},
@@ -48,7 +49,16 @@
         "circuit_consecutive_failures": {"type": "integer", "minimum": 1},
         "failure_ratio": {"type": "number", "minimum": 0, "maximum": 1},
         "window_size": {"type": "integer", "minimum": 1},
-        "minimum_window": {"type": "integer", "minimum": 1}
+        "minimum_window": {"type": "integer", "minimum": 1},
+        "archive_hosts": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9.-]+$"}
+        },
+        "allowed_content_types": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^[a-z0-9!#$&^_.+-]+/[a-z0-9!#$&^_.+-]+$"}
+        },
+        "max_payload_bytes": {"type": "integer", "minimum": 1}
       }
     }
   },

@@ -5,12 +5,16 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema", "member_id", "canonical_url", "capture_timestamp",
+    "schema", "configuration_sha256", "checkpoint_sha256", "member_id",
+    "failed_status", "canonical_url", "capture_timestamp",
     "source_metadata_sha256", "source_row_sha256", "status", "candidate_sha256"
   ],
   "properties": {
     "schema": {"const": "fyi-archive.wayback-replacement-candidate.v1"},
+    "configuration_sha256": {"$ref": "#/$defs/sha256"},
+    "checkpoint_sha256": {"$ref": "#/$defs/sha256"},
     "member_id": {"type": "string", "minLength": 1},
+    "failed_status": {"enum": ["retryable", "terminal"]},
     "canonical_url": {"type": "string", "format": "uri", "pattern": "^https://"},
     "capture_timestamp": {"type": "string", "format": "date-time"},
     "source_metadata_sha256": {"$ref": "#/$defs/sha256"},

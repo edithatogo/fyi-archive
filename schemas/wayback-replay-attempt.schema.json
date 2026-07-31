@@ -7,7 +7,8 @@
   "required": [
     "schema", "occurrence_id", "member_id", "canonical_url", "capture_timestamp",
     "attempt_number", "observed_at", "outcome_code", "retry_disposition",
-    "object_sha256", "pacing", "sequence", "previous_entry_sha256", "entry_sha256"
+    "object_sha256", "final_url", "content_type", "payload_bytes", "pacing",
+    "sequence", "previous_entry_sha256", "entry_sha256"
   ],
   "properties": {
     "schema": {"const": "fyi-archive.wayback-replay-attempt.v1"},
@@ -20,6 +21,9 @@
     "outcome_code": {"type": "string", "minLength": 1},
     "retry_disposition": {"enum": ["retryable", "terminal", "complete"]},
     "object_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "final_url": {"oneOf": [{"type": "string", "format": "uri", "pattern": "^https://"}, {"type": "null"}]},
+    "content_type": {"type": ["string", "null"]},
+    "payload_bytes": {"oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]},
     "pacing": {"type": "object"},
     "sequence": {"type": "integer", "minimum": 0},
     "previous_entry_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
