@@ -77,8 +77,14 @@ def validate_mapping(mapping: dict[str, Any]) -> None:
         riopa_field = entry.get("riopa_field")
         if classification in {"exact", "approximate"} and not isinstance(riopa_field, str):
             raise ValueError(f"{classification} mapping requires riopa_field")
-        if classification in {"extension-only", "unmapped"} and riopa_field is not None:
-            raise ValueError(f"{classification} mapping must not set riopa_field")
+        if classification == "unmapped" and riopa_field is not None:
+            raise ValueError("unmapped mapping must not set riopa_field")
+        if (
+            classification == "extension-only"
+            and riopa_field is not None
+            and not isinstance(riopa_field, str)
+        ):
+            raise ValueError("extension-only riopa_field must be a string or null")
         for field in ("rationale", "evidence_fixture"):
             if not isinstance(entry.get(field), str) or not entry[field]:
                 raise ValueError(f"mapping {native_field} requires {field}")
