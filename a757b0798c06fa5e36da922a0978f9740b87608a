@@ -1,0 +1,1 @@
+CI remediation for fyi-archive PR #320. Validated with Ruff preview lint/format and 88 replay-state tests. No replay, retrieval, source scope, publication, or release boundary changed.
