@@ -1,0 +1,17 @@
+{
+  "profiles": [
+    {
+      "allowed_content_types": [
+        "application/json",
+        "text/html"
+      ],
+      "archive_hosts": [
+        "web.archive.org"
+      ],
+      "max_payload_bytes": 16777216,
+      "profile_id": "internet-archive-json-html-v1"
+    }
+  ],
+  "registry_id": "fyi-archive-wayback-boundaries-v1",
+  "schema": "fyi-archive.wayback-replay-boundary-registry.v1"
+}

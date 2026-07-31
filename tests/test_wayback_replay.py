@@ -17,6 +17,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from fyi_archive.wayback_replay import (
     ReplayObservation,
     classify_observation,
+    content_hash,
     initial_checkpoint,
     merge_replacement_candidates,
     next_pacing,
@@ -38,6 +39,36 @@ NOW = datetime(2026, 7, 31, 0, 0, tzinfo=UTC)
 
 def configuration() -> dict[str, Any]:
     return json.loads((FIXTURES / "wayback_replay_configuration.json").read_text())
+
+
+def write_cdx_metadata(
+    root: Path,
+    *,
+    member_id: str,
+    canonical_url: str,
+    capture_timestamp: str,
+) -> tuple[Path, str, str]:
+    row: dict[str, object] = {
+        "member_id": member_id,
+        "canonical_url": canonical_url,
+        "capture_timestamp": capture_timestamp,
+        "archive_url": "https://web.archive.org/web/20251231235959id_/" + canonical_url,
+        "status_code": 200,
+        "digest": "sha256:synthetic-cdx-digest",
+    }
+    row["row_sha256"] = content_hash(row)
+    artifact = {
+        "schema": "fyi-archive.wayback-cdx-metadata-artifact.v1",
+        "source": "Internet Archive CDX",
+        "retrieved_at": "2026-07-31T00:00:00Z",
+        "rows": [row],
+    }
+    path = root / "cdx-metadata.json"
+    path.write_text(
+        json.dumps(artifact, separators=(",", ":"), sort_keys=True),
+        encoding="utf-8",
+    )
+    return path, sha256_bytes(path.read_bytes()), str(row["row_sha256"])
 
 
 def test_positive_configuration_and_schemas() -> None:
@@ -268,14 +299,21 @@ def test_replacement_candidate_is_exact_pinned_pending_and_deduplicated(tmp_path
         now=NOW,
         rng=random.Random(1),
     )
+    metadata_path, metadata_sha256, row_sha256 = write_cdx_metadata(
+        tmp_path,
+        member_id=member["member_id"],
+        canonical_url=member["canonical_url"],
+        capture_timestamp="2025-12-31T23:59:59Z",
+    )
     candidate = replacement_candidate(
         configuration=config,
         checkpoint=checkpoint,
         member_id=member["member_id"],
         candidate_url=member["canonical_url"],
         capture_timestamp="2025-12-31T23:59:59Z",
-        source_metadata_sha256="a" * 64,
-        source_row_sha256="b" * 64,
+        source_metadata_path=metadata_path,
+        source_metadata_sha256=metadata_sha256,
+        source_row_sha256=row_sha256,
     )
     assert candidate["status"] == "pending_replay_approval"
     assert merge_replacement_candidates(

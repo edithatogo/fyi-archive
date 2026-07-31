@@ -38,7 +38,16 @@ TERMINAL_CODES = frozenset(
         "malformed_content",
     }
 )
-SCHEMA_DIRECTORY = Path(__file__).parents[2] / "schemas"
+PACKAGE_SCHEMA_DIRECTORY = Path(__file__).parent / "schemas"
+SCHEMA_DIRECTORY = (
+    PACKAGE_SCHEMA_DIRECTORY
+    if PACKAGE_SCHEMA_DIRECTORY.is_dir()
+    else Path(__file__).parents[2] / "schemas"
+)
+BOUNDARY_REGISTRY_PATH = Path(__file__).parent / "data" / "wayback_replay_boundary_registry.json"
+APPROVED_BOUNDARY_REGISTRY_SHA256 = (
+    "71045c0446973cc28b12e41eb2201e6c8c896f53b0b59a51ba2f8b6063d3a7ea"
+)
 
 
 class ReplayStateError(RuntimeError):
@@ -246,6 +255,27 @@ def _require_datetime(value: object, field: str) -> str:
     return rendered
 
 
+def _load_boundary_profile(registry_sha256: object, profile_id: object) -> dict[str, Any]:
+    """Resolve a policy boundary from the package-pinned external registry."""
+    if BOUNDARY_REGISTRY_PATH.is_symlink() or not BOUNDARY_REGISTRY_PATH.is_file():
+        raise ReplayStateError("Wayback boundary registry is missing or unsafe")
+    try:
+        raw_registry = BOUNDARY_REGISTRY_PATH.read_bytes()
+        registry = json.loads(raw_registry.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ReplayStateError("Wayback boundary registry is unreadable") from error
+    _validate_schema("wayback-replay-boundary-registry.schema.json", registry)
+    actual = sha256_bytes(raw_registry)
+    supplied = _require_sha256(registry_sha256, "boundary_registry_sha256")
+    if actual != APPROVED_BOUNDARY_REGISTRY_SHA256 or supplied != actual:
+        raise ReplayStateError("Wayback boundary registry pin does not match")
+    profiles = cast("list[dict[str, Any]]", registry["profiles"])
+    matches = [profile for profile in profiles if profile["profile_id"] == profile_id]
+    if len(matches) != 1:
+        raise ReplayStateError("Wayback boundary registry profile is not approved")
+    return matches[0]
+
+
 def validate_configuration(configuration: Mapping[str, object]) -> dict[str, Any]:
     """Validate and normalize an immutable replay configuration."""
     _validate_schema("wayback-replay-configuration.schema.json", dict(configuration))
@@ -254,6 +284,8 @@ def validate_configuration(configuration: Mapping[str, object]) -> dict[str, Any
         "selection_sha256",
         "members",
         "replay_policy_sha256",
+        "boundary_registry_sha256",
+        "boundary_profile_id",
         "producer",
         "producer_version",
         "parser_version",
@@ -266,6 +298,9 @@ def validate_configuration(configuration: Mapping[str, object]) -> dict[str, Any
         raise ReplayStateError("unsupported replay configuration schema")
     _require_sha256(configuration["selection_sha256"], "selection_sha256")
     _require_sha256(configuration["replay_policy_sha256"], "replay_policy_sha256")
+    boundary = _load_boundary_profile(
+        configuration["boundary_registry_sha256"], configuration["boundary_profile_id"]
+    )
     raw_members = configuration["members"]
     if not isinstance(raw_members, list) or not raw_members:
         raise ReplayStateError("members must be a non-empty ordered array")
@@ -324,6 +359,9 @@ def validate_configuration(configuration: Mapping[str, object]) -> dict[str, Any
         raise ReplayStateError("policy minimum_window exceeds window_size")
     if content_hash(policy) != configuration["replay_policy_sha256"]:
         raise ReplayStateError("replay policy SHA-256 does not match policy")
+    for field in ("archive_hosts", "allowed_content_types", "max_payload_bytes"):
+        if policy.get(field) != boundary[field]:
+            raise ReplayStateError(f"policy {field} exceeds the external boundary registry")
     for field in ("producer", "producer_version", "parser_version"):
         if not str(configuration[field]).strip():
             raise ReplayStateError(f"{field} is required")
@@ -342,6 +380,8 @@ def initial_checkpoint(configuration: Mapping[str, object]) -> dict[str, Any]:
         "configuration_sha256": content_hash(normalized),
         "selection_sha256": normalized["selection_sha256"],
         "replay_policy_sha256": normalized["replay_policy_sha256"],
+        "boundary_registry_sha256": normalized["boundary_registry_sha256"],
+        "boundary_profile_id": normalized["boundary_profile_id"],
         "producer": normalized["producer"],
         "producer_version": normalized["producer_version"],
         "parser_version": normalized["parser_version"],
@@ -385,6 +425,8 @@ def verify_checkpoint(
         "configuration_sha256": content_hash(normalized),
         "selection_sha256": normalized["selection_sha256"],
         "replay_policy_sha256": normalized["replay_policy_sha256"],
+        "boundary_registry_sha256": normalized["boundary_registry_sha256"],
+        "boundary_profile_id": normalized["boundary_profile_id"],
         "producer": normalized["producer"],
         "producer_version": normalized["producer_version"],
         "parser_version": normalized["parser_version"],
@@ -623,10 +665,11 @@ def replacement_candidate(
     member_id: str,
     candidate_url: str,
     capture_timestamp: str,
+    source_metadata_path: Path,
     source_metadata_sha256: str,
     source_row_sha256: str,
 ) -> dict[str, Any]:
-    """Create an exact-URL replacement candidate that can never auto-replay."""
+    """Create a replacement candidate from one verified, pinned CDX row."""
     normalized = validate_configuration(configuration)
     verified_checkpoint = verify_checkpoint(checkpoint, normalized)
     members = {
@@ -643,6 +686,55 @@ def replacement_candidate(
     original = validate_canonical_url(str(member["canonical_url"]))
     if validate_canonical_url(candidate_url) != original:
         raise ReplayStateError("replacement candidate URL is not the exact canonical URL")
+    expected_artifact_sha256 = _require_sha256(source_metadata_sha256, "source_metadata_sha256")
+    expected_row_sha256 = _require_sha256(source_row_sha256, "source_row_sha256")
+    if source_metadata_path.is_symlink() or not source_metadata_path.is_file():
+        raise ReplayStateError("replacement CDX metadata artifact is missing or unsafe")
+    try:
+        source_bytes = source_metadata_path.read_bytes()
+        source_metadata = json.loads(source_bytes.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ReplayStateError("replacement CDX metadata artifact is unreadable") from error
+    if sha256_bytes(source_bytes) != expected_artifact_sha256:
+        raise ReplayStateError("replacement CDX metadata artifact hash does not match")
+    _validate_schema("wayback-cdx-metadata-artifact.schema.json", source_metadata)
+    rows = cast("list[dict[str, Any]]", source_metadata["rows"])
+    matching_rows: list[dict[str, Any]] = []
+    for raw_row in rows:
+        row = dict(raw_row)
+        supplied_row_sha256 = _require_sha256(row.pop("row_sha256"), "source row SHA-256")
+        if content_hash(row) != supplied_row_sha256:
+            raise ReplayStateError("replacement CDX metadata row hash does not match")
+        if supplied_row_sha256 == expected_row_sha256:
+            matching_rows.append(raw_row)
+    if len(matching_rows) != 1:
+        raise ReplayStateError("replacement CDX metadata row pin is missing or ambiguous")
+    source_row = matching_rows[0]
+    candidate_timestamp = _require_datetime(capture_timestamp, "capture_timestamp")
+    if (
+        source_row["member_id"] != member_id
+        or source_row["canonical_url"] != original
+        or source_row["capture_timestamp"] != candidate_timestamp
+    ):
+        raise ReplayStateError("replacement CDX metadata row identity does not match")
+    archive_url = urlsplit(validate_canonical_url(str(source_row["archive_url"])))
+    timestamp = datetime.fromisoformat(candidate_timestamp).astimezone(UTC)
+    cdx_timestamp = timestamp.strftime("%Y%m%d%H%M%S")
+    expected_prefix = f"/web/{cdx_timestamp}id_/"
+    archived_target = archive_url.path.removeprefix(expected_prefix)
+    if archive_url.query:
+        archived_target = f"{archived_target}?{archive_url.query}"
+    if (
+        archive_url.hostname != "web.archive.org"
+        or not archive_url.path.startswith(expected_prefix)
+        or archived_target != original
+    ):
+        raise ReplayStateError("replacement CDX metadata archive URL does not match row identity")
+    retrieved_at = datetime.fromisoformat(
+        _require_datetime(source_metadata["retrieved_at"], "source metadata retrieved_at")
+    )
+    if timestamp > retrieved_at:
+        raise ReplayStateError("replacement capture timestamp is later than metadata retrieval")
     value: dict[str, Any] = {
         "schema": "fyi-archive.wayback-replacement-candidate.v1",
         "configuration_sha256": content_hash(normalized),
@@ -650,9 +742,9 @@ def replacement_candidate(
         "member_id": member_id,
         "failed_status": failed_status,
         "canonical_url": original,
-        "capture_timestamp": _require_datetime(capture_timestamp, "capture_timestamp"),
-        "source_metadata_sha256": _require_sha256(source_metadata_sha256, "source_metadata_sha256"),
-        "source_row_sha256": _require_sha256(source_row_sha256, "source_row_sha256"),
+        "capture_timestamp": candidate_timestamp,
+        "source_metadata_sha256": expected_artifact_sha256,
+        "source_row_sha256": expected_row_sha256,
         "status": "pending_replay_approval",
     }
     value["candidate_sha256"] = content_hash(value)

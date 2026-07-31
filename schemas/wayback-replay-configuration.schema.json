@@ -6,6 +6,7 @@
   "additionalProperties": false,
   "required": [
     "schema", "selection_sha256", "members", "replay_policy_sha256",
+    "boundary_registry_sha256", "boundary_profile_id",
     "producer", "producer_version", "parser_version", "jitter_seed", "policy"
   ],
   "properties": {
@@ -26,6 +27,8 @@
       }
     },
     "replay_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "boundary_registry_sha256": {"$ref": "#/$defs/sha256"},
+    "boundary_profile_id": {"const": "internet-archive-json-html-v1"},
     "producer": {"type": "string", "minLength": 1},
     "producer_version": {"type": "string", "minLength": 1},
     "parser_version": {"type": "string", "minLength": 1},

@@ -22,6 +22,16 @@ from jsonschema.exceptions import ValidationError
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ALLOWED_STATES = frozenset({"pending", "complete", "retryable", "terminal"})
 SCHEMA_DIRECTORY = Path(__file__).parents[1] / "schemas"
+BOUNDARY_REGISTRY_PATH = (
+    Path(__file__).parents[1]
+    / "src"
+    / "fyi_archive"
+    / "data"
+    / "wayback_replay_boundary_registry.json"
+)
+APPROVED_BOUNDARY_REGISTRY_SHA256 = (
+    "71045c0446973cc28b12e41eb2201e6c8c896f53b0b59a51ba2f8b6063d3a7ea"
+)
 
 
 def canonical_json(value: object) -> bytes:
@@ -67,6 +77,31 @@ def load_object(path: Path) -> dict[str, Any]:
     return value
 
 
+def load_boundary_profile(registry_sha256: object, profile_id: object) -> dict[str, Any]:
+    """Independently resolve the package-pinned replay boundary."""
+    if BOUNDARY_REGISTRY_PATH.is_symlink() or not BOUNDARY_REGISTRY_PATH.is_file():
+        raise RuntimeError("boundary registry is unsafe or missing")
+    raw_registry = BOUNDARY_REGISTRY_PATH.read_bytes()
+    registry = json.loads(raw_registry.decode("utf-8"))
+    if not isinstance(registry, dict):
+        raise RuntimeError("boundary registry is not a JSON object")
+    verify_schema("wayback-replay-boundary-registry.schema.json", registry)
+    actual = hashlib.sha256(raw_registry).hexdigest()
+    if (
+        actual != APPROVED_BOUNDARY_REGISTRY_SHA256
+        or require_hash(registry_sha256, "boundary registry digest") != actual
+    ):
+        raise RuntimeError("boundary registry pin does not match")
+    matches = [
+        profile
+        for profile in registry["profiles"]
+        if isinstance(profile, dict) and profile.get("profile_id") == profile_id
+    ]
+    if len(matches) != 1:
+        raise RuntimeError("boundary registry profile is not approved")
+    return matches[0]
+
+
 def verify_configuration(value: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
     """Verify the closed configuration shape and exact content pins."""
     verify_schema("wayback-replay-configuration.schema.json", value)
@@ -75,6 +110,8 @@ def verify_configuration(value: dict[str, Any]) -> tuple[str, list[dict[str, Any
         "selection_sha256",
         "members",
         "replay_policy_sha256",
+        "boundary_registry_sha256",
+        "boundary_profile_id",
         "producer",
         "producer_version",
         "parser_version",
@@ -163,6 +200,12 @@ def verify_configuration(value: dict[str, Any]) -> tuple[str, list[dict[str, Any
         raise RuntimeError("configuration policy windows are inconsistent")
     if content_hash(policy) != require_hash(value["replay_policy_sha256"], "policy digest"):
         raise RuntimeError("policy digest does not match")
+    boundary = load_boundary_profile(
+        value["boundary_registry_sha256"], value["boundary_profile_id"]
+    )
+    for field in ("archive_hosts", "allowed_content_types", "max_payload_bytes"):
+        if policy.get(field) != boundary[field]:
+            raise RuntimeError(f"policy {field} exceeds the boundary registry")
     if not all(
         str(value.get(field, "")).strip()
         for field in ("producer", "producer_version", "parser_version")
@@ -296,6 +339,8 @@ def verify(root: Path) -> dict[str, Any]:
         "configuration_sha256",
         "selection_sha256",
         "replay_policy_sha256",
+        "boundary_registry_sha256",
+        "boundary_profile_id",
         "producer",
         "producer_version",
         "parser_version",
@@ -317,6 +362,8 @@ def verify(root: Path) -> dict[str, Any]:
         "configuration_sha256": configuration_hash,
         "selection_sha256": configuration["selection_sha256"],
         "replay_policy_sha256": configuration["replay_policy_sha256"],
+        "boundary_registry_sha256": configuration["boundary_registry_sha256"],
+        "boundary_profile_id": configuration["boundary_profile_id"],
         "producer": configuration["producer"],
         "producer_version": configuration["producer_version"],
         "parser_version": configuration["parser_version"],

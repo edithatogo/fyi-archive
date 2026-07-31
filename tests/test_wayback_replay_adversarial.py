@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 
+import fyi_archive.wayback_replay as replay_module
 from fyi_archive.wayback_replay import (
     ReplayObservation,
     ReplayStateError,
@@ -21,6 +22,7 @@ from fyi_archive.wayback_replay import (
     object_path,
     record_observation,
     replacement_candidate,
+    sha256_bytes,
     store_object,
     validate_configuration,
     verify_journal,
@@ -39,6 +41,42 @@ def configuration() -> dict[str, Any]:
 
 def repin_policy(config: dict[str, Any]) -> None:
     config["replay_policy_sha256"] = content_hash(config["policy"])
+
+
+def write_cdx_metadata(
+    root: Path,
+    *,
+    member_id: str = "synthetic-001",
+    canonical_url: str = "https://example.test/request/synthetic-001.json",
+    capture_timestamp: str = "2025-01-01T00:00:00Z",
+) -> tuple[Path, str, str]:
+    row: dict[str, object] = {
+        "member_id": member_id,
+        "canonical_url": canonical_url,
+        "capture_timestamp": capture_timestamp,
+        "archive_url": "https://web.archive.org/web/20250101000000id_/" + canonical_url,
+        "status_code": 200,
+        "digest": "sha256:synthetic-cdx-digest",
+    }
+    row["row_sha256"] = content_hash(row)
+    artifact = {
+        "schema": "fyi-archive.wayback-cdx-metadata-artifact.v1",
+        "source": "Internet Archive CDX",
+        "retrieved_at": "2026-07-31T00:00:00Z",
+        "rows": [row],
+    }
+    path = root / "cdx-metadata.json"
+    path.write_text(
+        json.dumps(
+            artifact,
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    return path, sha256_bytes(path.read_bytes()), str(row["row_sha256"])
 
 
 def rewrite_checkpoint(root: Path, checkpoint: dict[str, Any]) -> None:
@@ -101,6 +139,8 @@ def test_object_paths_reject_traversal_and_noncanonical_hashes(tmp_path: Path, d
     [
         "selection_sha256",
         "replay_policy_sha256",
+        "boundary_registry_sha256",
+        "boundary_profile_id",
         "producer",
         "producer_version",
         "parser_version",
@@ -214,7 +254,7 @@ def test_unknown_or_incomplete_observations_fail_closed(observation: ReplayObser
         ("final_url", "https://righttoknow.example/request/1", "archive host"),
         ("final_url", "https://user@web.archive.org/web/1", "archive URL"),
         ("content_type", "application/octet-stream", "content type"),
-        ("response_bytes", b"x" * 33, "payload"),
+        ("response_bytes", b"x" * 16_777_217, "payload"),
     ],
 )
 def test_success_boundary_fails_before_cas_persistence(
@@ -285,6 +325,58 @@ def test_rehashed_off_archive_attempt_fails_producer_and_independent_verifier(
 @pytest.mark.parametrize(
     ("field", "value"),
     [
+        ("archive_hosts", ["righttoknow.example"]),
+        ("allowed_content_types", ["application/octet-stream"]),
+        ("max_payload_bytes", 2**40),
+    ],
+)
+def test_resealed_policy_cannot_expand_external_replay_boundary(
+    tmp_path: Path, field: str, value: object
+) -> None:
+    config = configuration()
+    config["policy"][field] = value
+    repin_policy(config)
+    with pytest.raises(ReplayStateError, match="boundary registry"):
+        validate_configuration(config)
+
+    valid = configuration()
+    checkpoint = write_initial_state(tmp_path, valid)
+    persisted = json.loads((tmp_path / "configuration.json").read_text())
+    persisted["policy"][field] = value
+    repin_policy(persisted)
+    (tmp_path / "configuration.json").write_text(json.dumps(persisted))
+    checkpoint["replay_policy_sha256"] = persisted["replay_policy_sha256"]
+    checkpoint["configuration_sha256"] = content_hash(persisted)
+    checkpoint.pop("checkpoint_sha256")
+    checkpoint["checkpoint_sha256"] = content_hash(checkpoint)
+    rewrite_checkpoint(tmp_path, checkpoint)
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "verify_wayback_replay_state.py"), str(tmp_path)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1
+    assert "boundary registry" in result.stderr
+
+
+def test_tampered_boundary_registry_cannot_be_resealed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry = json.loads(replay_module.BOUNDARY_REGISTRY_PATH.read_text())
+    registry["profiles"][0]["archive_hosts"] = ["righttoknow.example"]
+    path = tmp_path / "tampered-boundary-registry.json"
+    path.write_text(json.dumps(registry), encoding="utf-8")
+    monkeypatch.setattr(replay_module, "BOUNDARY_REGISTRY_PATH", path)
+    config = configuration()
+    config["boundary_registry_sha256"] = sha256_bytes(path.read_bytes())
+    with pytest.raises(ReplayStateError, match="registry pin"):
+        validate_configuration(config)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
         ("floor_seconds", 0),
         ("ceiling_seconds", 0),
         ("backoff_multiplier", 0.5),
@@ -333,8 +425,9 @@ def test_producer_and_independent_verifier_reject_invalid_policy(
         "https://example.test:444/request/synthetic-001.json",
     ],
 )
-def test_replacement_candidates_reject_any_url_change(url: str) -> None:
+def test_replacement_candidates_reject_any_url_change(tmp_path: Path, url: str) -> None:
     config = configuration()
+    metadata_path, metadata_sha256, row_sha256 = write_cdx_metadata(tmp_path)
     checkpoint = {
         "checkpoint_sha256": "c" * 64,
         "member_states": {"synthetic-001": "terminal"},
@@ -346,8 +439,9 @@ def test_replacement_candidates_reject_any_url_change(url: str) -> None:
             member_id="synthetic-001",
             candidate_url=url,
             capture_timestamp="2025-01-01T00:00:00Z",
-            source_metadata_sha256="a" * 64,
-            source_row_sha256="b" * 64,
+            source_metadata_path=metadata_path,
+            source_metadata_sha256=metadata_sha256,
+            source_row_sha256=row_sha256,
         )
 
 
@@ -366,14 +460,16 @@ def test_candidate_cannot_activate_replay_membership(tmp_path: Path) -> None:
         rng=random.Random(1),
     )
     before = json.loads(json.dumps(checkpoint))
+    metadata_path, metadata_sha256, row_sha256 = write_cdx_metadata(tmp_path)
     candidate = replacement_candidate(
         configuration=config,
         checkpoint=checkpoint,
         member_id="synthetic-001",
         candidate_url=config["members"][0]["canonical_url"],
         capture_timestamp="2025-01-01T00:00:00Z",
-        source_metadata_sha256="a" * 64,
-        source_row_sha256="b" * 64,
+        source_metadata_path=metadata_path,
+        source_metadata_sha256=metadata_sha256,
+        source_row_sha256=row_sha256,
     )
     assert candidate["status"] == "pending_replay_approval"
     assert candidate["configuration_sha256"] == content_hash(config)
@@ -390,6 +486,11 @@ def test_replacement_candidate_rejects_arbitrary_or_nonfailed_member(
 ) -> None:
     config = configuration()
     checkpoint = write_initial_state(tmp_path, config)
+    metadata_path, metadata_sha256, row_sha256 = write_cdx_metadata(
+        tmp_path,
+        member_id=member_id,
+        canonical_url="https://example.test/request/synthetic-002",
+    )
     with pytest.raises(ReplayStateError, match=r"failed member|configured population"):
         replacement_candidate(
             configuration=config,
@@ -397,8 +498,9 @@ def test_replacement_candidate_rejects_arbitrary_or_nonfailed_member(
             member_id=member_id,
             candidate_url="https://example.test/request/synthetic-002",
             capture_timestamp="2025-01-01T00:00:00Z",
-            source_metadata_sha256="a" * 64,
-            source_row_sha256="b" * 64,
+            source_metadata_path=metadata_path,
+            source_metadata_sha256=metadata_sha256,
+            source_row_sha256=row_sha256,
         )
 
 
@@ -416,14 +518,16 @@ def test_replacement_merge_rejects_wrong_configuration_or_checkpoint(tmp_path: P
         now=NOW,
         rng=random.Random(1),
     )
+    metadata_path, metadata_sha256, row_sha256 = write_cdx_metadata(tmp_path)
     candidate = replacement_candidate(
         configuration=config,
         checkpoint=checkpoint,
         member_id="synthetic-001",
         candidate_url=config["members"][0]["canonical_url"],
         capture_timestamp="2025-01-01T00:00:00Z",
-        source_metadata_sha256="a" * 64,
-        source_row_sha256="b" * 64,
+        source_metadata_path=metadata_path,
+        source_metadata_sha256=metadata_sha256,
+        source_row_sha256=row_sha256,
     )
     changed = configuration()
     changed["producer_version"] = "changed"
@@ -439,6 +543,49 @@ def test_replacement_merge_rejects_wrong_configuration_or_checkpoint(tmp_path: P
     changed_url["candidate_sha256"] = content_hash(changed_url)
     with pytest.raises(ReplayStateError, match="exact URL"):
         merge_replacement_candidates([changed_url], configuration=config, checkpoint=checkpoint)
+
+
+def test_replacement_candidate_rejects_fabricated_or_unbound_cdx_metadata(
+    tmp_path: Path,
+) -> None:
+    config = configuration()
+    checkpoint = write_initial_state(tmp_path, config)
+    checkpoint = record_observation(
+        root=tmp_path,
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id="synthetic-001",
+        occurrence_id="terminal-for-cdx-check",
+        attempt_number=1,
+        observation=ReplayObservation(kind="http", status_code=404),
+        now=NOW,
+        rng=random.Random(1),
+    )
+    path, artifact_sha256, row_sha256 = write_cdx_metadata(
+        tmp_path,
+        capture_timestamp="2099-01-01T00:00:00Z",
+    )
+    for mutation in ("artifact_hash", "row_hash", "timestamp", "member"):
+        kwargs: dict[str, object] = {
+            "configuration": config,
+            "checkpoint": checkpoint,
+            "member_id": "synthetic-001",
+            "candidate_url": config["members"][0]["canonical_url"],
+            "capture_timestamp": "2025-01-01T00:00:00Z",
+            "source_metadata_path": path,
+            "source_metadata_sha256": artifact_sha256,
+            "source_row_sha256": row_sha256,
+        }
+        if mutation == "artifact_hash":
+            kwargs["source_metadata_sha256"] = "a" * 64
+        elif mutation == "row_hash":
+            kwargs["source_row_sha256"] = "b" * 64
+        elif mutation == "timestamp":
+            kwargs["capture_timestamp"] = "2025-01-02T00:00:00Z"
+        else:
+            kwargs["member_id"] = "synthetic-002"
+        with pytest.raises(ReplayStateError):
+            replacement_candidate(**kwargs)  # type: ignore[arg-type]
 
 
 def test_open_circuit_rejects_premature_transport_observation(tmp_path: Path) -> None:

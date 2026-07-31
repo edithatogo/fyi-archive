@@ -98,6 +98,9 @@ Issues = "https://github.com/edithatogo/fyi-archive/issues"
 [tool.hatch.build.targets.wheel]
 packages = ["src/fyi_archive"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"schemas" = "fyi_archive/schemas"
+
 # --------------------------------------------------------------------------- #
 # Family conventions: see sibling repos (corpus-law-nz, corpus-cases-medilegal-nz)
 # --------------------------------------------------------------------------- #
