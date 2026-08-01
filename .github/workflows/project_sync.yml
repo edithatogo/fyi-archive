@@ -26,7 +26,10 @@ jobs:
 
       - name: Sync RIOPA umbrella project
         env:
-          GH_TOKEN: ${{ secrets.RIOPA_PROJECT_TOKEN }}
+          # Prefer the dedicated project token; retain the existing workflow
+          # PAT as a backward-compatible credential while that secret is
+          # provisioned. Both must carry read:project/project scopes.
+          GH_TOKEN: ${{ secrets.RIOPA_PROJECT_TOKEN || secrets.WORKFLOW_PAT }}
         run: |
           python scripts/sync_github_projects.py --apply --status-update --report-output project_sync_report.json
           cat project_sync_report.json

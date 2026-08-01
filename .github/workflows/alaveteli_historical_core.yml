@@ -79,8 +79,19 @@ jobs:
             --data-urlencode "collapse=urlkey" \
             --data-urlencode "limit=$PAGE_LIMIT" \
             --output ".tmp/$INSTANCE/index.json"; then
-            printf '{"schema":"historical-source-index-v1","records":[]}\n' \
-              > ".tmp/$INSTANCE/index.json"
+            printf '[]\n' > ".tmp/$INSTANCE/index.json"
+            printf '{"source":"internet_archive_cdx","status":"unavailable","host":"%s"}\n' \
+              "$HOST" > ".tmp/$INSTANCE/retrieval.json"
+          elif ! uv run python -c 'import json,sys; raise SystemExit(not isinstance(json.load(open(sys.argv[1], encoding="utf-8")), list))' \
+            ".tmp/$INSTANCE/index.json"; then
+            # CDX sometimes returns a JSON error object with HTTP 200. Preserve
+            # the response for diagnosis, but pass an empty, valid CDX array to
+            # the offline importer so one unavailable host does not break the
+            # independent-site matrix.
+            mv ".tmp/$INSTANCE/index.json" ".tmp/$INSTANCE/cdx-error.json"
+            printf '[]\n' > ".tmp/$INSTANCE/index.json"
+            printf '{"source":"internet_archive_cdx","status":"invalid_response","host":"%s"}\n' \
+              "$HOST" > ".tmp/$INSTANCE/retrieval.json"
           fi
       - name: Extract core request data from replay pages
         run: |
