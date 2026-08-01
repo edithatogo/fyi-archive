@@ -33,6 +33,14 @@ def write_json(path: Path, value: object) -> None:
     path.write_bytes(replay.canonical_json(value))
 
 
+def symlink_or_skip(link: Path, target: Path) -> None:
+    """Create a symlink or skip where the platform policy forbids it."""
+    try:
+        link.symlink_to(target, target_is_directory=target.is_dir())
+    except OSError as error:
+        pytest.skip(f"symlink creation is unavailable: {error}")
+
+
 @pytest.mark.parametrize(
     ("raw", "message"),
     [
@@ -64,7 +72,7 @@ def test_cdx_file_boundary_rejects_missing_symlink_and_read_error(
     target = tmp_path / "target.json"
     target.write_text("{}")
     link = tmp_path / "link.json"
-    link.symlink_to(target)
+    symlink_or_skip(link, target)
     with pytest.raises(approvals.CdxApprovalError, match="missing or unsafe"):
         approvals._read_regular_file(link, "candidate")
 
