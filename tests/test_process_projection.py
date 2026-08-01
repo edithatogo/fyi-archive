@@ -300,6 +300,18 @@ def test_projection_rejects_malformed_json(tmp_path: Path) -> None:
         build_process_projection(events_path=events, output_dir=tmp_path / "out")
 
 
+def test_projection_streams_past_blank_jsonl_lines(tmp_path: Path) -> None:
+    events = tmp_path / "events.jsonl"
+    events.write_text(
+        '\n{"event_id":"e1","case_id":"c1","activity":"opened"}\n\n',
+        encoding="utf-8",
+    )
+
+    coverage = build_process_projection(events_path=events, output_dir=tmp_path / "out")
+
+    assert coverage["event_count"] == 1
+
+
 @pytest.mark.parametrize("field", ["event_id", "case_id"])
 def test_projection_rejects_empty_identity(tmp_path: Path, field: str) -> None:
     events = tmp_path / "events.jsonl"
