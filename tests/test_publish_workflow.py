@@ -22,6 +22,25 @@ def test_publication_dry_run_skips_remote_backfill_verification() -> None:
     assert '"remote_reads": False' in workflow
 
 
+def test_scheduled_publication_consolidates_instead_of_publishing_a_sample() -> None:
+    workflow = Path(".github/workflows/publish_archives.yml").read_text(encoding="utf-8")
+
+    assert "SEED_BEFORE_PUBLISH: ${{ inputs.seed_before_publish || false }}" in workflow
+    assert (
+        "CONSOLIDATE_BACKFILL_ARTIFACTS: "
+        "${{ inputs.consolidate_backfill_artifacts || github.event_name == 'schedule' }}"
+        in workflow
+    )
+
+
+def test_huggingface_publish_rejects_unreviewed_record_decrease() -> None:
+    workflow = Path(".github/workflows/publish_archives.yml").read_text(encoding="utf-8")
+
+    assert "allow_hf_record_decrease:" in workflow
+    assert "local_record_count < remote_record_count" in workflow
+    assert "refusing to replace a larger Hugging Face corpus" in workflow
+
+
 def test_merge_workflow_rejects_empty_process_event_merge() -> None:
     workflow = Path(".github/workflows/merge_backfill_artifacts.yml").read_text(encoding="utf-8")
     assert "refusing to create a verified projection" in workflow

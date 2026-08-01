@@ -40,3 +40,11 @@ the generated checksums, and performs no publication.
 - [x] Task: Record acceptance evidence in GitHub issue #196 and parent epic #36.
 - [x] Task: Phase verification and checkpoint per `conductor/workflow.md`.
 - [x] Local contract tests and checksum verification pass; this does not satisfy the reopened live full-corpus parity gate.
+
+## 2026-08-01 hosted corpus recovery
+
+- The canonical Hugging Face manifest and Parquet projection were restored to
+  the last verified 33,217-record revision after a one-record sample publish.
+- This repairs hosted mirror parity and the Dataset Viewer, but does **not**
+  close Phase 3: full WARC/event/attachment parity, reviewed exclusions, a
+  takedown digest, and a pinned complete-source revision remain outstanding.

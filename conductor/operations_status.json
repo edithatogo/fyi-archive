@@ -45,7 +45,24 @@
       "remaining_to_target": 116783
     }
   },
+  "recovery_2026_08_01": {
+    "cause": "The scheduled August publication cleaned the canonical Hugging Face tree and published a one-record sample bundle.",
+    "huggingface_restored_revision": "a462fe7d447be987a3c185ab27f7ed40b7d17f8c",
+    "huggingface_pull_request": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/discussions/2",
+    "huggingface_record_count": 33217,
+    "viewer_status": "valid; default/requests exposes 33,217 rows with no pending or failed conversion",
+    "health_run": 30692982151,
+    "health_status": "success",
+    "alaveteli_validation_run": 30692890453,
+    "alaveteli_validation_status": "16 of 16 independent jobs succeeded with a one-page bound",
+    "project_sync_run": 30692889152,
+    "project_sync_status": "blocked: the existing WORKFLOW_PAT authenticates but lacks access to Project 4; provision RIOPA_PROJECT_TOKEN with Projects read/write scope",
+    "nz_batch_run": 30690368685,
+    "nz_batch_status": "24 captures succeeded and request 10230 failed closed on an upstream HTTP 403; retain for the existing scheduled retry path"
+  },
   "next_ops": [
+    "Provision RIOPA_PROJECT_TOKEN with Projects read/write scope and rerun project sync once",
+    "Prevent sample or partial manifests from replacing a larger canonical hosted corpus without an explicit override and retained pre-publish evidence",
     "Keep Sigstore gated until production release attachment paths have passed several clean cycles"
   ]
 }
