@@ -1,0 +1,97 @@
+{
+  "schema_version": "1.0.0",
+  "repository": "edithatogo/fyi-archive",
+  "source_revision": "cea43a097f8928d7eaa4295d284f0b8d3999637b",
+  "profile_version": "1.0.0",
+  "mappings": [
+    {
+      "native_field": "provenance.source.commit",
+      "riopa_field": "transformation_run.implementation.commit",
+      "classification": "exact",
+      "rationale": "Both fields identify the exact source-control revision used by the archive orchestration run.",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/provenance/source/commit"
+    },
+    {
+      "native_field": "provenance.environment.platform",
+      "riopa_field": "transformation_run.environment.platform",
+      "classification": "exact",
+      "rationale": "The native platform string is preserved directly as the transformation execution platform.",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/provenance/environment/platform"
+    },
+    {
+      "native_field": "provenance.artifacts[0].sha256",
+      "riopa_field": "artifact.sha256",
+      "classification": "exact",
+      "rationale": "Both fields are lowercase hexadecimal SHA-256 digests of the same archived artifact bytes.",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/provenance/artifacts/0/sha256"
+    },
+    {
+      "native_field": "provenance.artifacts[0].size_bytes",
+      "riopa_field": "artifact.size_bytes",
+      "classification": "exact",
+      "rationale": "Both fields record the byte length of the same archived artifact without unit conversion.",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/provenance/artifacts/0/size_bytes"
+    },
+    {
+      "native_field": "archive_manifest.meta.generated_at",
+      "riopa_field": "snapshot_manifest.created_at",
+      "classification": "exact",
+      "rationale": "The native manifest generation timestamp is the creation timestamp of the projected snapshot manifest.",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/archive_manifest/meta/generated_at"
+    },
+    {
+      "native_field": "research_object.title",
+      "riopa_field": "snapshot_manifest.title",
+      "classification": "exact",
+      "rationale": "The CFF dataset title is retained verbatim as the projected snapshot title.",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/research_object/title"
+    },
+    {
+      "native_field": "research_object.license",
+      "riopa_field": "snapshot_manifest.citation.licence",
+      "classification": "exact",
+      "rationale": "The repository research-object licence is retained verbatim in the snapshot citation.",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/research_object/license"
+    },
+    {
+      "native_field": "archive_manifest.meta.version",
+      "riopa_field": "snapshot_manifest.snapshot_version",
+      "classification": "approximate",
+      "rationale": "The native manifest version is usable as a snapshot label but does not alone prove immutable snapshot identity.",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/archive_manifest/meta/version"
+    },
+    {
+      "native_field": "archive_manifest.requests[0].license",
+      "riopa_field": "rights_inventory.entries[0].declared_licence",
+      "classification": "approximate",
+      "rationale": "The source-declared item licence supplies a rights input but still requires disposition and scope review.",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/archive_manifest/requests/0/license"
+    },
+    {
+      "native_field": "publication_verification.mirrors[0].details.doi",
+      "riopa_field": "snapshot_manifest.citation.doi",
+      "classification": "approximate",
+      "rationale": "A deposition DOI is a citation candidate, but draft verification does not prove that the DOI is published.",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/publication_verification/mirrors/0/details/doi"
+    },
+    {
+      "native_field": "publication_verification.mirrors[0].details.api_url",
+      "riopa_field": null,
+      "classification": "extension-only",
+      "rationale": "The mirror API endpoint is retained as operational native evidence and has no normative RIOPA snapshot field.",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/publication_verification/mirrors/0/details/api_url"
+    },
+    {
+      "native_field": "archive_manifest.requests[0].state",
+      "riopa_field": null,
+      "classification": "unmapped",
+      "rationale": "The Alaveteli workflow state has no safe generic RIOPA meaning without a separately governed domain vocabulary.",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/archive_manifest/requests/0/state"
+    }
+  ],
+  "limitations": [
+    "This mapping is additive and does not assert that a complete RIOPA research object has been generated.",
+    "Approximate mappings require downstream validation before any RIOPA conformance claim.",
+    "The representative fixture contains synthetic values and is not evidence of a live archive publication."
+  ]
+}

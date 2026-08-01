@@ -177,6 +177,7 @@ def verification_bundle(
     *,
     reports: list[MirrorVerification],
     manifest_path: Path,
+    repo_root: Path = Path(),
     generated_at: datetime | None = None,
 ) -> dict[str, Any]:
     """Build a versioned verification payload for repository storage."""
@@ -187,7 +188,7 @@ def verification_bundle(
         "package_version": __version__,
         "publication_month": timestamp.strftime("%Y-%m"),
         "manifest": {
-            "path": manifest_path.as_posix(),
+            "path": repo_relative_path(manifest_path, repo_root).as_posix(),
             "sha256": sha256_file(manifest_path),
             "record_count": manifest_record_count(manifest_path),
         },
@@ -200,6 +201,7 @@ def write_versioned_verification_bundle(
     *,
     reports: list[MirrorVerification],
     manifest_path: Path,
+    repo_root: Path = Path(),
     output_dir: Path = Path("versions"),
     generated_at: datetime | None = None,
 ) -> dict[str, Any]:
@@ -207,6 +209,7 @@ def write_versioned_verification_bundle(
     bundle = verification_bundle(
         reports=reports,
         manifest_path=manifest_path,
+        repo_root=repo_root,
         generated_at=generated_at,
     )
     publication_month = str(bundle["publication_month"])
