@@ -2,7 +2,7 @@
   "archive_publication_version": "0.18.0+archive.2026.08",
   "generated_at": "2026-08-01T06:12:52.066006+00:00",
   "manifest": {
-    "path": "/home/runner/work/fyi-archive/fyi-archive/manifests/latest_manifest.json",
+    "path": "manifests/latest_manifest.json",
     "record_count": 1,
     "sha256": "d9c493ab31555184c7718e58899a233eea4923eb8049ac1f819fa7a9f1948a45"
   },

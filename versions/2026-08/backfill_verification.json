@@ -97,7 +97,7 @@
   },
   "published": {
     "huggingface": {
-      "manifest_path": "/tmp/tmppvg6b7ai/datasets--edithatogo--fyi-archive-nz/snapshots/c1861428c72b0463abc9a037fd50a0d9a4cf3523/manifests/latest_manifest.json",
+      "manifest_path": "hf://datasets/edithatogo/fyi-archive-nz@main/manifests/latest_manifest.json",
       "manifest_sha256": "d9c493ab31555184c7718e58899a233eea4923eb8049ac1f819fa7a9f1948a45",
       "record_count": 1,
       "repo_id": "edithatogo/fyi-archive-nz",
