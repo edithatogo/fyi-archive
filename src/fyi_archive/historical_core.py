@@ -7,7 +7,7 @@ import re
 from datetime import UTC, datetime
 from html import unescape
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 from bs4 import BeautifulSoup
 
@@ -17,11 +17,51 @@ _STATUS_PATTERN = re.compile(
     r"partially successful|gone|internal review)",
     re.IGNORECASE,
 )
+_STATE_PATTERNS = (
+    ("partially_successful", re.compile(r"\bpartially successful\b", re.IGNORECASE)),
+    ("successful", re.compile(r"\bsuccessful\b", re.IGNORECASE)),
+    ("not_held", re.compile(r"\bdid not have the information requested\b", re.IGNORECASE)),
+    ("rejected", re.compile(r"\b(?:refused|rejected)\b", re.IGNORECASE)),
+    ("user_withdrawn", re.compile(r"\bwithdrawn\b", re.IGNORECASE)),
+    (
+        "waiting_clarification",
+        re.compile(r"\bwaiting for clarification\b", re.IGNORECASE),
+    ),
+    ("internal_review", re.compile(r"\binternal review\b", re.IGNORECASE)),
+    (
+        "waiting_response",
+        re.compile(
+            r"\b(?:currently waiting for a response|response .*?(?:overdue|delayed))\b",
+            re.IGNORECASE,
+        ),
+    ),
+)
 
 
 def clean_text(value: object) -> str:
     """Collapse markup-derived whitespace into a stable string."""
     return _WHITESPACE.sub(" ", unescape(str(value or ""))).strip()
+
+
+def normalize_alaveteli_state(value: object) -> str:
+    """Map archived display text to a conservative canonical Alaveteli state."""
+    text = clean_text(value)
+    canonical = text.lower().replace(" ", "_")
+    if canonical in {
+        "successful",
+        "partially_successful",
+        "not_held",
+        "rejected",
+        "user_withdrawn",
+        "waiting_clarification",
+        "internal_review",
+        "waiting_response",
+    }:
+        return canonical
+    for state, pattern in _STATE_PATTERNS:
+        if pattern.search(text):
+            return state
+    return ""
 
 
 def archive_replay_url(source_url: str, timestamp: str) -> str:
@@ -49,6 +89,42 @@ def _extract_date(soup: BeautifulSoup, names: tuple[str, ...]) -> str | None:
     return None
 
 
+def extract_authority_identity(soup: BeautifulSoup) -> tuple[str, str]:
+    """Extract one authority name/slug while excluding Alaveteli navigation links."""
+    anchors = [
+        *soup.select("a.public-body[href*='/body/']"),
+        *soup.select("a[href*='/body/']"),
+    ]
+    seen: set[int] = set()
+    for anchor in anchors:
+        if id(anchor) in seen:
+            continue
+        seen.add(id(anchor))
+        href = str(anchor.get("href") or "")
+        match = re.search(r"/body/([^/?#]+)", href)
+        if not match:
+            continue
+        slug = unquote(match.group(1)).strip()
+        name = clean_text(anchor.get_text(" ", strip=True))
+        if slug.lower() in {"list", "all"} or not slug or not name:
+            continue
+        return name, slug
+    return "", ""
+
+
+def extract_law_used(soup: BeautifulSoup) -> str:
+    """Extract Alaveteli's explicit regime label from the request header."""
+    subtitle = _first_text(soup, (".request-header__subtitle", ".request-header .subtitle"))
+    lowered = subtitle.lower()
+    if "made this government information (public access) request" in lowered:
+        return "gipa"
+    if "made this right to information request" in lowered:
+        return "rti"
+    if "made this freedom of information request" in lowered:
+        return "foi"
+    return ""
+
+
 def parse_archived_request(
     html: str,
     *,
@@ -61,14 +137,15 @@ def parse_archived_request(
     """Extract conservative core fields from one archived request page."""
     soup = BeautifulSoup(html, "html.parser")
     title = _first_text(soup, ("h1", "meta[property='og:title']", "title"))
-    authority = _first_text(
-        soup,
-        ("a.public-body", "a[href*='/body/']", ".request-authority", ".public-body"),
-    )
-    state = _first_text(soup, (".request-status", ".request-state", ".status", ".state"))
-    if not state:
+    authority, authority_slug = extract_authority_identity(soup)
+    if not authority:
+        authority = _first_text(soup, (".request-authority", ".public-body"))
+    law_used = extract_law_used(soup)
+    state_text = _first_text(soup, (".request-status", ".request-state", ".status", ".state"))
+    if not state_text:
         match = _STATUS_PATTERN.search(clean_text(soup.get_text(" ", strip=True)))
-        state = clean_text(match.group(1)) if match else ""
+        state_text = clean_text(match.group(1)) if match else ""
+    state = normalize_alaveteli_state(state_text)
     first_seen = _extract_date(soup, ("datePublished", "requested", "created", "first-seen"))
     last_updated = _extract_date(soup, ("dateModified", "updated", "last-updated"))
     request_key = source_url.rstrip("/").rsplit("/", 1)[-1]
@@ -80,7 +157,10 @@ def parse_archived_request(
         "request_key": request_key,
         "title": title,
         "authority": authority,
+        "authority_slug": authority_slug,
+        "law_used": law_used,
         "state": state,
+        "state_text": state_text,
         "first_seen": first_seen,
         "last_updated": last_updated,
         "extraction_status": "extracted",

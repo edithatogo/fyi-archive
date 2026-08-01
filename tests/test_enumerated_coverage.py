@@ -14,7 +14,7 @@ def test_enumerated_public_denominator_reports_nz_completion(monkeypatch) -> Non
     assert coverage["denominator_method"] == "enumerated_public_records"
     assert coverage["planning_estimate"] is False
     assert coverage["id_horizon"] is None
-    assert coverage["target"] == 100
+    assert coverage["target"] == pytest.approx(100.0)
     assert coverage["target_records"] == 34432
     assert coverage["percent_covered"] == pytest.approx(96.47, abs=0.01)
     assert coverage["remaining_to_target"] == 1215
