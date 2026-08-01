@@ -1,0 +1,106 @@
+{
+  "archive_publication_version": "0.18.0+archive.2026.08",
+  "generated_at": "2026-08-01T06:12:52.066006+00:00",
+  "manifest": {
+    "path": "/home/runner/work/fyi-archive/fyi-archive/manifests/latest_manifest.json",
+    "record_count": 1,
+    "sha256": "d9c493ab31555184c7718e58899a233eea4923eb8049ac1f819fa7a9f1948a45"
+  },
+  "mirrors": [
+    {
+      "artifacts": [
+        {
+          "checksum_matches": true,
+          "local_sha256": "d9c493ab31555184c7718e58899a233eea4923eb8049ac1f819fa7a9f1948a45",
+          "name": "latest_manifest.json",
+          "present": true,
+          "remote_checksum": "sha256:d9c493ab31555184c7718e58899a233eea4923eb8049ac1f819fa7a9f1948a45",
+          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/manifests/latest_manifest.json",
+          "size_matches": true
+        },
+        {
+          "checksum_matches": true,
+          "local_sha256": "1f3f75fa805723476cfe30235660ee5e88cefcee9bec5258e8faa1ad98e03077",
+          "name": "latest_manifest.parquet",
+          "present": true,
+          "remote_checksum": "sha256:1f3f75fa805723476cfe30235660ee5e88cefcee9bec5258e8faa1ad98e03077",
+          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/manifests/latest_manifest.parquet",
+          "size_matches": true
+        },
+        {
+          "checksum_matches": true,
+          "local_sha256": "25f6dc239784d4a347fabe5d9ebf8799ce1b3cf73c4bdad6cc0292105d163d0f",
+          "name": "authorities.json",
+          "present": true,
+          "remote_checksum": "sha256:25f6dc239784d4a347fabe5d9ebf8799ce1b3cf73c4bdad6cc0292105d163d0f",
+          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/manifests/authorities.json",
+          "size_matches": true
+        },
+        {
+          "checksum_matches": true,
+          "local_sha256": "60588054c4df7edd0401696486df22e104263026b4a4d3bf04749296aa57b131",
+          "name": "croissant.jsonld",
+          "present": true,
+          "remote_checksum": "sha256:60588054c4df7edd0401696486df22e104263026b4a4d3bf04749296aa57b131",
+          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/metadata/croissant.jsonld",
+          "size_matches": true
+        },
+        {
+          "checksum_matches": true,
+          "local_sha256": "bcff844fa26fee7eeb79ee16df8c6630f076a65a0fb0aff0a35b5e6972eeea02",
+          "name": "frictionless.json",
+          "present": true,
+          "remote_checksum": "sha256:bcff844fa26fee7eeb79ee16df8c6630f076a65a0fb0aff0a35b5e6972eeea02",
+          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/metadata/frictionless.json",
+          "size_matches": true
+        },
+        {
+          "checksum_matches": true,
+          "local_sha256": "ae664b58bab1c543a3ee666b7bcfc18d0c54d1e90dac0fb29b8a155cbdc22851",
+          "name": "schema.org.jsonld",
+          "present": true,
+          "remote_checksum": "sha256:ae664b58bab1c543a3ee666b7bcfc18d0c54d1e90dac0fb29b8a155cbdc22851",
+          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/metadata/schema.org.jsonld",
+          "size_matches": true
+        },
+        {
+          "checksum_matches": true,
+          "local_sha256": "cde621ee143240bea52cfebc4183b27b5e0c6566f0e351e8756ec965e4a6fda8",
+          "name": "fyi_archive.duckdb",
+          "present": true,
+          "remote_checksum": "sha256:cde621ee143240bea52cfebc4183b27b5e0c6566f0e351e8756ec965e4a6fda8",
+          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/dist/fyi_archive.duckdb",
+          "size_matches": true
+        },
+        {
+          "checksum_matches": true,
+          "local_sha256": "1387de06c35059e6117e315ab87e787cc2348cf1fec6f7be2dc9eccb4639da14",
+          "name": "sbom.cdx.json",
+          "present": true,
+          "remote_checksum": "sha256:1387de06c35059e6117e315ab87e787cc2348cf1fec6f7be2dc9eccb4639da14",
+          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/dist/sbom.cdx.json",
+          "size_matches": true
+        },
+        {
+          "checksum_matches": true,
+          "local_sha256": "20e05bbabbdcc59bff94077c338cfba9d51786189c2dfa2dd526787f4ab4a742",
+          "name": "provenance.json",
+          "present": true,
+          "remote_checksum": "sha256:20e05bbabbdcc59bff94077c338cfba9d51786189c2dfa2dd526787f4ab4a742",
+          "remote_url": "https://huggingface.co/datasets/edithatogo/fyi-archive-nz/resolve/main/dist/provenance.json",
+          "size_matches": true
+        }
+      ],
+      "details": {
+        "repo_id": "edithatogo/fyi-archive-nz",
+        "revision": null
+      },
+      "mirror": "huggingface",
+      "record_count": 1,
+      "verified": true
+    }
+  ],
+  "package_version": "0.18.0",
+  "publication_month": "2026-08",
+  "verified": true
+}
