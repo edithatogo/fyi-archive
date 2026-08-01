@@ -66,6 +66,11 @@ on:
         required: true
         default: false
         type: boolean
+      allow_hf_record_decrease:
+        description: Explicitly allow replacing a larger Hugging Face manifest
+        required: true
+        default: false
+        type: boolean
       instance:
         description: Archive instance to publish
         required: true
@@ -91,15 +96,16 @@ jobs:
       PUBLICATION_TARGET: ${{ inputs.publication_target || 'huggingface' }}
       DRY_RUN: ${{ inputs.dry_run || false }}
       PUBLISH_ZENODO: ${{ inputs.publish || false }}
-      SEED_BEFORE_PUBLISH: ${{ inputs.seed_before_publish || github.event_name == 'schedule' }}
+      SEED_BEFORE_PUBLISH: ${{ inputs.seed_before_publish || false }}
       SEED_DRY_RUN: ${{ inputs.seed_dry_run || false }}
       SEED_ID_FROM: ${{ inputs.seed_id_from || '20000' }}
       SEED_ID_TO: ${{ inputs.seed_id_to || '20000' }}
       SEED_MAX_REQUESTS: ${{ inputs.seed_max_requests || '1' }}
-      CONSOLIDATE_BACKFILL_ARTIFACTS: ${{ inputs.consolidate_backfill_artifacts || false }}
+      CONSOLIDATE_BACKFILL_ARTIFACTS: ${{ inputs.consolidate_backfill_artifacts || github.event_name == 'schedule' }}
       BACKFILL_MERGE_RUN_LIMIT: ${{ inputs.backfill_merge_run_limit || '500' }}
       ZENODO_CONFIRM: ${{ inputs.confirm || '' }}
       INSTANCE: ${{ inputs.instance || 'nz-fyi' }}
+      ALLOW_HF_RECORD_DECREASE: ${{ inputs.allow_hf_record_decrease || false }}
       HF_REPO_ID_OVERRIDE: ${{ vars.HF_REPO_ID }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -334,6 +340,8 @@ jobs:
           from time import sleep
           import shutil
           from pathlib import Path
+          from huggingface_hub.errors import EntryNotFoundError, RepositoryNotFoundError
+          from fyi_archive.backfill_verification import remote_huggingface_record_count
           from fyi_archive.publish.hf_publish import publish_folder_to_hf, sha256_file, verify_remote_manifest
           from fyi_archive.publish.verification import (
               ArtifactVerification,
@@ -371,6 +379,22 @@ jobs:
           manifest_sha256 = sha256_file(Path("manifests/latest_manifest.json"))
           if sha256_file(staged_manifest) != manifest_sha256:
               raise SystemExit("staged manifest SHA-256 mismatch")
+          local_record_count = manifest_record_count(Path("manifests/latest_manifest.json"))
+          try:
+              remote = remote_huggingface_record_count(repo_id=repo_id, token=token)
+          except (EntryNotFoundError, RepositoryNotFoundError):
+              remote_record_count = 0
+          else:
+              remote_record_count = int(remote["record_count"])
+          if (
+              local_record_count < remote_record_count
+              and os.environ.get("ALLOW_HF_RECORD_DECREASE", "false").lower() != "true"
+          ):
+              raise SystemExit(
+                  "refusing to replace a larger Hugging Face corpus: "
+                  f"local={local_record_count}, remote={remote_record_count}; "
+                  "set allow_hf_record_decrease only for an explicitly reviewed replacement"
+              )
           commit_info = publish_folder_to_hf(
               folder_path=publish_root,
               repo_id=repo_id,
