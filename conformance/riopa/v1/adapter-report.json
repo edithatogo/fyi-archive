@@ -1,0 +1,208 @@
+{
+  "classifications_present": [
+    "approximate",
+    "exact",
+    "extension-only",
+    "unmapped"
+  ],
+  "fixture_sha256": "12e821a948d0621dd949646d1f531b2abbe5e5541639d19f394de0edee25f53f",
+  "limitations": [
+    "This mapping is additive and does not assert that a complete RIOPA research object has been generated.",
+    "Approximate mappings require downstream validation before any RIOPA conformance claim.",
+    "The representative fixture contains synthetic values and is not evidence of a live archive publication."
+  ],
+  "mapping_sha256": "799492376e56ffdd4336752b58d57a7d295e6c1babbd815915964a7dfb9d7cb5",
+  "native_evidence_fixture": {
+    "evidence_status": "representative-synthetic-native-evidence",
+    "fixture_version": "1.0.0",
+    "native_evidence": {
+      "archive_manifest": {
+        "meta": {
+          "generated_at": "2026-07-31T00:00:00+00:00",
+          "record_count": 1,
+          "source": "https://fyi.org.nz/",
+          "version": "2026.07"
+        },
+        "requests": [
+          {
+            "content_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "license": "CC-BY-4.0",
+            "request_id": 1,
+            "state": "successful",
+            "url_title": "representative-request"
+          }
+        ]
+      },
+      "provenance": {
+        "artifacts": [
+          {
+            "path": "dist/archive.wacz",
+            "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "size_bytes": 1024
+          }
+        ],
+        "environment": {
+          "platform": "Linux-6.11-x86_64",
+          "python": "3.12.11",
+          "runner": "123456789",
+          "workflow": "Publish archives"
+        },
+        "fetch_window": {
+          "end": "2026-07-31T00:00:00+00:00",
+          "label": "monthly-publication-window",
+          "start": "2026-07-01T00:00:00+00:00"
+        },
+        "generated_at": "2026-07-31T00:00:00+00:00",
+        "source": {
+          "branch": "main",
+          "commit": "cea43a097f8928d7eaa4295d284f0b8d3999637b",
+          "dirty": false
+        }
+      },
+      "publication_verification": {
+        "archive_publication_version": "0.18.0+archive.2026.07",
+        "manifest": {
+          "path": "manifests/latest_manifest.json",
+          "record_count": 1,
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        },
+        "mirrors": [
+          {
+            "details": {
+              "api_url": "https://zenodo.example/api",
+              "doi": "10.5281/zenodo.1234567"
+            },
+            "mirror": "zenodo",
+            "verified": true
+          }
+        ],
+        "verified": true
+      },
+      "research_object": {
+        "authors": [
+          {
+            "name": "Representative Maintainer"
+          }
+        ],
+        "license": "MIT",
+        "title": "Representative read-only public-information archive",
+        "type": "dataset",
+        "url": "https://doi.org/10.5281/zenodo.1234567"
+      }
+    }
+  },
+  "profile_version": "1.0.0",
+  "projections": [
+    {
+      "classification": "exact",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/provenance/source/commit",
+      "native_field": "provenance.source.commit",
+      "native_value": "cea43a097f8928d7eaa4295d284f0b8d3999637b",
+      "projected_value": "cea43a097f8928d7eaa4295d284f0b8d3999637b",
+      "rationale": "Both fields identify the exact source-control revision used by the archive orchestration run.",
+      "riopa_field": "transformation_run.implementation.commit"
+    },
+    {
+      "classification": "exact",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/provenance/environment/platform",
+      "native_field": "provenance.environment.platform",
+      "native_value": "Linux-6.11-x86_64",
+      "projected_value": "Linux-6.11-x86_64",
+      "rationale": "The native platform string is preserved directly as the transformation execution platform.",
+      "riopa_field": "transformation_run.environment.platform"
+    },
+    {
+      "classification": "exact",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/provenance/artifacts/0/sha256",
+      "native_field": "provenance.artifacts[0].sha256",
+      "native_value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "projected_value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "rationale": "Both fields are lowercase hexadecimal SHA-256 digests of the same archived artifact bytes.",
+      "riopa_field": "artifact.sha256"
+    },
+    {
+      "classification": "exact",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/provenance/artifacts/0/size_bytes",
+      "native_field": "provenance.artifacts[0].size_bytes",
+      "native_value": 1024,
+      "projected_value": 1024,
+      "rationale": "Both fields record the byte length of the same archived artifact without unit conversion.",
+      "riopa_field": "artifact.size_bytes"
+    },
+    {
+      "classification": "exact",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/archive_manifest/meta/generated_at",
+      "native_field": "archive_manifest.meta.generated_at",
+      "native_value": "2026-07-31T00:00:00+00:00",
+      "projected_value": "2026-07-31T00:00:00+00:00",
+      "rationale": "The native manifest generation timestamp is the creation timestamp of the projected snapshot manifest.",
+      "riopa_field": "snapshot_manifest.created_at"
+    },
+    {
+      "classification": "exact",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/research_object/title",
+      "native_field": "research_object.title",
+      "native_value": "Representative read-only public-information archive",
+      "projected_value": "Representative read-only public-information archive",
+      "rationale": "The CFF dataset title is retained verbatim as the projected snapshot title.",
+      "riopa_field": "snapshot_manifest.title"
+    },
+    {
+      "classification": "exact",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/research_object/license",
+      "native_field": "research_object.license",
+      "native_value": "MIT",
+      "projected_value": "MIT",
+      "rationale": "The repository research-object licence is retained verbatim in the snapshot citation.",
+      "riopa_field": "snapshot_manifest.citation.licence"
+    },
+    {
+      "classification": "approximate",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/archive_manifest/meta/version",
+      "native_field": "archive_manifest.meta.version",
+      "native_value": "2026.07",
+      "projected_value": "2026.07",
+      "rationale": "The native manifest version is usable as a snapshot label but does not alone prove immutable snapshot identity.",
+      "riopa_field": "snapshot_manifest.snapshot_version"
+    },
+    {
+      "classification": "approximate",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/archive_manifest/requests/0/license",
+      "native_field": "archive_manifest.requests[0].license",
+      "native_value": "CC-BY-4.0",
+      "projected_value": "CC-BY-4.0",
+      "rationale": "The source-declared item licence supplies a rights input but still requires disposition and scope review.",
+      "riopa_field": "rights_inventory.entries[0].declared_licence"
+    },
+    {
+      "classification": "approximate",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/publication_verification/mirrors/0/details/doi",
+      "native_field": "publication_verification.mirrors[0].details.doi",
+      "native_value": "10.5281/zenodo.1234567",
+      "projected_value": "10.5281/zenodo.1234567",
+      "rationale": "A deposition DOI is a citation candidate, but draft verification does not prove that the DOI is published.",
+      "riopa_field": "snapshot_manifest.citation.doi"
+    },
+    {
+      "classification": "extension-only",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/publication_verification/mirrors/0/details/api_url",
+      "native_field": "publication_verification.mirrors[0].details.api_url",
+      "native_value": "https://zenodo.example/api",
+      "projected_value": null,
+      "rationale": "The mirror API endpoint is retained as operational native evidence and has no normative RIOPA snapshot field.",
+      "riopa_field": null
+    },
+    {
+      "classification": "unmapped",
+      "evidence_fixture": "native-evidence-fixture.json#/native_evidence/archive_manifest/requests/0/state",
+      "native_field": "archive_manifest.requests[0].state",
+      "native_value": "successful",
+      "projected_value": null,
+      "rationale": "The Alaveteli workflow state has no safe generic RIOPA meaning without a separately governed domain vocabulary.",
+      "riopa_field": null
+    }
+  ],
+  "repository": "edithatogo/fyi-archive",
+  "schema_version": "1.0.0",
+  "source_revision": "cea43a097f8928d7eaa4295d284f0b8d3999637b"
+}

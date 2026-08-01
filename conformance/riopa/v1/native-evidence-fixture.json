@@ -1,0 +1,79 @@
+{
+  "fixture_version": "1.0.0",
+  "evidence_status": "representative-synthetic-native-evidence",
+  "native_evidence": {
+    "provenance": {
+      "generated_at": "2026-07-31T00:00:00+00:00",
+      "source": {
+        "commit": "cea43a097f8928d7eaa4295d284f0b8d3999637b",
+        "branch": "main",
+        "dirty": false
+      },
+      "environment": {
+        "python": "3.12.11",
+        "platform": "Linux-6.11-x86_64",
+        "runner": "123456789",
+        "workflow": "Publish archives"
+      },
+      "fetch_window": {
+        "start": "2026-07-01T00:00:00+00:00",
+        "end": "2026-07-31T00:00:00+00:00",
+        "label": "monthly-publication-window"
+      },
+      "artifacts": [
+        {
+          "path": "dist/archive.wacz",
+          "size_bytes": 1024,
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      ]
+    },
+    "archive_manifest": {
+      "meta": {
+        "generated_at": "2026-07-31T00:00:00+00:00",
+        "source": "https://fyi.org.nz/",
+        "version": "2026.07",
+        "record_count": 1
+      },
+      "requests": [
+        {
+          "request_id": 1,
+          "url_title": "representative-request",
+          "content_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "successful",
+          "license": "CC-BY-4.0"
+        }
+      ]
+    },
+    "publication_verification": {
+      "archive_publication_version": "0.18.0+archive.2026.07",
+      "manifest": {
+        "path": "manifests/latest_manifest.json",
+        "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "record_count": 1
+      },
+      "mirrors": [
+        {
+          "mirror": "zenodo",
+          "verified": true,
+          "details": {
+            "doi": "10.5281/zenodo.1234567",
+            "api_url": "https://zenodo.example/api"
+          }
+        }
+      ],
+      "verified": true
+    },
+    "research_object": {
+      "title": "Representative read-only public-information archive",
+      "type": "dataset",
+      "license": "MIT",
+      "url": "https://doi.org/10.5281/zenodo.1234567",
+      "authors": [
+        {
+          "name": "Representative Maintainer"
+        }
+      ]
+    }
+  }
+}

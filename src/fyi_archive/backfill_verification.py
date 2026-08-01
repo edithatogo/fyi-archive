@@ -225,7 +225,9 @@ def remote_huggingface_record_count(
         return {
             "repo_id": repo_id,
             "revision": revision,
-            "manifest_path": manifest_path.as_posix(),
+            "manifest_path": (
+                f"hf://datasets/{repo_id}@{revision or 'main'}/manifests/latest_manifest.json"
+            ),
             "manifest_sha256": sha256_file(manifest_path),
             "record_count": manifest_record_count(manifest_path),
         }

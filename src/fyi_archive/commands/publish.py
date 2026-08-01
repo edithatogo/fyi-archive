@@ -106,6 +106,7 @@ def verify(
     bundle = write_versioned_verification_bundle(
         reports=reports,
         manifest_path=resolved_manifest,
+        repo_root=root,
         output_dir=resolved_output,
     )
     typer.echo(json.dumps(bundle, indent=2, sort_keys=True))
