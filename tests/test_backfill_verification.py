@@ -157,7 +157,9 @@ def test_remote_huggingface_record_count_uses_downloaded_manifest(
         token="hf-token",
     )
 
-    assert info["manifest_path"].endswith("manifests/latest_manifest.json")
+    assert (
+        info["manifest_path"] == "hf://datasets/owner/dataset@main/manifests/latest_manifest.json"
+    )
     assert info["manifest_sha256"] == "abc123"
     assert info["record_count"] == 5
 

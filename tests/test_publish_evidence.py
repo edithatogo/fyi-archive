@@ -41,11 +41,13 @@ def test_write_versioned_verification_bundle(tmp_path: Path) -> None:
     bundle = write_versioned_verification_bundle(
         reports=[report],
         manifest_path=manifest,
+        repo_root=tmp_path,
         output_dir=tmp_path / "versions",
         generated_at=datetime(2026, 6, 30, tzinfo=UTC),
     )
 
     assert bundle["archive_publication_version"] == f"{__version__}+archive.2026.06"
+    assert bundle["manifest"]["path"] == "manifests/latest_manifest.json"
     assert (tmp_path / "versions/2026-06/mirror_verification.json").exists()
     assert (tmp_path / "versions/latest_mirror_verification.json").exists()
 
