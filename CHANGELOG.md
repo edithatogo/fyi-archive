@@ -5,6 +5,41 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.19.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.18.0...fyi_archive-v0.19.0) (2026-08-02)
+
+
+### Features
+
+* add RIOPA evidence mapping adapter ([#319](https://github.com/edithatogo/fyi-archive/issues/319)) ([4af7da5](https://github.com/edithatogo/fyi-archive/commit/4af7da5c95c2448f1a3a667779ca2f943999e67b))
+* **au:** add resumable RightToKnow replay chunks ([#312](https://github.com/edithatogo/fyi-archive/issues/312)) ([10b463e](https://github.com/edithatogo/fyi-archive/commit/10b463e4c28b55aca6e324afa47dcacf6c467faf))
+
+
+### Bug Fixes
+
+* bound chained NZ backfill batches ([#329](https://github.com/edithatogo/fyi-archive/issues/329)) ([8b01428](https://github.com/edithatogo/fyi-archive/commit/8b0142818be146a610cb513bf631ddecef0353c4))
+* harden bounded Wayback targeted retries ([689478e](https://github.com/edithatogo/fyi-archive/commit/689478e3dd6d0c6afaf268c55753359af703290a))
+* prevent canonical corpus regression ([#323](https://github.com/edithatogo/fyi-archive/issues/323)) ([3127a28](https://github.com/edithatogo/fyi-archive/commit/3127a28fe907fb9561b8f72dc59c4fadf2fdc629))
+* recover bounded hosted workflows ([#322](https://github.com/edithatogo/fyi-archive/issues/322)) ([f3fb775](https://github.com/edithatogo/fyi-archive/commit/f3fb7759dae8dfb930521dc0efa02680bcefa4bc))
+
+
+### Performance Improvements
+
+* stream JSONL and parameterize Parquet reads ([#324](https://github.com/edithatogo/fyi-archive/issues/324)) ([732c319](https://github.com/edithatogo/fyi-archive/commit/732c3198fe04448bbc4cf29c32b9def09c3d9481))
+
+
+### Documentation
+
+* **conductor:** add remaining work closure plan ([2874ba2](https://github.com/edithatogo/fyi-archive/commit/2874ba23490e63ae5b1ae21bca675e6aa214188d))
+* **conductor:** record blocker resolution ([249ad18](https://github.com/edithatogo/fyi-archive/commit/249ad18446240d7f3927e4d4833954ddd1f96a5e))
+* **conductor:** record bounded partition trial ([0511dbd](https://github.com/edithatogo/fyi-archive/commit/0511dbd912070b77d19f20e86eaefba5099202f2))
+* reconcile bounded wayback continuation evidence ([1e9c1b0](https://github.com/edithatogo/fyi-archive/commit/1e9c1b0163ad5d3f005fb3aa4c5ddaa98fd6285f))
+* reconcile merged replay evidence ([#326](https://github.com/edithatogo/fyi-archive/issues/326)) ([fd419d4](https://github.com/edithatogo/fyi-archive/commit/fd419d4f0607d4b233c6185dbb16767b25f5ead5))
+* reconcile project sync hosted evidence ([cdffc74](https://github.com/edithatogo/fyi-archive/commit/cdffc74dd8d45f6208d467473a668ee1dc30854f))
+* record bounded NZ continuation ([#330](https://github.com/edithatogo/fyi-archive/issues/330)) ([e49dfd7](https://github.com/edithatogo/fyi-archive/commit/e49dfd74f10a49c8f091da0ab946bc6a8aadff24))
+* record bounded Wayback continuation evidence ([#293](https://github.com/edithatogo/fyi-archive/issues/293)) ([a6ec9a6](https://github.com/edithatogo/fyi-archive/commit/a6ec9a6ff96ca7241f4061fb7fda7f2aa61f58f5))
+* record final bounded Wayback follow-up ([#294](https://github.com/edithatogo/fyi-archive/issues/294)) ([fd427df](https://github.com/edithatogo/fyi-archive/commit/fd427df4078ade0b23905745e0d286185ac33a82))
+* record remaining closure gates ([#328](https://github.com/edithatogo/fyi-archive/issues/328)) ([454e3df](https://github.com/edithatogo/fyi-archive/commit/454e3df7e4f4424487d209a2777bd79ec09ab9dd))
+
 ## [0.18.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.17.0...fyi_archive-v0.18.0) (2026-07-27)
 
 
