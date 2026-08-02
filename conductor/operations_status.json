@@ -67,7 +67,7 @@
     "dataset_integrity": "unchanged: canonical fyi-archive-nz revision retains 33,217 records; no data deletion or rewrite authorized",
     "release": "gated: no release publication or token broadening is authorized by this closure pass",
     "nz_batch_continuation": "bounded: auto_continue now caps chained batches at max_auto_batches=20; existing runs retain their own inputs",
-    "remaining_work_track": "in progress: closure ledger merged via PR #332; archive partition trial and provider-gated metadata/credential items remain open"
+    "remaining_work_track": "in progress: closure ledger merged via PR #332; bounded ca-federal-atip partition candidate 30755229752 is in progress; provider-gated metadata/credential items remain open"
   },
   "next_ops": [
     "Optionally provision a dedicated RIOPA_PROJECT_TOKEN with least-privilege Projects scope; fallback sync is currently operational and no token value is recorded",

@@ -14,6 +14,10 @@
 - PR #332 is merged after all required Python quality, repository
   quality, Codecov, and CodeQL checks passed. The former queued-CI blocker is
   resolved; no bypass or retry loop was used.
+- Candidate partition trial `30755229752` was dispatched for `ca-federal-atip`
+  with compatible checkpoint run `30391530911`, a 7,200-second maximum runtime,
+  and no chained retry. Enumeration succeeded; snapshot acquisition remains in
+  progress, so acceptance is intentionally not claimed yet.
 
 ## Open acceptance gates
 
