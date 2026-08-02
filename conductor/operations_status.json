@@ -60,6 +60,13 @@
     "nz_batch_run": 30690368685,
     "nz_batch_status": "24 captures succeeded and request 10230 failed closed on an upstream HTTP 403; retain for the existing scheduled retry path"
   },
+  "closure_gates_2026_08_03": {
+    "wayback_track": "open: partition-acquisition trial remains unaccepted; CA, DE, and UK continue fail-closed on the weekly schedule",
+    "project_sync": "blocked: RIOPA_PROJECT_TOKEN repository secret is absent; do not dispatch until provisioned",
+    "huggingface_metadata": "blocked: metadata-only card correction prepared, but Hugging Face rejected upload and create_pr with HTTP 403",
+    "dataset_integrity": "unchanged: canonical fyi-archive-nz revision retains 33,217 records; no data deletion or rewrite authorized",
+    "release": "gated: no release publication or token broadening is authorized by this closure pass"
+  },
   "next_ops": [
     "Provision RIOPA_PROJECT_TOKEN with Projects read/write scope and rerun project sync once",
     "Prevent sample or partial manifests from replacing a larger canonical hosted corpus without an explicit override and retained pre-publish evidence",

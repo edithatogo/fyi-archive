@@ -320,3 +320,15 @@ This publication metadata does not alter Wayback acceptance. Empty repository
 shells deliberately advertise no Dataset Viewer split and make no record-count
 or completeness claim. CA, DE, and UK remain incomplete and resumable; NZ
 remains complete at 208,826 observed records without a percentage estimate.
+
+## Closure gates recorded 2026-08-03
+
+- The Wayback track remains open only for the bounded partition-acquisition
+  trial; CA, DE, and UK remain on the existing weekly fail-closed schedule.
+- Project synchronization is credential-gated. The repository secret audit found
+  no `RIOPA_PROJECT_TOKEN`; the existing `WORKFLOW_PAT` authenticates but cannot
+  access Project 4. No workflow dispatch was attempted.
+- Hugging Face data integrity is unchanged at 33,217 canonical records. A
+  metadata-only card correction was prepared, but both direct upload and PR
+  creation were rejected with HTTP 403. No dataset data was deleted or rewritten.
+- Release publication and credential broadening remain explicit human gates.
