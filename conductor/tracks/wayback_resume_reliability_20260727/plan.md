@@ -83,12 +83,14 @@
   to 7,200 seconds, with a correspondingly bounded job timeout.
 - [x] Replace the Wayback artifact upload action's deprecated Node.js 20 runtime
   with its pinned Node.js 24 release after run `30391530911` exposed the warning.
-- [ ] Complete repository and hosted quality gates for the final evidence PR.
+- [x] Complete repository and hosted quality gates for PR #320 (`d93885b`),
+  including Codecov and CodeQL.
   Local verification has 413 passed and 1 skipped, with stable and preview
   Ruff, ty, Actionlint, changed-file formatting, and targeted-workflow Zizmor
   passing. The pre-existing repository-wide
   formatter and Zizmor baselines remain red outside this track's changes;
-  required PR checks, Codecov, and CodeQL still await publication.
+  PR #320's required checks, Codecov, and CodeQL passed and the PR was merged;
+  the remaining hosted gate is the bounded partition-acquisition trial below.
 - [x] Execute at most one four-site continuation from run `30382291280` and
   reconcile its retained evidence without an automatic retry loop.
 - [ ] Acceptance remains open: NZ completed, while CA, DE, and UK remain
@@ -109,4 +111,5 @@
   workflow while preserving the whole-run deadline and retained checkpoints.
 - [ ] Exercise partition acquisition and merge in one bounded named-site hosted
   run before enabling partition plans for the weekly schedule.
-- [ ] Complete required PR checks, Codecov, and CodeQL for this hardening.
+- [x] Complete required PR checks, Codecov, and CodeQL for PR #320; the
+  partition-acquisition trial remains a separate open acceptance item.

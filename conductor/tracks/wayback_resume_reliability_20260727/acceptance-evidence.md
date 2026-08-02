@@ -46,7 +46,8 @@ pagination but do not establish percentage coverage of any national corpus.
 - Actionlint: passed.
 - Zizmor at medium severity: no findings (three configured suppressions).
 
-The track remains open pending a hosted continuation from the merged workflow.
+The cursor continuation is recorded below; the track remains open for the
+separate partition-acquisition acceptance criteria.
 
 ## Cursor continuation run 30262962651
 
@@ -299,7 +300,10 @@ whole-pattern deadline. The workflow defaults to 900 seconds without a new
 checkpoint, requires the stall limit to be no greater than the whole-run
 deadline, and retains the same fail-closed evidence path.
 
-Hosted acceptance remains open. CA, DE, and UK continue on the existing weekly
+PR #320 (checkpointed content-addressed replay state) was squash-merged as
+`d93885b29a1324b6db8249cd0ab3f2008ddad881` after all 38 hosted checks passed,
+including Codecov and CodeQL. Hosted acceptance remains open for the separate
+partition-acquisition criteria. CA, DE, and UK continue on the existing weekly
 resume schedule until a separately bounded named-site partition trial has
 passed; the implementation does not authorize another deadline-only retry.
 
