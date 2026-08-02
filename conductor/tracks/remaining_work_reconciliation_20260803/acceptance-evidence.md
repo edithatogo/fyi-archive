@@ -17,7 +17,7 @@
 
 ## Open acceptance gates
 
-- Wayback partition acquisition has not yet produced an accepted complete trial.
+- Archive partition acquisition has not yet produced an accepted complete trial.
   CA, DE, and UK remain resumable on the weekly schedule.
 - Dedicated `RIOPA_PROJECT_TOKEN` is absent. Fallback project sync is operational;
   least-privilege hardening remains optional.
