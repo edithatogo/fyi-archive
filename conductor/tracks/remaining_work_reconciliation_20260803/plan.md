@@ -11,6 +11,9 @@
   rewrite action is authorized.
 - [x] Record the Hugging Face metadata-only correction as provider-gated after
   HTTP 403 on upload and PR creation.
+- [x] Resolve the documentation/Conductor CI blocker through PR #332; required
+  Python quality, repository quality, Codecov, and CodeQL checks all passed and
+  the squash merge landed as `2874ba23490e63ae5b1ae21bca675e6aa214188d`.
 - [ ] Execute one bounded named-site Wayback partition-acquisition trial and
   verify the complete evidence bundle.
 - [ ] Reconcile the trial result: close only if all required partition and merge

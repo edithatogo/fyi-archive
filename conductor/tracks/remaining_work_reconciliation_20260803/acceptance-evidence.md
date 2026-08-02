@@ -11,10 +11,13 @@
 - Canonical Hugging Face dataset integrity remains 33,217 records. No data was
   deleted or rewritten.
 - Hugging Face metadata correction remains blocked by provider HTTP 403.
+- PR #332 is merged after all required Python quality, repository
+  quality, Codecov, and CodeQL checks passed. The former queued-CI blocker is
+  resolved; no bypass or retry loop was used.
 
 ## Open acceptance gates
 
-- Wayback partition acquisition has not yet produced an accepted complete trial.
+- Archive partition acquisition has not yet produced an accepted complete trial.
   CA, DE, and UK remain resumable on the weekly schedule.
 - Dedicated `RIOPA_PROJECT_TOKEN` is absent. Fallback project sync is operational;
   least-privilege hardening remains optional.
