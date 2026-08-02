@@ -232,10 +232,9 @@ jobs:
         if: ${{ success() && inputs.auto_continue == true }}
         env:
           GH_TOKEN: ${{ github.token }}
-          NEXT_OFFSET: ${{ inputs.start_offset }}
         run: |
           set -euo pipefail
-          current_batch=$((NEXT_OFFSET / BATCH_SIZE + 1))
+          current_batch=$((START_OFFSET / BATCH_SIZE + 1))
           if [ "$current_batch" -ge "$MAX_AUTO_BATCHES" ]; then
             echo "Reached bounded auto-continuation cap: $current_batch/$MAX_AUTO_BATCHES"
             exit 0
