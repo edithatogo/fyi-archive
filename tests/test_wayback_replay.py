@@ -10,7 +10,7 @@ import subprocess
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
@@ -197,7 +197,7 @@ def test_success_boundary_rejects_invalid_archive_observations(
         ReplayObservation(kind="http", status_code=418),
         ReplayObservation(kind="transport", transport_code="dns"),
         ReplayObservation(kind="terminal", terminal_code="unknown"),
-        ReplayObservation(kind="other"),
+        ReplayObservation(kind=cast(Any, "other")),
     ],
 )
 def test_unregistered_observations_fail_closed(observation: ReplayObservation) -> None:
