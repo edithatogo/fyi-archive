@@ -11,6 +11,9 @@
 - Canonical Hugging Face dataset integrity remains 33,217 records. No data was
   deleted or rewritten.
 - Hugging Face metadata correction remains blocked by provider HTTP 403.
+- PR #332 is merged (`2874ba2`) after all required Python quality, repository
+  quality, Codecov, and CodeQL checks passed. The former queued-CI blocker is
+  resolved; no bypass or retry loop was used.
 
 ## Open acceptance gates
 
