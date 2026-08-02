@@ -1,5 +1,11 @@
 # Project Tracks
 
+## [~] Track: Remaining-work reconciliation and closure
+Track ID: `remaining_work_reconciliation_20260803`
+Goal: Reconcile all open operational, hosted-provider, and archive-completeness work
+into bounded actions with durable evidence and explicit external gates.
+Link: [./tracks/remaining_work_reconciliation_20260803/](./tracks/remaining_work_reconciliation_20260803/)
+
 ## [x] Track: Global archive completeness and redundancy
 Track ID: `global_archive_completeness_20260727`
 Goal: Reconcile every configured site and jurisdiction across primary,
