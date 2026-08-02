@@ -14,10 +14,13 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
+import fyi_archive.wayback_cdx_approvals as approval_module
 from fyi_archive.wayback_cdx_approvals import APPROVED_APPROVAL_REGISTRY_SHA256
 from fyi_archive.wayback_replay import (
     ReplayObservation,
+    ReplayStateError,
     classify_observation,
+    content_hash,
     initial_checkpoint,
     merge_replacement_candidates,
     next_pacing,
@@ -27,6 +30,7 @@ from fyi_archive.wayback_replay import (
     replacement_candidate,
     sha256_bytes,
     store_object,
+    validate_canonical_url,
     validate_configuration,
     verify_resume_state,
     write_initial_state,
@@ -72,6 +76,42 @@ def test_content_addressed_store_deduplicates_and_verifies(tmp_path: Path) -> No
     assert store_object(tmp_path, payload, expected_sha256=digest) == digest
     assert object_path(tmp_path, digest).read_bytes() == payload
     assert len(list((tmp_path / "objects").rglob(digest))) == 1
+
+
+@pytest.mark.parametrize(
+    "value", ["", "http://example.test/", "https://example.test/path#fragment"]
+)
+def test_canonical_url_rejects_unsafe_forms(value: str) -> None:
+    with pytest.raises(ReplayStateError):
+        validate_canonical_url(value)
+
+
+def test_content_hash_is_stable_for_json_objects() -> None:
+    assert content_hash({"b": 2, "a": 1}) == content_hash({"a": 1, "b": 2})
+
+
+def test_approval_helpers_reject_malformed_inputs(tmp_path: Path) -> None:
+    with pytest.raises(approval_module.CdxApprovalError, match="lowercase SHA-256"):
+        approval_module.registered_cdx_approval("not-a-digest", "0" * 64)
+    with pytest.raises(approval_module.CdxApprovalError, match="strict UTF-8 JSON"):
+        approval_module._strict_json(b"\\xff", "fixture")
+    unsafe = tmp_path / "link"
+    unsafe.symlink_to(tmp_path)
+    with pytest.raises(approval_module.CdxApprovalError, match="missing or unsafe"):
+        approval_module._read_regular_file(unsafe, "fixture")
+
+
+@pytest.mark.parametrize(
+    ("scope", "url", "allowed"),
+    [
+        ("https://example.test/request/*", "https://example.test/request/1", True),
+        ("https://example.test/request/*", "https://example.test/other/1", False),
+        ("https://example.test/request/1", "https://example.test/request/1", True),
+        ("https://example.test/request/1", "https://example.test/request/2", False),
+    ],
+)
+def test_query_scope_is_exact_or_prefix_bound(scope: str, url: str, allowed: bool) -> None:
+    assert approval_module.query_scope_allows_url(scope, url) is allowed
 
 
 def test_write_record_resume_and_independent_verifier(tmp_path: Path) -> None:
