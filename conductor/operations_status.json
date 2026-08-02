@@ -65,7 +65,8 @@
     "project_sync": "blocked: RIOPA_PROJECT_TOKEN repository secret is absent; do not dispatch until provisioned",
     "huggingface_metadata": "blocked: metadata-only card correction prepared, but Hugging Face rejected upload and create_pr with HTTP 403",
     "dataset_integrity": "unchanged: canonical fyi-archive-nz revision retains 33,217 records; no data deletion or rewrite authorized",
-    "release": "gated: no release publication or token broadening is authorized by this closure pass"
+    "release": "gated: no release publication or token broadening is authorized by this closure pass",
+    "nz_batch_continuation": "bounded: auto_continue now caps chained batches at max_auto_batches=20; existing runs retain their own inputs"
   },
   "next_ops": [
     "Provision RIOPA_PROJECT_TOKEN with Projects read/write scope and rerun project sync once",
