@@ -1,0 +1,19 @@
+{
+  "endpoint": "https://web.archive.org/cdx/search/cdx",
+  "producer_id": "fyi-archive-test-fixture",
+  "query_scope": "https://example.test/request/synthetic-001.json",
+  "retrieved_at": "2026-07-31T00:00:00Z",
+  "rows": [
+    {
+      "archive_url": "https://web.archive.org/web/20250101000000id_/https://example.test/request/synthetic-001.json",
+      "canonical_url": "https://example.test/request/synthetic-001.json",
+      "capture_timestamp": "2025-01-01T00:00:00Z",
+      "digest": "sha256:synthetic-cdx-digest",
+      "member_id": "synthetic-001",
+      "row_sha256": "6c98d864931c304d4894e6e3fd2bd4e2581b2b0f3b16d1f995e60d4d5633bdb7",
+      "status_code": 200
+    }
+  ],
+  "schema": "fyi-archive.wayback-cdx-metadata-artifact.v1",
+  "source": "Internet Archive CDX"
+}

@@ -1,0 +1,8 @@
+{
+  "artifact_sha256": "b988a5227ef148078944539082c4604e0cc61d12f7c7c7046d42e98b17216b6b",
+  "endpoint": "https://web.archive.org/cdx/search/cdx",
+  "producer_id": "fyi-archive-test-fixture",
+  "query_scope": "https://example.test/request/synthetic-001.json",
+  "retrieved_at": "2026-07-31T00:00:00Z",
+  "schema": "fyi-archive.wayback-cdx-retrieval-evidence.v1"
+}

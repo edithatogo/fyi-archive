@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/edithatogo/fyi-archive/schemas/wayback-cdx-metadata-artifact.schema.json",
+  "title": "Pinned CDX metadata rows eligible for replacement review",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema", "source", "endpoint", "query_scope", "producer_id",
+    "retrieved_at", "rows"
+  ],
+  "properties": {
+    "schema": {"const": "fyi-archive.wayback-cdx-metadata-artifact.v1"},
+    "source": {"const": "Internet Archive CDX"},
+    "endpoint": {"const": "https://web.archive.org/cdx/search/cdx"},
+    "query_scope": {"type": "string", "format": "uri", "pattern": "^https://"},
+    "producer_id": {"type": "string", "minLength": 1},
+    "retrieved_at": {"type": "string", "format": "date-time"},
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "member_id", "canonical_url", "capture_timestamp", "archive_url",
+          "status_code", "digest", "row_sha256"
+        ],
+        "properties": {
+          "member_id": {"type": "string", "minLength": 1},
+          "canonical_url": {"type": "string", "format": "uri", "pattern": "^https://"},
+          "capture_timestamp": {"type": "string", "format": "date-time"},
+          "archive_url": {
+            "type": "string", "format": "uri",
+            "pattern": "^https://web\\.archive\\.org/web/[0-9]{14}(?:id_)?/https://"
+          },
+          "status_code": {"const": 200},
+          "digest": {"type": "string", "minLength": 1},
+          "row_sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

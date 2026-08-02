@@ -1,0 +1,16 @@
+{
+  "approvals": [
+    {
+      "approval_id": "synthetic-example-cdx-v1",
+      "artifact_sha256": "b988a5227ef148078944539082c4604e0cc61d12f7c7c7046d42e98b17216b6b",
+      "disposition": "approved_for_pending_replacement_candidates_only",
+      "endpoint": "https://web.archive.org/cdx/search/cdx",
+      "producer_id": "fyi-archive-test-fixture",
+      "query_scope": "https://example.test/request/synthetic-001.json",
+      "retrieval_evidence_sha256": "7707ac297e89433d9b367ab2dd75238d981970402921501b95507855320765c3",
+      "retrieved_at": "2026-07-31T00:00:00Z"
+    }
+  ],
+  "registry_id": "fyi-archive-approved-cdx-evidence-v1",
+  "schema": "fyi-archive.wayback-cdx-approval-registry.v1"
+}

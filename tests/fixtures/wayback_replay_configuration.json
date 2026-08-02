@@ -1,0 +1,38 @@
+{
+  "schema": "fyi-archive.wayback-replay-configuration.v1",
+  "selection_sha256": "2209c110dcee3049dcec7e97dcbda5da6739390e054201c9db689ec540b6dfee",
+  "members": [
+    {
+      "member_id": "synthetic-001",
+      "canonical_url": "https://example.test/request/synthetic-001.json",
+      "capture_timestamp": "2026-01-01T00:00:00Z"
+    },
+    {
+      "member_id": "synthetic-002",
+      "canonical_url": "https://example.test/request/synthetic-002",
+      "capture_timestamp": "2026-01-02T00:00:00Z"
+    }
+  ],
+  "replay_policy_sha256": "d327b528b3431f3b454a816cf95a62af039f72f4ec31b076cfdbedf4e14c3e8e",
+  "boundary_registry_sha256": "71045c0446973cc28b12e41eb2201e6c8c896f53b0b59a51ba2f8b6063d3a7ea",
+  "boundary_profile_id": "internet-archive-json-html-v1",
+  "producer": "fyi-cli-observation-boundary",
+  "producer_version": "1.2.1",
+  "parser_version": "wayback-replay-state-v1",
+  "jitter_seed": 20260731,
+  "policy": {
+    "floor_seconds": 1.0,
+    "ceiling_seconds": 60.0,
+    "backoff_multiplier": 2.0,
+    "jitter_fraction": 0.25,
+    "decay_factor": 0.5,
+    "circuit_seconds": 120.0,
+    "circuit_consecutive_failures": 3,
+    "failure_ratio": 0.75,
+    "window_size": 4,
+    "minimum_window": 4,
+    "archive_hosts": ["web.archive.org"],
+    "allowed_content_types": ["application/json", "text/html"],
+    "max_payload_bytes": 16777216
+  }
+}
