@@ -137,14 +137,14 @@ def verify_configuration(value: dict[str, Any]) -> tuple[str, list[dict[str, Any
         member_ids.add(member_id)
         url = urlsplit(str(member["canonical_url"]))
         if (
-            url.scheme != "https"
+            url.scheme != "https"  # noqa: PLR0916
             or not url.hostname
             or url.hostname.lower() != url.hostname
             or url.username is not None
             or url.password is not None
             or url.fragment
-            or url.port not in (None, 443)
-        ):
+            or url.port not in {None, 443}
+        ):  # noqa: PLR0916
             raise RuntimeError("configuration member URL is invalid")
         captured = datetime.fromisoformat(str(member["capture_timestamp"]))
         if captured.tzinfo is None:
@@ -301,14 +301,14 @@ def verify_journal(
             except ValueError as error:
                 raise RuntimeError("attempt final archive URL is invalid") from error
             if (
-                final.scheme != "https"
+                final.scheme != "https"  # noqa: PLR0916
                 or not final.hostname
                 or final.username is not None
                 or final.password is not None
                 or final.fragment
-                or final_port not in (None, 443)
+                or final_port not in {None, 443}
                 or final.hostname.lower() not in set(policy["archive_hosts"])
-            ):
+            ):  # noqa: PLR0916
                 raise RuntimeError("attempt escaped the configured archive host boundary")
             media_type = str(value.get("content_type") or "").split(";", 1)[0].strip().lower()
             if media_type not in set(policy["allowed_content_types"]):

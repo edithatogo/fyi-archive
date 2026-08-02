@@ -36,16 +36,14 @@ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
 TERMINAL_STATUS = frozenset({404, 410})
 RETRYABLE_TRANSPORT = frozenset({"timeout", "connection"})
-TERMINAL_CODES = frozenset(
-    {
-        "redirect_escape",
-        "payload_too_large",
-        "scope_violation",
-        "integrity_mismatch",
-        "unsupported_content_type",
-        "malformed_content",
-    }
-)
+TERMINAL_CODES = frozenset({
+    "redirect_escape",
+    "payload_too_large",
+    "scope_violation",
+    "integrity_mismatch",
+    "unsupported_content_type",
+    "malformed_content",
+})
 PACKAGE_SCHEMA_DIRECTORY = Path(__file__).parent / "schemas"
 SCHEMA_DIRECTORY = (
     PACKAGE_SCHEMA_DIRECTORY
@@ -226,13 +224,13 @@ def validate_canonical_url(value: str) -> str:
     """Require one absolute, fragment-free canonical HTTPS URL."""
     parsed = urlsplit(value)
     if (
-        parsed.scheme != "https"
+        parsed.scheme != "https"  # noqa: PLR0916
         or not parsed.hostname
         or parsed.username is not None
         or parsed.password is not None
         or parsed.fragment
-        or parsed.port not in (None, 443)
-    ):
+        or parsed.port not in {None, 443}
+    ):  # noqa: PLR0916
         raise ReplayStateError("URL is not an absolute canonical HTTPS URL")
     if parsed.hostname.lower() != parsed.hostname or "/../" in parsed.path or "/./" in parsed.path:
         raise ReplayStateError("URL is not canonical")
@@ -481,13 +479,13 @@ def _validate_success_boundary(
     except ValueError as error:
         raise ReplayStateError("successful observation has an invalid final archive URL") from error
     if (
-        parsed.scheme != "https"
+        parsed.scheme != "https"  # noqa: PLR0916
         or not parsed.hostname
         or parsed.username is not None
         or parsed.password is not None
         or parsed.fragment
-        or port not in (None, 443)
-    ):
+        or port not in {None, 443}
+    ):  # noqa: PLR0916
         raise ReplayStateError("successful observation has an invalid final archive URL")
     allowed_hosts = cast("Sequence[object]", policy["archive_hosts"])
     if parsed.hostname.lower() not in {str(host) for host in allowed_hosts}:
@@ -606,7 +604,8 @@ def next_pacing(
     if opens:
         seconds = _number(policy["circuit_seconds"], "policy circuit_seconds")
         circuit_open_until = (
-            datetime.fromtimestamp(now.timestamp() + seconds, tz=UTC)
+            datetime
+            .fromtimestamp(now.timestamp() + seconds, tz=UTC)
             .isoformat()
             .replace("+00:00", "Z")
         )
