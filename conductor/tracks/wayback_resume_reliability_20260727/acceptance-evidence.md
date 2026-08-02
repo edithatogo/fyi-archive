@@ -332,3 +332,6 @@ remains complete at 208,826 observed records without a percentage estimate.
   metadata-only card correction was prepared, but both direct upload and PR
   creation were rejected with HTTP 403. No dataset data was deleted or rewritten.
 - Release publication and credential broadening remain explicit human gates.
+- The NZ real-backfill continuation contract is now explicitly bounded:
+  `auto_continue` propagates `max_auto_batches` and stops at the finite cap
+  (default 20). Existing in-progress runs are not cancelled or modified.

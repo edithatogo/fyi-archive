@@ -32,6 +32,11 @@ on:
         required: true
         default: false
         type: boolean
+      max_auto_batches:
+        description: Maximum number of chained batches when auto_continue is enabled
+        required: true
+        default: "20"
+        type: string
 
 permissions:
   actions: write
@@ -52,6 +57,7 @@ jobs:
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes }}
       MIN_INTERVAL: ${{ inputs.min_interval }}
       AUTO_CONTINUE: ${{ inputs.auto_continue }}
+      MAX_AUTO_BATCHES: ${{ inputs.max_auto_batches }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -72,6 +78,7 @@ jobs:
           test "$BATCH_SIZE" -ge 1 && test "$BATCH_SIZE" -le 100
           test "$MAX_RUNTIME_MINUTES" -ge 5 && test "$MAX_RUNTIME_MINUTES" -le 45
           test "$MIN_INTERVAL" -ge 1
+          test "$MAX_AUTO_BATCHES" -ge 1 && test "$MAX_AUTO_BATCHES" -le 100
       - name: Download complete source evidence
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
         with:
@@ -225,9 +232,13 @@ jobs:
         if: ${{ success() && inputs.auto_continue == true }}
         env:
           GH_TOKEN: ${{ github.token }}
-          NEXT_OFFSET: ${{ inputs.start_offset }}
         run: |
           set -euo pipefail
+          current_batch=$((START_OFFSET / BATCH_SIZE + 1))
+          if [ "$current_batch" -ge "$MAX_AUTO_BATCHES" ]; then
+            echo "Reached bounded auto-continuation cap: $current_batch/$MAX_AUTO_BATCHES"
+            exit 0
+          fi
           next_offset=$((NEXT_OFFSET + BATCH_SIZE))
           gh workflow run nz_real_backfill_batch.yml \
             --repo "$GITHUB_REPOSITORY" \
@@ -236,4 +247,5 @@ jobs:
             -f batch_size="$BATCH_SIZE" \
             -f max_runtime_minutes="$MAX_RUNTIME_MINUTES" \
             -f min_interval="$MIN_INTERVAL" \
-            -f auto_continue=true
+            -f auto_continue=true \
+            -f max_auto_batches="$MAX_AUTO_BATCHES"

@@ -90,4 +90,5 @@ jobs:
             -f batch_size=25 \
             -f max_runtime_minutes=40 \
             -f min_interval=2 \
-            -f auto_continue=true
+            -f auto_continue=true \
+            -f max_auto_batches=20
