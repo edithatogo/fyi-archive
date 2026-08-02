@@ -55,21 +55,21 @@
     "health_status": "success",
     "alaveteli_validation_run": 30692890453,
     "alaveteli_validation_status": "16 of 16 independent jobs succeeded with a one-page bound",
-    "project_sync_run": 30692889152,
-    "project_sync_status": "blocked: the existing WORKFLOW_PAT authenticates but lacks access to Project 4; provision RIOPA_PROJECT_TOKEN with Projects read/write scope",
+    "project_sync_run": 30736460096,
+    "project_sync_status": "success: run 30736460096 mirrored 683 items and posted target Project 4 status; fallback WORKFLOW_PAT was used because RIOPA_PROJECT_TOKEN remains absent; dedicated scoped secret remains recommended",
     "nz_batch_run": 30690368685,
     "nz_batch_status": "24 captures succeeded and request 10230 failed closed on an upstream HTTP 403; retain for the existing scheduled retry path"
   },
   "closure_gates_2026_08_03": {
     "wayback_track": "open: partition-acquisition trial remains unaccepted; CA, DE, and UK continue fail-closed on the weekly schedule",
-    "project_sync": "blocked: RIOPA_PROJECT_TOKEN repository secret is absent; do not dispatch until provisioned",
+    "project_sync": "operationally successful via fallback WORKFLOW_PAT: run 30736460096 mirrored 683 items and posted Project 4 status (217 missing); dedicated RIOPA_PROJECT_TOKEN hardening remains open",
     "huggingface_metadata": "blocked: metadata-only card correction prepared, but Hugging Face rejected upload and create_pr with HTTP 403",
     "dataset_integrity": "unchanged: canonical fyi-archive-nz revision retains 33,217 records; no data deletion or rewrite authorized",
     "release": "gated: no release publication or token broadening is authorized by this closure pass",
     "nz_batch_continuation": "bounded: auto_continue now caps chained batches at max_auto_batches=20; existing runs retain their own inputs"
   },
   "next_ops": [
-    "Provision RIOPA_PROJECT_TOKEN with Projects read/write scope and rerun project sync once",
+    "Optionally provision a dedicated RIOPA_PROJECT_TOKEN with least-privilege Projects scope; fallback sync is currently operational and no token value is recorded",
     "Prevent sample or partial manifests from replacing a larger canonical hosted corpus without an explicit override and retained pre-publish evidence",
     "Keep Sigstore gated until production release attachment paths have passed several clean cycles"
   ]

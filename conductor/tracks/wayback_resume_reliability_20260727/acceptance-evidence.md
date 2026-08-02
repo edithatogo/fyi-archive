@@ -325,9 +325,15 @@ remains complete at 208,826 observed records without a percentage estimate.
 
 - The Wayback track remains open only for the bounded partition-acquisition
   trial; CA, DE, and UK remain on the existing weekly fail-closed schedule.
-- Project synchronization is credential-gated. The repository secret audit found
-  no `RIOPA_PROJECT_TOKEN`; the existing `WORKFLOW_PAT` authenticates but cannot
-  access Project 4. No workflow dispatch was attempted.
+- Project synchronization is operationally successful via the existing fallback
+  `WORKFLOW_PAT`: hosted run `30736460096` mirrored 683 items to target Project 4
+  and posted the status update, with 217 source items reported missing. No token
+  value is recorded. A dedicated least-privilege `RIOPA_PROJECT_TOKEN` remains a
+  recommended hardening improvement, not an operational blocker.
+- The latest bounded NZ continuation run `30752216738` failed closed in the
+  capture step after one request was recorded as failed. It was not retried or
+  cancelled automatically; the existing max-auto-batches cap governs future
+  chaining and the weekly retry path remains authoritative.
 - Hugging Face data integrity is unchanged at 33,217 canonical records. A
   metadata-only card correction was prepared, but both direct upload and PR
   creation were rejected with HTTP 403. No dataset data was deleted or rewritten.
