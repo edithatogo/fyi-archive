@@ -69,6 +69,9 @@
 - [x] Execute the one operator-controlled 2,400-second `site_ids` continuation
   as run `30382291280`; retain exactly six artifacts without cancellation and
   complete the EU and UA inventories.
+- [x] Bound chained NZ real-backfill continuation with `max_auto_batches=20`,
+  propagate the cap through monitor and child dispatches, and retain existing
+  in-progress runs without cancellation.
 - [ ] Acceptance remains open: CA, DE, NZ, and UK advanced but remained
   fail-closed and resumable. They resume on the existing weekly schedule; no
   additional targeted retry loop is authorized or planned.
