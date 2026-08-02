@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import math
 import random
 import subprocess
 import sys
@@ -15,6 +16,7 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
 import fyi_archive.wayback_cdx_approvals as approval_module
+import fyi_archive.wayback_replay as replay_module
 from fyi_archive.wayback_cdx_approvals import APPROVED_APPROVAL_REGISTRY_SHA256
 from fyi_archive.wayback_replay import (
     ReplayObservation,
@@ -112,6 +114,147 @@ def test_approval_helpers_reject_malformed_inputs(tmp_path: Path) -> None:
 )
 def test_query_scope_is_exact_or_prefix_bound(scope: str, url: str, allowed: bool) -> None:
     assert approval_module.query_scope_allows_url(scope, url) is allowed
+
+
+@pytest.mark.parametrize(
+    ("helper", "value", "message"),
+    [
+        (replay_module._require_sha256, "bad", "lowercase SHA-256"),
+        (replay_module._number, True, "must be a number"),
+        (replay_module._number, math.nan, "must be finite"),
+        (replay_module._integer, True, "must be an integer"),
+    ],
+)
+def test_replay_scalar_guards_reject_invalid_values(helper, value, message: str) -> None:
+    with pytest.raises(ReplayStateError, match=message):
+        helper(value, "field")
+
+
+def test_replay_filesystem_guards_reject_unsafe_paths(tmp_path: Path) -> None:
+    regular = tmp_path / "regular"
+    regular.write_text("x")
+    with pytest.raises(ReplayStateError, match="not a directory"):
+        replay_module._require_plain_directory(regular)
+    link = tmp_path / "link"
+    link.symlink_to(tmp_path)
+    with pytest.raises(ReplayStateError, match="symlink"):
+        replay_module._require_plain_directory(link)
+    with pytest.raises(ReplayStateError, match="lowercase SHA-256"):
+        store_object(tmp_path / "objects", b"x", expected_sha256="bad")
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("members", [], "validation failed"),
+        ("jitter_seed", "seed", "validation failed"),
+        ("producer", "", "validation failed"),
+    ],
+)
+def test_configuration_rejects_contract_violations(field: str, value: object, message: str) -> None:
+    config = configuration()
+    config[field] = value
+    if field == "members":
+        config["selection_sha256"] = content_hash(value)
+    with pytest.raises(ReplayStateError, match=message):
+        validate_configuration(config)
+
+
+@pytest.mark.parametrize(
+    "observation",
+    [
+        ReplayObservation(kind="success", response_bytes=None),
+        ReplayObservation(
+            kind="success",
+            response_bytes=b"x",
+            final_url="http://web.archive.org/web/20260101000000id_/https://example.test/",
+            content_type="application/json",
+        ),
+        ReplayObservation(
+            kind="success",
+            response_bytes=b"x",
+            final_url="https://not-archive.test/web/20260101000000id_/https://example.test/",
+            content_type="application/json",
+        ),
+        ReplayObservation(
+            kind="success",
+            response_bytes=b"x",
+            final_url="https://web.archive.org/web/20260101000000id_/https://example.test/",
+            content_type="text/plain",
+        ),
+    ],
+)
+def test_success_boundary_rejects_invalid_archive_observations(
+    observation: ReplayObservation,
+) -> None:
+    with pytest.raises(ReplayStateError):
+        classify_observation(observation, policy=configuration()["policy"])
+
+
+@pytest.mark.parametrize(
+    "observation",
+    [
+        ReplayObservation(kind="http", status_code=418),
+        ReplayObservation(kind="transport", transport_code="dns"),
+        ReplayObservation(kind="terminal", terminal_code="unknown"),
+        ReplayObservation(kind="other"),
+    ],
+)
+def test_unregistered_observations_fail_closed(observation: ReplayObservation) -> None:
+    with pytest.raises(ReplayStateError, match="unregistered"):
+        classify_observation(observation, policy=configuration()["policy"])
+
+
+def test_pacing_complete_and_terminal_paths_do_not_open_circuit() -> None:
+    policy = configuration()["policy"]
+    previous = {
+        "delay_seconds": 10.0,
+        "consecutive_failures": 3,
+        "window": [True, False],
+        "circuit_open_until": None,
+    }
+    for disposition in ("complete", "terminal"):
+        decision = next_pacing(
+            previous=previous,
+            outcome=replay_module.Outcome(disposition, disposition),
+            policy=policy,
+            now=NOW,
+            rng=random.Random(1),
+        )
+        assert decision.consecutive_failures == 0
+        assert decision.circuit_open_until is None
+
+
+def test_journal_guards_and_chain_tamper_detection(tmp_path: Path) -> None:
+    path = tmp_path / "attempts.jsonl"
+    with pytest.raises(ReplayStateError, match="chain fields"):
+        replay_module.append_attempt(path, {"entry_sha256": "x"})
+    config = configuration()
+    checkpoint = write_initial_state(tmp_path, config)
+    record_observation(
+        root=tmp_path,
+        configuration=config,
+        checkpoint=checkpoint,
+        member_id=config["members"][0]["member_id"],
+        occurrence_id="journal-1",
+        attempt_number=1,
+        observation=ReplayObservation(kind="http", status_code=404),
+        now=NOW,
+        rng=random.Random(1),
+    )
+    path = tmp_path / "attempts.jsonl"
+    count, tail, entries = replay_module.verify_journal(path)
+    assert count == 1
+    assert tail == entries[-1]["entry_sha256"]
+    path.write_bytes(
+        path.read_bytes().replace(b'"outcome_code":"http_404"', b'"outcome_code":"http_410"')
+    )
+    with pytest.raises(ReplayStateError):
+        replay_module.verify_journal(path)
+
+
+def test_missing_journal_is_empty(tmp_path: Path) -> None:
+    assert replay_module.verify_journal(tmp_path / "missing.jsonl") == (0, None, [])
 
 
 def test_write_record_resume_and_independent_verifier(tmp_path: Path) -> None:
