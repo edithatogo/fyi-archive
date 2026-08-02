@@ -14,6 +14,9 @@
 - [x] Resolve the documentation/Conductor CI blocker through PR #332; required
   Python quality, repository quality, Codecov, and CodeQL checks all passed and
   the squash merge landed as `2874ba23490e63ae5b1ae21bca675e6aa214188d`.
+- [x] Dispatch exactly one bounded named-site partition-trial candidate:
+  `ca-federal-atip`, run `30755229752`, reusing run `30391530911` checkpoints,
+  with a 7,200-second ceiling and no automatic follow-up.
 - [ ] Execute one bounded named-site Wayback partition-acquisition trial and
   verify the complete evidence bundle.
 - [ ] Reconcile the trial result: close only if all required partition and merge
