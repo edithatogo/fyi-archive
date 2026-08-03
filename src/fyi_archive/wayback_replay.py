@@ -182,16 +182,11 @@ def _atomic_write(path: Path, payload: bytes) -> None:
             stream.flush()
             os.fsync(stream.fileno())
         temporary.replace(path)
-        # POSIX permits opening and fsyncing a directory to make the rename
-        # durable. Windows rejects opening a directory through ``os.open``;
-        # ``Path.replace`` remains atomic there, so skip only the unsupported
-        # directory flush while retaining the file fsync above.
-        if os.name != "nt":
-            directory_descriptor = os.open(path.parent, os.O_RDONLY)
-            try:
-                os.fsync(directory_descriptor)
-            finally:
-                os.close(directory_descriptor)
+        directory_descriptor = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(directory_descriptor)
+        finally:
+            os.close(directory_descriptor)
     finally:
         temporary.unlink(missing_ok=True)
 
@@ -228,14 +223,14 @@ def object_path(root: Path, digest: str) -> Path:
 def validate_canonical_url(value: str) -> str:
     """Require one absolute, fragment-free canonical HTTPS URL."""
     parsed = urlsplit(value)
-    has_userinfo = parsed.username is not None or parsed.password is not None
     if (
-        parsed.scheme != "https"
+        parsed.scheme != "https"  # noqa: PLR0916
         or not parsed.hostname
-        or has_userinfo
+        or parsed.username is not None
+        or parsed.password is not None
         or parsed.fragment
         or parsed.port not in {None, 443}
-    ):
+    ):  # noqa: PLR0916
         raise ReplayStateError("URL is not an absolute canonical HTTPS URL")
     if parsed.hostname.lower() != parsed.hostname or "/../" in parsed.path or "/./" in parsed.path:
         raise ReplayStateError("URL is not canonical")
@@ -483,14 +478,14 @@ def _validate_success_boundary(
         port = parsed.port
     except ValueError as error:
         raise ReplayStateError("successful observation has an invalid final archive URL") from error
-    has_userinfo = parsed.username is not None or parsed.password is not None
     if (
-        parsed.scheme != "https"
+        parsed.scheme != "https"  # noqa: PLR0916
         or not parsed.hostname
-        or has_userinfo
+        or parsed.username is not None
+        or parsed.password is not None
         or parsed.fragment
         or port not in {None, 443}
-    ):
+    ):  # noqa: PLR0916
         raise ReplayStateError("successful observation has an invalid final archive URL")
     allowed_hosts = cast("Sequence[object]", policy["archive_hosts"])
     if parsed.hostname.lower() not in {str(host) for host in allowed_hosts}:

@@ -38,14 +38,6 @@ APPROVED_CDX_EVIDENCE = ROOT / "tests" / "fixtures" / "wayback-approved-cdx-retr
 NOW = datetime(2026, 7, 31, tzinfo=UTC)
 
 
-def symlink_or_skip(link: Path, target: Path) -> None:
-    """Create a symlink or skip where the platform policy forbids it."""
-    try:
-        link.symlink_to(target, target_is_directory=target.is_dir())
-    except OSError as error:
-        pytest.skip(f"symlink creation is unavailable: {error}")
-
-
 def configuration() -> dict[str, Any]:
     return json.loads(FIXTURE.read_text())
 
@@ -148,7 +140,7 @@ def test_symlinked_object_fails_closed(tmp_path: Path) -> None:
     path.unlink()
     target = tmp_path / "outside"
     target.write_bytes(b"original")
-    symlink_or_skip(path, target)
+    path.symlink_to(target)
     with pytest.raises(ReplayStateError, match="not a regular file"):
         store_object(tmp_path, b"original")
 
@@ -281,7 +273,6 @@ def test_unknown_or_incomplete_observations_fail_closed(observation: ReplayObser
         ("content_type", "application/octet-stream", "content type"),
         ("response_bytes", b"x" * 16_777_217, "payload"),
     ],
-    ids=("foreign-host", "credentialed-url", "content-type", "oversized-payload"),
 )
 def test_success_boundary_fails_before_cas_persistence(
     tmp_path: Path, field: str, value: str | bytes, message: str
@@ -874,7 +865,7 @@ def test_state_root_symlink_is_rejected(tmp_path: Path) -> None:
     real = tmp_path / "real"
     real.mkdir()
     link = tmp_path / "link"
-    symlink_or_skip(link, real)
+    link.symlink_to(real)
     with pytest.raises(ReplayStateError, match="symlink"):
         write_initial_state(link, configuration())
 
