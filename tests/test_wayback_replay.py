@@ -620,17 +620,17 @@ def test_configuration_identity_and_member_guards(monkeypatch) -> None:
     with pytest.raises(ReplayStateError, match="member_id is required"):
         replay_module._validate_member({"canonical_url": "https://example.test/"})
     with pytest.raises(ReplayStateError, match="must be an ISO"):
-        replay_module._validate_member(
-            {"member_id": "x", "canonical_url": "https://example.test/", "capture_timestamp": "bad"}
-        )
+        replay_module._validate_member({
+            "member_id": "x",
+            "canonical_url": "https://example.test/",
+            "capture_timestamp": "bad",
+        })
     with pytest.raises(ReplayStateError, match="must include a timezone"):
-        replay_module._validate_member(
-            {
-                "member_id": "x",
-                "canonical_url": "https://example.test/",
-                "capture_timestamp": "2026-01-01T00:00:00",
-            }
-        )
+        replay_module._validate_member({
+            "member_id": "x",
+            "canonical_url": "https://example.test/",
+            "capture_timestamp": "2026-01-01T00:00:00",
+        })
 
 
 @pytest.mark.parametrize(
