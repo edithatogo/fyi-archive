@@ -47,7 +47,12 @@ def test_benchmark_process_projection_verifies_fixture_output(tmp_path: Path) ->
     )
 
     assert result.returncode == 0, result.stderr
-    report = json.loads(result.stdout)
+    try:
+        report = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise AssertionError(
+            f"Failed to parse JSON output: {exc}\nstdout: {result.stdout}\nstderr: {result.stderr}"
+        ) from exc
     assert report["source_revision"] == "fixture-benchmark-1"
     assert report["coverage"]["event_count"] == 1
     assert report["publication"] == "none"

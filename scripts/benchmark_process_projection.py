@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -21,16 +22,24 @@ def main() -> int:
     args = parser.parse_args()
 
     started = time.perf_counter()
-    coverage = build_process_projection(
-        events_path=args.events,
-        output_dir=args.output,
-        manifest_path=args.manifest,
-        attachments_path=args.attachments,
-        snapshot_revision=args.revision,
-    )
-    verify_process_projection(args.output)
+    try:
+        coverage = build_process_projection(
+            events_path=args.events,
+            output_dir=args.output,
+            manifest_path=args.manifest,
+            attachments_path=args.attachments,
+            snapshot_revision=args.revision,
+        )
+        verify_process_projection(args.output)
+    except Exception as exc:  # noqa: BLE001
+        print(f"Error during projection build or verification: {exc}", file=sys.stderr)
+        return 1
     elapsed = time.perf_counter() - started
-    digest = hashlib.sha256((args.output / "CHECKSUMS.sha256").read_bytes()).hexdigest()
+    try:
+        digest = hashlib.sha256((args.output / "CHECKSUMS.sha256").read_bytes()).hexdigest()
+    except FileNotFoundError as exc:
+        print(f"Error: CHECKSUMS.sha256 not found at {args.output}: {exc}", file=sys.stderr)
+        return 1
     report = {
         "source_revision": args.revision,
         "elapsed_seconds": round(elapsed, 6),
