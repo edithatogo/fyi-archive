@@ -30,9 +30,7 @@ def main() -> int:
     )
     verify_process_projection(args.output)
     elapsed = time.perf_counter() - started
-    digest = hashlib.sha256(
-        (args.output / "CHECKSUMS.sha256").read_bytes()
-    ).hexdigest()
+    digest = hashlib.sha256((args.output / "CHECKSUMS.sha256").read_bytes()).hexdigest()
     report = {
         "source_revision": args.revision,
         "elapsed_seconds": round(elapsed, 6),
