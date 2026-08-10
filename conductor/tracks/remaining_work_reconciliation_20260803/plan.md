@@ -17,8 +17,12 @@
 - [x] Dispatch exactly one bounded named-site partition-trial candidate:
   `ca-federal-atip`, run `30755229752`, reusing run `30391530911` checkpoints,
   with a 7,200-second ceiling and no automatic follow-up.
-- [ ] Execute one bounded named-site Wayback partition-acquisition trial and
-  verify the complete evidence bundle.
+- [x] Verify the bounded candidate's complete evidence bundle: one retained CA
+  artifact, 285,237 records, 286 pages, resume-key mode, config hash
+  `1e3a3398...ae9b8`, no failures, and no remaining resume key.
+- [ ] Exercise the separate time-partition acquisition and complete-only merge
+  path; the candidate above was a complete cursor inventory, not a partition
+  plan merge.
 - [ ] Reconcile the trial result: close only if all required partition and merge
   criteria pass; otherwise retain the track open and document weekly resumption.
 - [ ] Optionally provision `RIOPA_PROJECT_TOKEN` with least privilege; fallback
