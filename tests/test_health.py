@@ -10,7 +10,7 @@ from typer.testing import CliRunner
 
 from fyi_archive.cli import app
 from fyi_archive.commands.doctor import get_coverage_info
-from fyi_archive.health import live_mirror_counts, manifest_count, parity_report
+from fyi_archive.health import _env_int, live_mirror_counts, manifest_count, parity_report
 
 
 def test_manifest_count_reads_meta_record_count(tmp_path: Path) -> None:
@@ -223,14 +223,16 @@ def test_doctor_accepts_instance_and_jurisdiction_scope(tmp_path: Path, monkeypa
     manifest_dir = tmp_path / "manifests"
     manifest_dir.mkdir()
     (manifest_dir / "au.json").write_text(
-        json.dumps({
-            "meta": {
-                "record_count": 2,
-                "generated_at": "2026-01-01T00:00:00Z",
-                "instance_id": "au-rtk",
-                "jurisdiction": "NSW",
+        json.dumps(
+            {
+                "meta": {
+                    "record_count": 2,
+                    "generated_at": "2026-01-01T00:00:00Z",
+                    "instance_id": "au-rtk",
+                    "jurisdiction": "NSW",
+                }
             }
-        }),
+        ),
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
@@ -278,3 +280,38 @@ def test_doctor_falls_back_to_huggingface_manifest(tmp_path: Path, monkeypatch) 
 
     assert result.exit_code == 0, result.output
     assert '"source": "huggingface"' in result.stdout
+
+
+def test_env_int_valid(monkeypatch) -> None:
+    monkeypatch.setenv("TEST_ENV_INT", "42")
+    assert _env_int("TEST_ENV_INT") == 42
+
+
+def test_env_int_valid_with_spaces(monkeypatch) -> None:
+    monkeypatch.setenv("TEST_ENV_INT", "  42  ")
+    assert _env_int("TEST_ENV_INT") == 42
+
+
+def test_env_int_missing(monkeypatch) -> None:
+    monkeypatch.delenv("TEST_ENV_INT", raising=False)
+    assert _env_int("TEST_ENV_INT") is None
+
+
+def test_env_int_empty(monkeypatch) -> None:
+    monkeypatch.setenv("TEST_ENV_INT", "")
+    assert _env_int("TEST_ENV_INT") is None
+
+
+def test_env_int_whitespace(monkeypatch) -> None:
+    monkeypatch.setenv("TEST_ENV_INT", "   ")
+    assert _env_int("TEST_ENV_INT") is None
+
+
+def test_env_int_invalid(monkeypatch) -> None:
+    monkeypatch.setenv("TEST_ENV_INT", "not_an_int")
+    assert _env_int("TEST_ENV_INT") is None
+
+
+def test_env_int_float(monkeypatch) -> None:
+    monkeypatch.setenv("TEST_ENV_INT", "12.3")
+    assert _env_int("TEST_ENV_INT") is None
