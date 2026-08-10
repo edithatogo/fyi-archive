@@ -49,6 +49,21 @@ on:
         required: false
         default: ""
         type: string
+      from_timestamp:
+        description: Optional four-digit partition start year
+        required: false
+        default: ""
+        type: string
+      to_timestamp:
+        description: Optional four-digit partition end year
+        required: false
+        default: ""
+        type: string
+      include_urlkey:
+        description: Include urlkey for complete-only partition merging
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   actions: read # Download retained artifacts from an explicitly selected prior run.
@@ -115,6 +130,9 @@ jobs:
       REQUESTED_RESUME_RUN_ID: ${{ inputs.resume_run_id || '' }}
       TARGET_SITE_ID: ${{ inputs.site_id || '' }}
       TARGET_SITE_IDS: ${{ inputs.site_ids || '' }}
+      FROM_TIMESTAMP: ${{ inputs.from_timestamp || '' }}
+      TO_TIMESTAMP: ${{ inputs.to_timestamp || '' }}
+      INCLUDE_URLKEY: ${{ inputs.include_urlkey || false }}
       SITE_COUNTRY: ${{ matrix.site.country }}
       SITE_ID: ${{ matrix.site.id }}
       SITE_KIND: ${{ matrix.site.kind }}
@@ -146,6 +164,11 @@ jobs:
           case "$CAPTURE_MODE" in url_index|all_captures) ;; *) exit 1;; esac
           if [ -n "$REQUESTED_RESUME_RUN_ID" ]; then
             [[ "$REQUESTED_RESUME_RUN_ID" =~ ^[0-9]+$ ]]
+          fi
+          if [ -n "$FROM_TIMESTAMP" ]; then [[ "$FROM_TIMESTAMP" =~ ^[0-9]{4}$ ]]; fi
+          if [ -n "$TO_TIMESTAMP" ]; then [[ "$TO_TIMESTAMP" =~ ^[0-9]{4}$ ]]; fi
+          if [ -n "$FROM_TIMESTAMP" ] && [ -n "$TO_TIMESTAMP" ]; then
+            test "$FROM_TIMESTAMP" -le "$TO_TIMESTAMP"
           fi
       - name: Resolve prior site checkpoint
         id: resume
@@ -262,6 +285,12 @@ jobs:
                   "--output", str(output),
                   "--evidence", str(evidence),
               ]
+              if os.environ["FROM_TIMESTAMP"]:
+                  command.extend(["--from-timestamp", os.environ["FROM_TIMESTAMP"]])
+              if os.environ["TO_TIMESTAMP"]:
+                  command.extend(["--to-timestamp", os.environ["TO_TIMESTAMP"]])
+              if os.environ["INCLUDE_URLKEY"].lower() == "true":
+                  command.append("--include-urlkey")
               if resumed and output.with_name(f"{output.stem}.pages").exists():
                   command.extend([
                       "--resume",
