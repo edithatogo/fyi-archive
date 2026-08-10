@@ -65,9 +65,10 @@
     "project_sync": "operationally successful via fallback WORKFLOW_PAT: run 30736460096 mirrored 683 items and posted Project 4 status (217 missing); dedicated RIOPA_PROJECT_TOKEN hardening remains open",
     "huggingface_metadata": "blocked: metadata-only card correction prepared, but Hugging Face rejected upload and create_pr with HTTP 403",
     "dataset_integrity": "unchanged: canonical fyi-archive-nz revision retains 33,217 records; no data deletion or rewrite authorized",
+    "dependency_security": "reconciled: Dependabot cryptography and h2 advisories addressed by merged PR #345; post-merge open-alert query returned none",
     "release": "gated: no release publication or token broadening is authorized by this closure pass",
     "nz_batch_continuation": "bounded: auto_continue now caps chained batches at max_auto_batches=20; existing runs retain their own inputs",
-    "remaining_work_track": "in progress: cursor candidate 30755229752 verified complete; partition candidate 31388750483 failed closed after 25 pages with a resumable checkpoint; provider-gated metadata/credential items remain open"
+    "remaining_work_track": "in progress: cursor candidate 30755229752 verified complete; partition candidate 31388750483 failed closed after 25 pages with a resumable checkpoint; dependency security reconciled; provider-gated metadata/credential items remain open"
   },
   "next_ops": [
     "Optionally provision a dedicated RIOPA_PROJECT_TOKEN with least-privilege Projects scope; fallback sync is currently operational and no token value is recorded",

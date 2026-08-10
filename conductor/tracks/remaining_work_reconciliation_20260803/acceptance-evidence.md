@@ -43,3 +43,7 @@
 - Dedicated `RIOPA_PROJECT_TOKEN` is absent. Fallback project sync is operational;
   least-privilege hardening remains optional.
 - No percentage coverage claim is made without a defensible national denominator.
+
+- Dependency-security reconciliation completed through merged PR #345. The
+  cryptography and h2 lockfile advisories were upgraded to patched releases;
+  the post-merge open-alert query returned no remaining Dependabot alerts.
