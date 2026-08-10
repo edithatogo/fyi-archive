@@ -30,6 +30,9 @@
 - [x] Add bounded workflow inputs for `from_timestamp`, `to_timestamp`, and
   `include_urlkey`, with validation and pass-through to the fetcher so a future
   named-site partition trial can produce mergeable evidence.
+- [x] Reconcile partition candidate `31388750483`: CA 2020-2024 failed closed
+  after 25 pages (`record_count=25,000`) on whole-run deadline exhaustion; its
+  checkpoint retained a resume key and no partial success was published.
 - [ ] Reconcile the trial result: close only if all required partition and merge
   criteria pass; otherwise retain the track open and document weekly resumption.
 - [ ] Optionally provision `RIOPA_PROJECT_TOKEN` with least privilege; fallback

@@ -29,6 +29,10 @@
 - The acquisition workflow now exposes bounded partition timestamp inputs and
   `include_urlkey`, validates the ranges, and passes them to the resumable
   fetcher. Actionlint and 40 focused workflow/CDX tests pass.
+- Partition candidate run `31388750483` failed closed after 25 pages and 25,000
+  observed records due to whole-run deadline exhaustion. The retained checkpoint
+  had `resumable=true` and a non-null resume key; the manifest was not complete,
+  so no partial partition was accepted or merged. No automatic retry was issued.
 
 ## Open acceptance gates
 
