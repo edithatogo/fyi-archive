@@ -199,11 +199,13 @@ def test_projection_includes_historical_source_reconciliation(tmp_path: Path) ->
     reconciliation = tmp_path / "reconciliation.json"
     _write_jsonl(events, [{"event_id": "e1", "case_id": "c1", "activity": "opened"}])
     reconciliation.write_text(
-        json.dumps({
-            "schema": "historical-source-reconciliation-v1",
-            "candidate_count": 4,
-            "counts": {"archive_only_candidate": 3, "live_captured": 1},
-        }),
+        json.dumps(
+            {
+                "schema": "historical-source-reconciliation-v1",
+                "candidate_count": 4,
+                "counts": {"archive_only_candidate": 3, "live_captured": 1},
+            }
+        ),
         encoding="utf-8",
     )
     coverage = build_process_projection(
@@ -318,3 +320,50 @@ def test_process_cli_reports_projection_and_checksum_errors(tmp_path: Path) -> N
     assert result.exit_code != 0
     result = runner.invoke(app, ["process", "verify", "--output-dir", str(tmp_path / "missing")])
     assert result.exit_code != 0
+
+
+def test_sort_events() -> None:
+    from fyi_archive.process_projection import _sort_events
+
+    # 1. Happy path: scrambled list of standard events.
+    # Should sort primarily by case_id, then source index, then event_id.
+    rows = [
+        {"case_id": "c2", "event_id": "e4", "source_index": 2},
+        {"case_id": "c1", "event_id": "e2", "source_index": 1},
+        {"case_id": "c1", "event_id": "e1", "source_index": 1},
+        {"case_id": "c2", "event_id": "e3", "source_index": 1},
+    ]
+    expected = [
+        {"case_id": "c1", "event_id": "e1", "source_index": 1},
+        {"case_id": "c1", "event_id": "e2", "source_index": 1},
+        {"case_id": "c2", "event_id": "e3", "source_index": 1},
+        {"case_id": "c2", "event_id": "e4", "source_index": 2},
+    ]
+    assert _sort_events(rows) == expected
+
+    # 2. Edge case: structured source_index (dict format used in fyi-cli).
+    rows_structured = [
+        {"case_id": "c1", "event_id": "e2", "source_order": {"event_sequence": 2}},
+        {"case_id": "c1", "event_id": "e1", "source_index": {"sequence": 1}},
+    ]
+    expected_structured = [
+        {"case_id": "c1", "event_id": "e1", "source_index": {"sequence": 1}},
+        {"case_id": "c1", "event_id": "e2", "source_order": {"event_sequence": 2}},
+    ]
+    assert _sort_events(rows_structured) == expected_structured
+
+    # 3. Edge case: missing properties and invalid property types.
+    # Should gracefully handle missing keys and default them appropriately without crashing.
+    rows_missing = [
+        {"event_id": "e2"},
+        {"case_id": "c1"},
+        {"case_id": "c1", "event_id": "e1"},
+        {},
+    ]
+    expected_missing = [
+        {},
+        {"event_id": "e2"},
+        {"case_id": "c1"},
+        {"case_id": "c1", "event_id": "e1"},
+    ]
+    assert _sort_events(rows_missing) == expected_missing
