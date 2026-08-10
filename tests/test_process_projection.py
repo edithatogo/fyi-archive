@@ -199,11 +199,13 @@ def test_projection_includes_historical_source_reconciliation(tmp_path: Path) ->
     reconciliation = tmp_path / "reconciliation.json"
     _write_jsonl(events, [{"event_id": "e1", "case_id": "c1", "activity": "opened"}])
     reconciliation.write_text(
-        json.dumps({
-            "schema": "historical-source-reconciliation-v1",
-            "candidate_count": 4,
-            "counts": {"archive_only_candidate": 3, "live_captured": 1},
-        }),
+        json.dumps(
+            {
+                "schema": "historical-source-reconciliation-v1",
+                "candidate_count": 4,
+                "counts": {"archive_only_candidate": 3, "live_captured": 1},
+            }
+        ),
         encoding="utf-8",
     )
     coverage = build_process_projection(

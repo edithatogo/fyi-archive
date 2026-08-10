@@ -223,14 +223,16 @@ def test_doctor_accepts_instance_and_jurisdiction_scope(tmp_path: Path, monkeypa
     manifest_dir = tmp_path / "manifests"
     manifest_dir.mkdir()
     (manifest_dir / "au.json").write_text(
-        json.dumps({
-            "meta": {
-                "record_count": 2,
-                "generated_at": "2026-01-01T00:00:00Z",
-                "instance_id": "au-rtk",
-                "jurisdiction": "NSW",
+        json.dumps(
+            {
+                "meta": {
+                    "record_count": 2,
+                    "generated_at": "2026-01-01T00:00:00Z",
+                    "instance_id": "au-rtk",
+                    "jurisdiction": "NSW",
+                }
             }
-        }),
+        ),
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)

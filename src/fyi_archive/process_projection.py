@@ -29,18 +29,19 @@ def _source_index(row: dict[str, Any]) -> int:
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-        if not line.strip():
-            continue
-        try:
-            value = json.loads(line)
-        except json.JSONDecodeError as error:
-            raise ValueError(f"invalid JSON on line {line_number} of {path}") from error
-        if not isinstance(value, dict):
-            raise ValueError(f"JSONL line {line_number} must be an object")
-        if "case_id" not in value and value.get("logical_request_id"):
-            value["case_id"] = value["logical_request_id"]
-        rows.append(value)
+    with path.open(encoding="utf-8") as f:
+        for line_number, line in enumerate(f, 1):
+            if not line.strip():
+                continue
+            try:
+                value = json.loads(line)
+            except json.JSONDecodeError as error:
+                raise ValueError(f"invalid JSON on line {line_number} of {path}") from error
+            if not isinstance(value, dict):
+                raise ValueError(f"JSONL line {line_number} must be an object")
+            if "case_id" not in value and value.get("logical_request_id"):
+                value["case_id"] = value["logical_request_id"]
+            rows.append(value)
     return rows
 
 
@@ -126,12 +127,14 @@ def _case_rows(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
         grouped.setdefault(event["case_id"], []).append(event)
     result = []
     for case_id, case_events in grouped.items():
-        result.append({
-            "case_id": case_id,
-            "event_count": len(case_events),
-            "first_source_index": min(_source_index(event) for event in case_events),
-            "last_source_index": max(_source_index(event) for event in case_events),
-        })
+        result.append(
+            {
+                "case_id": case_id,
+                "event_count": len(case_events),
+                "first_source_index": min(_source_index(event) for event in case_events),
+                "last_source_index": max(_source_index(event) for event in case_events),
+            }
+        )
     return sorted(result, key=operator.itemgetter("case_id"))
 
 

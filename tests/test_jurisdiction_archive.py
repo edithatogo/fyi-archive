@@ -35,31 +35,33 @@ def test_registry_rejects_silent_fallback_and_false_archive_claim() -> None:
 
 
 def test_registry_reports_structural_evidence_errors(tmp_path: Path) -> None:
-    result = validate_target_registry({
-        "schema": "wrong",
-        "publication_allowed": True,
-        "evidence_defaults": None,
-        "targets": [
-            "not-an-object",
-            {
-                "target_id": "",
-                "status": "pending",
-                "evidence": None,
-            },
-            {
-                "target_id": "DUP",
-                "status": "blocked",
-                "blocker": "missing",
-                "evidence": {},
-            },
-            {
-                "target_id": "DUP",
-                "status": "blocked",
-                "blocker": "missing",
-                "evidence": {},
-            },
-        ],
-    })
+    result = validate_target_registry(
+        {
+            "schema": "wrong",
+            "publication_allowed": True,
+            "evidence_defaults": None,
+            "targets": [
+                "not-an-object",
+                {
+                    "target_id": "",
+                    "status": "pending",
+                    "evidence": None,
+                },
+                {
+                    "target_id": "DUP",
+                    "status": "blocked",
+                    "blocker": "missing",
+                    "evidence": {},
+                },
+                {
+                    "target_id": "DUP",
+                    "status": "blocked",
+                    "blocker": "missing",
+                    "evidence": {},
+                },
+            ],
+        }
+    )
     errors = " ".join(result["errors"])
     assert result["ok"] is False
     assert "unsupported" in errors
@@ -78,11 +80,13 @@ def test_registry_reports_structural_evidence_errors(tmp_path: Path) -> None:
 
 
 def test_registry_requires_non_empty_targets() -> None:
-    result = validate_target_registry({
-        "schema": "fyi-archive.jurisdiction-targets.v1",
-        "publication_allowed": False,
-        "evidence_defaults": {},
-        "targets": [],
-    })
+    result = validate_target_registry(
+        {
+            "schema": "fyi-archive.jurisdiction-targets.v1",
+            "publication_allowed": False,
+            "evidence_defaults": {},
+            "targets": [],
+        }
+    )
     assert result["ok"] is False
     assert "non-empty" in " ".join(result["errors"])
