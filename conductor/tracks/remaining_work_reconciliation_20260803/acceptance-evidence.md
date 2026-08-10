@@ -22,6 +22,10 @@
   `scripts/verify_wayback_artifacts.py` independently returned one complete site
   and a null coverage percentage. This validates cursor acquisition, but it is
   not evidence of the separate time-partition merge path.
+- Local partition planner and complete-only merge regression tests passed: 44
+  tests across `tests/test_wayback_partitions.py` and
+  `tests/test_wayback_evidence.py`. The hosted partition gate remains open
+  because no partition-plan acquisition artifact was produced.
 
 ## Open acceptance gates
 

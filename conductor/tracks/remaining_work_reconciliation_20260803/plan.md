@@ -23,6 +23,10 @@
 - [ ] Exercise the separate time-partition acquisition and complete-only merge
   path; the candidate above was a complete cursor inventory, not a partition
   plan merge.
+- [x] Run the local partition planner/merge regression suite against the current
+  implementation: `tests/test_wayback_partitions.py` and
+  `tests/test_wayback_evidence.py` passed (44 tests). This validates the local
+  guardrails but does not substitute for hosted partition acquisition.
 - [ ] Reconcile the trial result: close only if all required partition and merge
   criteria pass; otherwise retain the track open and document weekly resumption.
 - [ ] Optionally provision `RIOPA_PROJECT_TOKEN` with least privilege; fallback
