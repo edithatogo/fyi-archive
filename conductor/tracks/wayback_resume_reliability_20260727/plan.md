@@ -114,5 +114,8 @@
   workflow while preserving the whole-run deadline and retained checkpoints.
 - [ ] Exercise partition acquisition and merge in one bounded named-site hosted
   run before enabling partition plans for the weekly schedule.
+- [x] Verify bounded cursor candidate `30755229752`: one complete CA artifact,
+  285,237 records, 286 pages, resume-key pagination, valid config hash, and no
+  remaining resume key; this does not close the distinct partition-merge gate.
 - [x] Complete required PR checks, Codecov, and CodeQL for PR #320; the
   partition-acquisition trial remains a separate open acceptance item.

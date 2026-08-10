@@ -14,14 +14,20 @@
 - PR #332 is merged after all required Python quality, repository
   quality, Codecov, and CodeQL checks passed. The former queued-CI blocker is
   resolved; no bypass or retry loop was used.
-- Candidate partition trial `30755229752` was dispatched for `ca-federal-atip`
-  with compatible checkpoint run `30391530911`, a 7,200-second maximum runtime,
-  and no chained retry. Enumeration succeeded; snapshot acquisition remains in
-  progress, so acceptance is intentionally not claimed yet.
+- Candidate run `30755229752` completed successfully for `ca-federal-atip`.
+  Artifact inspection found exactly one retained complete artifact with 285,237
+  records over 286 pages; manifest and retrieval both declare
+  `pagination.mode=resume_key`, the configuration hash is
+  `1e3a3398...ae9b8`, failures are empty, and `next_resume_key` is null.
+  `scripts/verify_wayback_artifacts.py` independently returned one complete site
+  and a null coverage percentage. This validates cursor acquisition, but it is
+  not evidence of the separate time-partition merge path.
 
 ## Open acceptance gates
 
-- Archive partition acquisition has not yet produced an accepted complete trial.
+- Time-partition acquisition and complete-only merge have not yet produced an
+  accepted trial. The cursor-inventory candidate is complete but insufficient
+  for that distinct gate.
   CA, DE, and UK remain resumable on the weekly schedule.
 - Dedicated `RIOPA_PROJECT_TOKEN` is absent. Fallback project sync is operational;
   least-privilege hardening remains optional.
