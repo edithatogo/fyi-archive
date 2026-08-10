@@ -26,6 +26,9 @@
   tests across `tests/test_wayback_partitions.py` and
   `tests/test_wayback_evidence.py`. The hosted partition gate remains open
   because no partition-plan acquisition artifact was produced.
+- The acquisition workflow now exposes bounded partition timestamp inputs and
+  `include_urlkey`, validates the ranges, and passes them to the resumable
+  fetcher. Actionlint and 40 focused workflow/CDX tests pass.
 
 ## Open acceptance gates
 

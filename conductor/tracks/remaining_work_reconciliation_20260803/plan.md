@@ -27,6 +27,9 @@
   implementation: `tests/test_wayback_partitions.py` and
   `tests/test_wayback_evidence.py` passed (44 tests). This validates the local
   guardrails but does not substitute for hosted partition acquisition.
+- [x] Add bounded workflow inputs for `from_timestamp`, `to_timestamp`, and
+  `include_urlkey`, with validation and pass-through to the fetcher so a future
+  named-site partition trial can produce mergeable evidence.
 - [ ] Reconcile the trial result: close only if all required partition and merge
   criteria pass; otherwise retain the track open and document weekly resumption.
 - [ ] Optionally provision `RIOPA_PROJECT_TOKEN` with least privilege; fallback
