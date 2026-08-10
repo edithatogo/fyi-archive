@@ -68,6 +68,21 @@ from fyi_archive.sync import (
 
 
 @pytest.mark.unit
+def test_state_body_from_state_formatting() -> None:
+    state = {"next_id": 42, "batches": [{"label": "1-10", "status": "merged"}]}
+    body = state_body_from_state(state)
+
+    # Must end with a newline
+    assert body.endswith("\n")
+
+    # Must not contain extraneous spaces (compact separators)
+    assert " " not in body
+
+    # Must be valid JSON when stripped of the newline
+    assert json.loads(body.strip()) == encode_state(state)
+
+
+@pytest.mark.unit
 def test_backfill_state_codec_round_trip_and_plain_json() -> None:
     state = {"next_id": 42, "batches": [{"label": "1-10", "status": "merged"}]}
     encoded = encode_state(state)
@@ -399,10 +414,12 @@ def test_sync_baseline_restore_and_subprocess_contract(tmp_path: Path, monkeypat
         derived_dir=tmp_path / "derived", output_path=tmp_path / "baseline.json"
     )
     payload = json.loads(baseline.read_text(encoding="utf-8"))
-    assert payload["requests"][0]["content_sha256"] == fyi_diff_content_sha256({
-        "id": 1,
-        "title": "A",
-    })
+    assert payload["requests"][0]["content_sha256"] == fyi_diff_content_sha256(
+        {
+            "id": 1,
+            "title": "A",
+        }
+    )
 
     snapshot = tmp_path / "snapshot"
     (snapshot / "manifests").mkdir(parents=True)
@@ -613,9 +630,9 @@ def test_nsw_queue_selection_is_deduplicated_and_scoped(tmp_path: Path) -> None:
     ]
     selected = select_nsw_authorities(bodies)
     assert [row["slug"] for row in selected] == ["council"]
-    csv_style = select_nsw_authorities([
-        {"URL name": "nsw-health", "Name": "NSW Health", "Tags": "state-government-nsw"}
-    ])
+    csv_style = select_nsw_authorities(
+        [{"URL name": "nsw-health", "Name": "NSW Health", "Tags": "state-government-nsw"}]
+    )
     assert [row["slug"] for row in csv_style] == ["nsw-health"]
     assert set(csv_style[0]) == {"slug", "name", "jurisdiction"}
     bodies_path = tmp_path / "bodies.json"
