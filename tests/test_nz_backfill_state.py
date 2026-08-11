@@ -38,6 +38,15 @@ def test_completion_requires_receipt_matching_lease() -> None:
     )
     assert completed["leases"] == []
     assert completed["completed"] == [{"start_offset": 100, "end_offset": 200, "run_id": 8}]
+    assert completed["receipts"] == [
+        {
+            "start_offset": 100,
+            "batch_size": 100,
+            "manifest_sha256": "a" * 64,
+            "run_id": 8,
+            "end_offset": 200,
+        }
+    ]
     assert next_unclaimed_offset(completed) == 0
 
 
@@ -51,16 +60,18 @@ def test_next_offset_finds_first_gap_and_state_rejects_overlap() -> None:
     )
     assert next_unclaimed_offset(state) == 500
     with pytest.raises(ValueError, match="completed ranges overlap"):
-        validate_state({
-            "schema": "fyi-archive.nz-real-backfill-state.v1",
-            "queue_count": 1000,
-            "completed": [
-                {"start_offset": 0, "end_offset": 100},
-                {"start_offset": 50, "end_offset": 150},
-            ],
-            "leases": [],
-            "receipts": [],
-        })
+        validate_state(
+            {
+                "schema": "fyi-archive.nz-real-backfill-state.v1",
+                "queue_count": 1000,
+                "completed": [
+                    {"start_offset": 0, "end_offset": 100},
+                    {"start_offset": 50, "end_offset": 150},
+                ],
+                "leases": [],
+                "receipts": [],
+            }
+        )
 
 
 @pytest.mark.parametrize(

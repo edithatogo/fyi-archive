@@ -77,7 +77,10 @@ def complete_range(
     updated["leases"] = []
     updated["completed"].append(lease)
     updated["completed"].sort(key=itemgetter("start_offset", "end_offset"))
-    updated["receipts"].append(deepcopy(receipt))
+    stored_receipt = deepcopy(receipt)
+    stored_receipt["run_id"] = run_id
+    stored_receipt["end_offset"] = lease["end_offset"]
+    updated["receipts"].append(stored_receipt)
     return validate_state(updated)
 
 
