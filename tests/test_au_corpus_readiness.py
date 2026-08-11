@@ -13,6 +13,7 @@ FRAME = Path("configs/au/corpus_sampling_frame.json")
 def test_committed_au_sampling_frame_is_authorized_for_full_restricted_nsw_capture() -> None:
     document = load_sampling_frame(FRAME)
     assert document["capture_authorized"] is True
+    assert document["private_hf_retention_authorized"] is True
     assert document["publication_authorized"] is False
     assert [item["jurisdiction"] for item in document["strata"]] == ["FEDERAL", "NSW"]
     assert document["strata"][1]["request_cap"] == 179

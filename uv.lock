@@ -868,7 +868,7 @@ requires-dist = [
     { name = "duckdb", specifier = ">=1.1.0" },
     { name = "feedparser", specifier = ">=6.0.11" },
     { name = "frictionless", marker = "extra == 'dev'", specifier = ">=5.18.0" },
-    { name = "fyi-cli", git = "https://github.com/edithatogo/fyi-cli?rev=0c927c276e814e081485867def8c03a50ded9294" },
+    { name = "fyi-cli", git = "https://github.com/edithatogo/fyi-cli?rev=bc789a845e8b4e8b53d007c658be8070cb17e70e" },
     { name = "httpx", extras = ["http2"], specifier = ">=0.28.0" },
     { name = "httpx-limiter", specifier = ">=0.6.0" },
     { name = "huggingface-hub", extras = ["hf-xet"], specifier = ">=0.27.0" },
@@ -901,15 +901,17 @@ provides-extras = ["dev"]
 [[package]]
 name = "fyi-cli"
 version = "1.2.1"
-source = { git = "https://github.com/edithatogo/fyi-cli?rev=0c927c276e814e081485867def8c03a50ded9294#0c927c276e814e081485867def8c03a50ded9294" }
+source = { git = "https://github.com/edithatogo/fyi-cli?rev=bc789a845e8b4e8b53d007c658be8070cb17e70e#bc789a845e8b4e8b53d007c658be8070cb17e70e" }
 dependencies = [
     { name = "cryptography" },
     { name = "fastmcp" },
     { name = "feedparser" },
     { name = "httpx" },
     { name = "jinja2" },
+    { name = "jsonschema" },
     { name = "keyring" },
     { name = "pydantic" },
+    { name = "requests" },
     { name = "rich" },
     { name = "typer" },
     { name = "warcio" },
