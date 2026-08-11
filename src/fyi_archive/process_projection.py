@@ -10,6 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import operator
+import re
 from pathlib import Path
 from typing import Any, cast
 
@@ -17,6 +18,7 @@ import polars as pl
 
 CONTRACT_VERSION = "1.0.0"
 REQUIRED_EVENT_FIELDS = {"event_id", "case_id", "activity"}
+REQUEST_ID_PATTERN = re.compile(r":request:(\d+)$")
 
 
 def _source_index(row: dict[str, Any]) -> int:
@@ -136,6 +138,70 @@ def _case_rows(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(result, key=operator.itemgetter("case_id"))
 
 
+def _request_id_from_event(event: dict[str, Any]) -> int | None:
+    """Recover the archive request identifier without parsing presentation URLs."""
+    source_order = event.get("source_order")
+    if isinstance(source_order, dict):
+        value = source_order.get("request_sequence")
+        if isinstance(value, int) or (isinstance(value, str) and value.isdigit()):
+            return int(value)
+    match = REQUEST_ID_PATTERN.search(str(event.get("case_id", "")))
+    return int(match.group(1)) if match else None
+
+
+def _canonical_request_url(manifest: dict[str, Any], request: dict[str, Any]) -> str | None:
+    value = request.get("canonical_url") or request.get("url")
+    if isinstance(value, str) and value:
+        return value
+    slug = request.get("url_title")
+    source = manifest.get("meta", {}).get("source")
+    if isinstance(slug, str) and slug and isinstance(source, str) and source:
+        return f"{source.rstrip('/')}/request/{slug}"
+    return None
+
+
+def _source_record_rows(
+    events: list[dict[str, Any]], manifest: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Build a case-to-canonical-archive index without copying source bytes."""
+    requests = manifest.get("requests")
+    if not isinstance(requests, list):
+        return []
+    case_request_ids: dict[str, int] = {}
+    for event in events:
+        request_id = _request_id_from_event(event)
+        if request_id is None:
+            continue
+        case_id = str(event["case_id"])
+        previous = case_request_ids.setdefault(case_id, request_id)
+        if previous != request_id:
+            raise ValueError(f"case {case_id} maps to conflicting archive request identifiers")
+    requests_by_id = {
+        request.get("request_id"): request
+        for request in requests
+        if isinstance(request, dict) and isinstance(request.get("request_id"), int)
+    }
+    rows = []
+    for case_id, request_id in sorted(case_request_ids.items()):
+        request = requests_by_id.get(request_id)
+        if request is None:
+            continue
+        attachments = request.get("attachments")
+        rows.append({
+            "case_id": case_id,
+            "request_id": request_id,
+            "canonical_url": _canonical_request_url(manifest, request),
+            "content_sha256": request.get("content_sha256"),
+            "warc_record_ids": request.get("warc_record_ids", []),
+            "attachment_count": len(attachments) if isinstance(attachments, list) else 0,
+            "source_state": request.get("state"),
+            "source_license": request.get("license"),
+            "source_attribution": request.get("attribution"),
+            "raw_material_location": "canonical_archive",
+        })
+    return rows
+
+
 def _write_checksums(output_dir: Path, paths: list[Path]) -> None:
     lines = []
     for path in sorted(paths):
@@ -159,7 +225,11 @@ def verify_process_projection(output_dir: Path) -> None:
     coverage_path = output_dir / "coverage.json"
     if coverage_path.exists():
         coverage = json.loads(coverage_path.read_text(encoding="utf-8"))
-        for field in ("request_count_reconciles", "attachment_count_reconciles"):
+        for field in (
+            "request_count_reconciles",
+            "attachment_count_reconciles",
+            "source_record_count_reconciles",
+        ):
             if coverage.get(field) is False:
                 raise ValueError(f"projection coverage does not reconcile: {field}")
 
@@ -221,9 +291,12 @@ def build_process_projection(
     case_path = output_dir / "cases.parquet"
     attachment_path = output_dir / "attachments.parquet"
     revision_path = output_dir / "revisions.parquet"
+    source_record_path = output_dir / "source_records.parquet"
     event_frame.write_parquet(event_path)
     pl.DataFrame(_case_rows(events)).write_parquet(case_path)
     pl.DataFrame(attachments).write_parquet(attachment_path)
+    source_records = _source_record_rows(events, manifest)
+    pl.DataFrame(source_records).write_parquet(source_record_path)
     revisions = [
         {
             "revision": snapshot_revision or "local",
@@ -252,6 +325,10 @@ def build_process_projection(
         "retracted_event_count": sum(row.get("operation") == "retract" for row in filtered_events),
         "case_count": len({row["case_id"] for row in events}),
         "attachment_count": len(attachments),
+        "source_record_count": len(source_records) if manifest_requests else None,
+        "source_record_count_reconciles": (
+            not manifest_requests or len(source_records) == len({row["case_id"] for row in events})
+        ),
         "manifest_attachment_count": expected_attachments if manifest_requests else None,
         "attachment_count_reconciles": (
             not attachment_input_supplied
@@ -281,7 +358,7 @@ def build_process_projection(
         "license": "Apache-2.0",
         "resources": [
             {"name": name, "path": f"{name}.parquet", "format": "parquet"}
-            for name in ("events", "cases", "attachments", "revisions")
+            for name in ("events", "cases", "attachments", "revisions", "source_records")
         ],
         "coverage": "coverage.json",
     }
@@ -291,6 +368,14 @@ def build_process_projection(
     )
     _write_checksums(
         output_dir,
-        [event_path, case_path, attachment_path, revision_path, coverage_path, metadata_path],
+        [
+            event_path,
+            case_path,
+            attachment_path,
+            revision_path,
+            source_record_path,
+            coverage_path,
+            metadata_path,
+        ],
     )
     return coverage
