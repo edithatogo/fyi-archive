@@ -44,6 +44,11 @@
   least-privilege hardening remains optional.
 - No percentage coverage claim is made without a defensible national denominator.
 
+- Post-fix NZ run `31471718300` failed closed during the live-source preflight,
+  before capture began. Its retained artifact contains the batch request list;
+  no capture ledger was produced, so this is not counted as capture progress.
+  No automatic retry was issued.
+
 - Dependency-security reconciliation completed through merged PR #345. The
   cryptography and h2 lockfile advisories were upgraded to patched releases;
   the post-merge open-alert query returned no remaining Dependabot alerts.

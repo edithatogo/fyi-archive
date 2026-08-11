@@ -60,7 +60,9 @@
     "nz_batch_run": 30690368685,
     "nz_batch_status": "24 captures succeeded and request 10230 failed closed on an upstream HTTP 403; retain for the existing scheduled retry path",
     "nz_continuation_run": 31462595177,
-    "nz_continuation_status": "failed closed: 22 of 25 requests completed; requests 10016, 10017, and 10018 timed out; retained failure artifact and no automatic retry"
+    "nz_continuation_status": "failed closed: 22 of 25 requests completed; requests 10016, 10017, and 10018 timed out; retained failure artifact and no automatic retry",
+    "nz_latest_run": 31471718300,
+    "nz_latest_status": "failed closed during live-source preflight before capture; retained batch-request artifact only and no automatic retry"
   },
   "closure_gates_2026_08_03": {
     "wayback_track": "open: partition-acquisition trial remains unaccepted; CA, DE, and UK continue fail-closed on the weekly schedule",
@@ -70,7 +72,7 @@
     "dependency_security": "reconciled: Dependabot cryptography and h2 advisories addressed by merged PR #345; post-merge open-alert query returned none",
     "release": "gated: no release publication or token broadening is authorized by this closure pass",
     "nz_batch_continuation": "bounded: auto_continue now caps chained batches at max_auto_batches=20; existing runs retain their own inputs",
-    "remaining_work_track": "in progress: cursor candidate 30755229752 verified complete; partition candidate 31388750483 failed closed after 25 pages with a resumable checkpoint; NZ continuation 31462595177 failed closed after 22 of 25 requests; dependency security reconciled; provider-gated metadata/credential items remain open"
+    "remaining_work_track": "in progress: cursor candidate 30755229752 verified complete; partition candidate 31388750483 failed closed after 25 pages with a resumable checkpoint; NZ continuation 31462595177 failed closed after 22 of 25 requests; post-fix NZ run 31471718300 failed closed during source preflight; dependency security reconciled; provider-gated metadata/credential items remain open"
   },
   "next_ops": [
     "Optionally provision a dedicated RIOPA_PROJECT_TOKEN with least-privilege Projects scope; fallback sync is currently operational and no token value is recorded",
