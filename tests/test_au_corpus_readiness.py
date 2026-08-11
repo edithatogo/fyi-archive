@@ -41,7 +41,9 @@ def test_sampling_frame_requires_complete_capture_authorization() -> None:
     document["operator_authorization"] = {"authorized_by": "operator"}
     result = validate_sampling_frame(document)
     assert result["ok"] is False
-    assert "capture_authorized requires a complete operator_authorization" in " ".join(result["errors"])
+    assert "capture_authorized requires a complete operator_authorization" in " ".join(
+        result["errors"]
+    )
 
 
 def test_sampling_frame_reports_structural_and_rights_errors(tmp_path: Path) -> None:
