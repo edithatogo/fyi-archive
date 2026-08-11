@@ -8,6 +8,7 @@ on:
 permissions:
   actions: write
   contents: read
+  issues: read
 
 concurrency:
   group: nz-real-backfill-monitor
@@ -17,6 +18,8 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
+      - name: Check out controller code
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v5
       - name: Cancel stale source-index runs
         env:
           GH_TOKEN: ${{ github.token }}
@@ -72,12 +75,33 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          active="$(gh run list --repo "$GITHUB_REPOSITORY" \
-            --workflow nz_real_backfill_batch.yml --status in_progress \
-            --limit 1 --json databaseId --jq 'length')"
+          active="$(for status in queued in_progress; do
+            gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow nz_real_backfill_batch.yml --status "$status" \
+              --limit 1 --json databaseId --jq 'length'
+          done | awk '{total += $1} END {print total + 0}')"
           echo "active=$active" >> "$GITHUB_OUTPUT"
-      - name: Dispatch parity-gated continuation
+      - name: Read durable next offset
+        id: state
         if: steps.inventory.outputs.run_id != '' && steps.active.outputs.active == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATE_LABEL: nz-real-backfill-state
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp
+          issues="$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$STATE_LABEL" \
+            --state open --limit 2 --json number)"
+          test "$(jq 'length' <<<"$issues")" -eq 1
+          issue_number="$(jq -r '.[0].number' <<<"$issues")"
+          gh issue view "$issue_number" --repo "$GITHUB_REPOSITORY" \
+            --json body --jq .body > .tmp/nz-state-body.json
+          next_offset="$(python scripts/nz_backfill_controller.py next \
+            --body .tmp/nz-state-body.json)"
+          [[ "$next_offset" =~ ^[0-9]+$ ]]
+          echo "next_offset=$next_offset" >> "$GITHUB_OUTPUT"
+      - name: Dispatch parity-gated continuation
+        if: steps.state.outputs.next_offset != ''
         env:
           GH_TOKEN: ${{ github.token }}
           SOURCE_RUN_ID: ${{ steps.inventory.outputs.run_id }}
@@ -86,9 +110,10 @@ jobs:
           gh workflow run nz_real_backfill_batch.yml \
             --repo "$GITHUB_REPOSITORY" \
             -f source_run_id="$SOURCE_RUN_ID" \
-            -f start_offset=0 \
+            -f start_offset="${{ steps.state.outputs.next_offset }}" \
             -f batch_size=25 \
             -f max_runtime_minutes=40 \
             -f min_interval=2 \
             -f auto_continue=true \
-            -f max_auto_batches=20
+            -f auto_batches_remaining=4 \
+            -f state_label=nz-real-backfill-state
