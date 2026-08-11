@@ -29,9 +29,10 @@ def _archive_candidates(index: Mapping[str, object]) -> dict[str, list[dict[str,
     for row in records:
         if not isinstance(row, dict):
             continue
-        slug = request_slug(row.get("source_url"))
+        candidate = {str(key): value for key, value in row.items()}
+        slug = request_slug(candidate.get("source_url"))
         if slug:
-            candidates.setdefault(slug, []).append(row)
+            candidates.setdefault(slug, []).append(candidate)
     return candidates
 
 
@@ -72,19 +73,20 @@ def _canonical_manifest_queue(
             for row in archive_rows
             if isinstance(row.get("source_url"), str) and row["source_url"]
         })
-        archive_digests = sorted({
-            str(digest)
-            for row in archive_rows
-            if isinstance(row.get("internet_archive_digests"), list)
-            for digest in row["internet_archive_digests"]
-            if isinstance(digest, str) and digest
-        })
+        archive_digest_values: set[str] = set()
+        for archive_row in archive_rows:
+            values = archive_row.get("internet_archive_digests")
+            if not isinstance(values, list):
+                continue
+            archive_digest_values.update(
+                str(digest) for digest in values if isinstance(digest, str) and digest
+            )
         queue.append({
             "request_id": request_id,
             "url_title": title,
             "source_url": f"{source.rstrip('/')}/request/{title}",
             "archive_source_urls": archive_urls,
-            "archive_digests": archive_digests,
+            "archive_digests": sorted(archive_digest_values),
         })
     if not queue:
         raise ValueError("captured manifest has no non-dry-run requests")
@@ -112,14 +114,18 @@ def build_queue(
     candidates = _archive_candidates(index)
     if manifest is not None:
         return _canonical_manifest_queue(manifest, candidates)
-    queue: dict[str, dict[str, str]] = {}
+    queue: dict[str, dict[str, object]] = {}
     for rows in candidates.values():
         for row in rows:
             source_url = str(row.get("source_url") or "")
             slug = request_slug(source_url)
             if not slug:
                 continue
-            candidate = {"request_id": slug, "url_title": slug, "source_url": source_url}
+            candidate: dict[str, object] = {
+                "request_id": slug,
+                "url_title": slug,
+                "source_url": source_url,
+            }
             existing = queue.get(slug)
             # Prefer the canonical HTML URL when both representations are present.
             if existing is None or str(existing["source_url"]).endswith(".json"):
