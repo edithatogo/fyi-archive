@@ -96,6 +96,7 @@ jobs:
           uv run python scripts/build_reconciled_backfill_queue.py \
             --source-index "$index" \
             --retrieval-evidence "$evidence" \
+            --captured-manifest .tmp/source/nz-historical-source-inputs/latest_manifest.json \
             --output .tmp/reconciled_requests.jsonl
           uv run python - <<'PY'
           import json
@@ -110,12 +111,18 @@ jobs:
               )
           )
           manifest_count = manifest.get("meta", {}).get("record_count")
-          if not isinstance(manifest_count, int) or manifest_count < 1:
+          manifest_live_count = sum(
+              request.get("state") != "dry-run"
+              for request in manifest.get("requests", [])
+              if isinstance(request, dict)
+          )
+          if not isinstance(manifest_count, int) or manifest_count < 1 or manifest_live_count < 1:
               raise SystemExit("source manifest is missing a positive record_count")
-          if len(rows) != manifest_count:
+          if len(rows) != manifest_live_count:
               raise SystemExit(
-                  "reconciled queue does not match captured manifest: "
-                  f"queue={len(rows)} manifest={manifest_count}"
+                  "reconciled queue does not match live captured manifest: "
+                  f"queue={len(rows)} manifest_live={manifest_live_count} "
+                  f"manifest_total={manifest_count}"
               )
           start = int(os.environ["START_OFFSET"])
           end = start + int(os.environ["BATCH_SIZE"])
@@ -129,6 +136,7 @@ jobs:
           print(json.dumps({
               "queue_count": len(rows),
               "manifest_count": manifest_count,
+              "manifest_live_count": manifest_live_count,
               "start": start,
               "selected": len(selected),
           }))

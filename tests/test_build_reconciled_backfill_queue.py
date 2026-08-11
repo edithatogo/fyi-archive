@@ -49,3 +49,41 @@ def test_build_queue_collapses_html_and_json_representations() -> None:
             "source_url": "https://fyi.org.nz/request/42-title",
         }
     ]
+
+
+def test_build_queue_uses_canonical_live_manifest_and_keeps_archive_evidence() -> None:
+    index = {
+        "records": [
+            {
+                "source_url": "https://www.fyi.org.nz/request/alpha",
+                "internet_archive_digests": ["digest-alpha"],
+            },
+            {"source_url": "https://www.fyi.org.nz/request/legacy-only"},
+        ]
+    }
+    retrieval = {"retrieval_status": "complete", "pagination_complete": True}
+    manifest = {
+        "meta": {"source": "https://fyi.org.nz/"},
+        "requests": [
+            {"request_id": 2, "url_title": "alpha", "state": ""},
+            {"request_id": 3, "url_title": "not-in-cdx", "state": ""},
+            {"request_id": 1, "url_title": "dry-run-request-1", "state": "dry-run"},
+        ],
+    }
+
+    assert build_queue(index, retrieval, manifest) == [
+        {
+            "request_id": 2,
+            "url_title": "alpha",
+            "source_url": "https://fyi.org.nz/request/alpha",
+            "archive_source_urls": ["https://www.fyi.org.nz/request/alpha"],
+            "archive_digests": ["digest-alpha"],
+        },
+        {
+            "request_id": 3,
+            "url_title": "not-in-cdx",
+            "source_url": "https://fyi.org.nz/request/not-in-cdx",
+            "archive_source_urls": [],
+            "archive_digests": [],
+        },
+    ]
