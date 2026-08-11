@@ -61,3 +61,63 @@ def test_next_offset_finds_first_gap_and_state_rejects_overlap() -> None:
             "leases": [],
             "receipts": [],
         })
+
+
+@pytest.mark.parametrize(
+    ("state", "message"),
+    [
+        ({}, "unexpected NZ backfill state schema"),
+        (
+            {
+                "schema": "fyi-archive.nz-real-backfill-state.v1",
+                "queue_count": 0,
+            },
+            "queue_count must be positive",
+        ),
+        (
+            {
+                "schema": "fyi-archive.nz-real-backfill-state.v1",
+                "queue_count": 100,
+                "completed": [],
+                "leases": [
+                    {"start_offset": 0, "end_offset": 10, "run_id": 1},
+                    {"start_offset": 10, "end_offset": 20, "run_id": 2},
+                ],
+            },
+            "only one active NZ backfill lease",
+        ),
+        (
+            {
+                "schema": "fyi-archive.nz-real-backfill-state.v1",
+                "queue_count": 100,
+                "completed": [{"start_offset": -1, "end_offset": 10}],
+            },
+            "invalid NZ backfill range",
+        ),
+    ],
+)
+def test_state_rejects_malformed_controller_documents(state, message) -> None:
+    with pytest.raises(ValueError, match=message):
+        validate_state(state)
+
+
+def test_state_rejects_invalid_reservations_and_completion_receipts() -> None:
+    with pytest.raises(ValueError, match="queue_count must be positive"):
+        new_state(queue_count=0)
+
+    state = new_state(queue_count=100)
+    with pytest.raises(ValueError, match="valid positive bounds"):
+        reserve_range(state, start_offset=-1, batch_size=10, run_id=1)
+    with pytest.raises(ValueError, match="exceeds"):
+        reserve_range(state, start_offset=90, batch_size=11, run_id=1)
+    with pytest.raises(ValueError, match="matching active lease"):
+        complete_range(state, run_id=1, receipt={"start_offset": 0, "batch_size": 10})
+
+    leased = reserve_range(state, start_offset=0, batch_size=10, run_id=1)
+    with pytest.raises(ValueError, match="start_offset"):
+        complete_range(leased, run_id=1, receipt={"start_offset": 1, "batch_size": 10})
+
+
+def test_next_offset_advances_past_contiguous_completion() -> None:
+    state = new_state(queue_count=100, completed=[{"start_offset": 0, "end_offset": 100}])
+    assert next_unclaimed_offset(state) == 100
