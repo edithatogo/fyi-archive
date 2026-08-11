@@ -3,14 +3,14 @@
 The versioned sampling contract is
 [`configs/au/corpus_sampling_frame.json`](../configs/au/corpus_sampling_frame.json).
 It defines separate Commonwealth (`FEDERAL`) and New South Wales (`NSW`)
-strata, explicit unknown categories, a maximum of 25 requests per stratum, and
+strata, explicit unknown categories, and
 the outcome, agency, correspondence, and attachment dimensions to report.
 
-The frame is deliberately fail-closed:
+The approved AU-NSW frame is restricted-local:
 
-- `capture_authorized=false`;
+- `capture_authorized=true` for the pinned 179-record NSW frame;
 - `publication_authorized=false`;
-- the capture window remains `pending_human_approval`;
+- the capture window is the approved full pinned frame;
 - source terms, takedown, sensitive-data review, and permitted-use records are
   mandatory;
 - missing outcome classes are reported and never filled with inferred or
@@ -22,6 +22,6 @@ Validate the contract locally:
 uv run fyi-archive process validate-au-sampling-frame
 ```
 
-This contract prepares a bounded pilot. It does not authorize a live `fyi-cli`
-run, dispatch a workflow, approve data publication, or establish jurisdictional
-completeness.
+This contract authorizes restricted-local capture of the approved NSW frame. It
+does not approve data publication, redistribution, training, or establish
+jurisdictional completeness.

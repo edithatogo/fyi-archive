@@ -10,22 +10,40 @@ from fyi_archive.au_corpus_readiness import load_sampling_frame, validate_sampli
 FRAME = Path("configs/au/corpus_sampling_frame.json")
 
 
-def test_committed_au_sampling_frame_is_bounded_and_fail_closed() -> None:
+def test_committed_au_sampling_frame_is_authorized_for_full_restricted_nsw_capture() -> None:
     document = load_sampling_frame(FRAME)
-    assert document["capture_authorized"] is False
+    assert document["capture_authorized"] is True
     assert document["publication_authorized"] is False
     assert [item["jurisdiction"] for item in document["strata"]] == ["FEDERAL", "NSW"]
-    assert all(item["request_cap"] <= 25 for item in document["strata"])
+    assert document["strata"][1]["request_cap"] == 179
 
 
 def test_sampling_frame_rejects_implicit_unknowns_and_authorization() -> None:
     document = json.loads(FRAME.read_text(encoding="utf-8"))
-    document["capture_authorized"] = True
+    document["capture_authorized"] = False
     document["strata"][0]["outcomes"] = ["guessed"]
     result = validate_sampling_frame(document)
     assert result["ok"] is False
     assert "capture_authorized" in " ".join(result["errors"])
     assert "unknown outcomes" in " ".join(result["errors"])
+
+
+def test_sampling_frame_rejects_non_positive_request_cap() -> None:
+    document = json.loads(FRAME.read_text(encoding="utf-8"))
+    document["strata"][1]["request_cap"] = 0
+    result = validate_sampling_frame(document)
+    assert result["ok"] is False
+    assert "request_cap must be a positive integer" in " ".join(result["errors"])
+
+
+def test_sampling_frame_requires_complete_capture_authorization() -> None:
+    document = json.loads(FRAME.read_text(encoding="utf-8"))
+    document["operator_authorization"] = {"authorized_by": "operator"}
+    result = validate_sampling_frame(document)
+    assert result["ok"] is False
+    assert "capture_authorized requires a complete operator_authorization" in " ".join(
+        result["errors"]
+    )
 
 
 def test_sampling_frame_reports_structural_and_rights_errors(tmp_path: Path) -> None:

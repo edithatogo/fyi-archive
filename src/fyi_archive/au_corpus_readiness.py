@@ -26,8 +26,9 @@ def validate_sampling_frame(document: dict[str, Any]) -> dict[str, Any]:
     errors: list[str] = []
     if document.get("schema") != "fyi-archive.au-sampling-frame.v1":
         errors.append("unsupported sampling-frame schema")
-    if document.get("capture_authorized") is not False:
-        errors.append("capture_authorized must remain false until named human approval")
+    capture_authorized = document.get("capture_authorized")
+    if capture_authorized is not True:
+        errors.append("capture_authorized requires named human approval")
     if document.get("publication_authorized") is not False:
         errors.append("publication_authorized must remain false until named human approval")
 
@@ -53,11 +54,19 @@ def validate_sampling_frame(document: dict[str, Any]) -> dict[str, Any]:
         elif unknown := sorted(set(outcomes) - OUTCOME_CLASSES):
             errors.append(f"strata[{index}] has unknown outcomes: {unknown}")
         cap = stratum.get("request_cap")
-        if not isinstance(cap, int) or not 1 <= cap <= 100:
-            errors.append(f"strata[{index}].request_cap must be between 1 and 100")
+        if not isinstance(cap, int) or cap < 1:
+            errors.append(f"strata[{index}].request_cap must be a positive integer")
 
     if not {"FEDERAL", "NSW"}.issubset(seen):
         errors.append("initial pilot must include separate FEDERAL and NSW strata")
+
+    if capture_authorized is True:
+        authorization = document.get("operator_authorization")
+        if not isinstance(authorization, dict) or not all(
+            isinstance(authorization.get(field), str) and authorization[field]
+            for field in ("authorized_by", "authorized_at", "scope")
+        ):
+            errors.append("capture_authorized requires a complete operator_authorization")
 
     rights = document.get("rights_gates")
     required_rights = {
