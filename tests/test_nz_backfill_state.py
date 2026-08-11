@@ -3,6 +3,7 @@
 import pytest
 
 from fyi_archive.nz_backfill_state import (
+    abandon_range,
     complete_range,
     new_state,
     next_unclaimed_offset,
@@ -48,6 +49,48 @@ def test_completion_requires_receipt_matching_lease() -> None:
         }
     ]
     assert next_unclaimed_offset(completed) == 0
+
+
+def test_abandon_requires_matching_failure_evidence_and_releases_lease() -> None:
+    state = reserve_range(new_state(queue_count=1000), start_offset=600, batch_size=100, run_id=9)
+    receipt = {
+        "start_offset": 600,
+        "batch_size": 100,
+        "workflow_conclusion": "failure",
+        "artifact_url": "https://github.example/actions/runs/9/artifacts/10",
+        "artifact_digest": "sha256:abc",
+    }
+    abandoned = abandon_range(state, run_id=9, receipt=receipt)
+    assert abandoned["leases"] == []
+    assert abandoned["failures"] == [{**receipt, "run_id": 9, "end_offset": 700}]
+    assert next_unclaimed_offset(abandoned) == 0
+
+
+@pytest.mark.parametrize(
+    ("receipt", "message"),
+    [
+        (
+            {"start_offset": 601, "batch_size": 100, "workflow_conclusion": "failure"},
+            "start_offset",
+        ),
+        (
+            {"start_offset": 600, "batch_size": 99, "workflow_conclusion": "failure"},
+            "batch_size",
+        ),
+        (
+            {"start_offset": 600, "batch_size": 100, "workflow_conclusion": "success"},
+            "workflow_conclusion",
+        ),
+        (
+            {"start_offset": 600, "batch_size": 100, "workflow_conclusion": "failure"},
+            "retained artifact",
+        ),
+    ],
+)
+def test_abandon_rejects_incomplete_or_mismatched_evidence(receipt, message) -> None:
+    state = reserve_range(new_state(queue_count=1000), start_offset=600, batch_size=100, run_id=9)
+    with pytest.raises(ValueError, match=message):
+        abandon_range(state, run_id=9, receipt=receipt)
 
 
 def test_next_offset_finds_first_gap_and_state_rejects_overlap() -> None:
