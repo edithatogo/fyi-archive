@@ -47,3 +47,8 @@
 - Dependency-security reconciliation completed through merged PR #345. The
   cryptography and h2 lockfile advisories were upgraded to patched releases;
   the post-merge open-alert query returned no remaining Dependabot alerts.
+
+- NZ continuation run `31462595177` was retained as fail-closed evidence: 22 of
+  25 requests completed and requests `10016`, `10017`, and `10018` timed out.
+  The failure artifact was downloaded and inspected; no automatic retry was
+  issued, and the incomplete batch remains on the existing scheduled path.
