@@ -215,7 +215,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         relative_path=f"{CONTROL_ROOT}/selection.jsonl",
         destination=selection_path,
     )
-    state = (
+    state: dict[str, Any] = (
         json.loads(state_path.read_text(encoding="utf-8"))
         if state_path.exists()
         else {"completed_tranches": []}
