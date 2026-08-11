@@ -1,0 +1,77 @@
+name: AU NSW full private Hugging Face capture
+
+on:
+  workflow_dispatch:
+    inputs:
+      tranche_size:
+        description: Requests per resumable tranche; does not limit the approved 179-record frame
+        required: true
+        default: "10"
+        type: string
+      max_runtime_minutes:
+        description: Per-request hard runtime bound
+        required: true
+        default: "30"
+        type: string
+      max_disk_gb:
+        description: Minimum ephemeral runner free-disk budget in GiB
+        required: true
+        default: "5"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: au-nsw-full-private-hf-capture
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    environment: au-live-capture
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install pinned capture dependencies
+        run: uv sync --extra dev --frozen
+      - name: Validate authorization and private-retention prerequisites
+        env:
+          AUTONOMOUS_AU_CAPTURE_ENABLED: ${{ vars.AUTONOMOUS_AU_CAPTURE_ENABLED || 'false' }}
+          HF_AU_NSW_REPO_ID: ${{ vars.HF_AU_NSW_REPO_ID }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          [ "$AUTONOMOUS_AU_CAPTURE_ENABLED" = "true" ] || { echo "Set AUTONOMOUS_AU_CAPTURE_ENABLED=true." >&2; exit 1; }
+          [ -n "$HF_AU_NSW_REPO_ID" ] || { echo "Set private dataset variable HF_AU_NSW_REPO_ID." >&2; exit 1; }
+          [ -n "$HF_TOKEN" ] || { echo "Configure HF_TOKEN." >&2; exit 1; }
+          uv run fyi-archive process validate-au-sampling-frame
+      - name: Capture and retain every approved NSW tranche sequentially
+        env:
+          HF_AU_NSW_REPO_ID: ${{ vars.HF_AU_NSW_REPO_ID }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -euo pipefail
+          uv run python scripts/run_au_nsw_hf_capture.py \
+            --confirm I_CONFIRM_FULL_AU_NSW_PRIVATE_HF_CAPTURE \
+            --repository "${{ github.repository }}" \
+            --hf-repo-id "$HF_AU_NSW_REPO_ID" \
+            --hf-token "$HF_TOKEN" \
+            --tranche-size "${{ inputs.tranche_size }}" \
+            --max-runtime-minutes "${{ inputs.max_runtime_minutes }}" \
+            --max-disk-gb "${{ inputs.max_disk_gb }}"
+      - name: Upload local control receipts only
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: au-nsw-private-hf-control-${{ github.run_id }}
+          retention-days: 90
+          path: |
+            data/au-rtk/nsw-private-hf/control/**
+          if-no-files-found: warn

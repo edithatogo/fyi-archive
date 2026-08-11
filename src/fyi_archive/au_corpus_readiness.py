@@ -31,6 +31,8 @@ def validate_sampling_frame(document: dict[str, Any]) -> dict[str, Any]:
         errors.append("capture_authorized requires named human approval")
     if document.get("publication_authorized") is not False:
         errors.append("publication_authorized must remain false until named human approval")
+    if document.get("private_hf_retention_authorized") is not True:
+        errors.append("private_hf_retention_authorized requires named human approval")
 
     strata = document.get("strata")
     if not isinstance(strata, list) or not strata:
