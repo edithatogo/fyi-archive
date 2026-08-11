@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from itertools import pairwise
+from operator import itemgetter
 from typing import Any
 
 STATE_SCHEMA = "fyi-archive.nz-real-backfill-state.v1"
@@ -33,7 +34,7 @@ def validate_state(state: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("queue_count must be positive")
     normalized["queue_count"] = queue_count
     completed = [_normalize_range(item, queue_count) for item in normalized.get("completed", [])]
-    completed.sort(key=lambda item: (item["start_offset"], item["end_offset"]))
+    completed.sort(key=itemgetter("start_offset", "end_offset"))
     _reject_overlaps(completed, "completed ranges overlap")
     leases = [_normalize_range(item, queue_count) for item in normalized.get("leases", [])]
     if len(leases) > 1:
@@ -75,7 +76,7 @@ def complete_range(
         raise ValueError("receipt batch_size does not match lease")
     updated["leases"] = []
     updated["completed"].append(lease)
-    updated["completed"].sort(key=lambda item: (item["start_offset"], item["end_offset"]))
+    updated["completed"].sort(key=itemgetter("start_offset", "end_offset"))
     updated["receipts"].append(deepcopy(receipt))
     return validate_state(updated)
 
