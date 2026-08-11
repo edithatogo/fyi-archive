@@ -43,6 +43,7 @@ def test_projection_preserves_source_order_and_writes_viewer_resources(tmp_path:
         "cases.parquet",
         "attachments.parquet",
         "revisions.parquet",
+        "source_records.parquet",
     }
     assert (output / "CHECKSUMS.sha256").exists()
     verify_process_projection(output)
@@ -192,6 +193,160 @@ def test_projection_reconciles_manifest_attachment_coverage(tmp_path: Path) -> N
     )
     assert coverage["manifest_attachment_count"] == 1
     assert coverage["attachment_count_reconciles"] is True
+
+
+def test_projection_writes_canonical_source_records_without_copying_raw_bytes(
+    tmp_path: Path,
+) -> None:
+    events = tmp_path / "events.jsonl"
+    manifest = tmp_path / "manifest.json"
+    _write_jsonl(
+        events,
+        [
+            {
+                "event_id": "e1",
+                "logical_request_id": "urn:fyi:nz-fyi:request:7",
+                "activity": "opened",
+                "source_order": {"request_sequence": 7, "event_sequence": 0},
+            }
+        ],
+    )
+    manifest.write_text(
+        json.dumps({
+            "meta": {"record_count": 1, "source": "https://fyi.org.nz/"},
+            "requests": [
+                {
+                    "request_id": 7,
+                    "url_title": "example-request",
+                    "content_sha256": "digest",
+                    "warc_record_ids": ["<urn:uuid:warc>"],
+                    "attachments": [{"sha256": "attachment-digest"}],
+                    "license": "source-declared",
+                }
+            ],
+        }),
+        encoding="utf-8",
+    )
+    output = tmp_path / "out"
+    coverage = build_process_projection(
+        events_path=events, manifest_path=manifest, output_dir=output
+    )
+    source_record = pl.read_parquet(output / "source_records.parquet").to_dicts()[0]
+    assert coverage["source_record_count_reconciles"] is True
+    assert source_record["canonical_url"] == "https://fyi.org.nz/request/example-request"
+    assert source_record["content_sha256"] == "digest"
+    assert source_record["warc_record_ids"] == ["<urn:uuid:warc>"]
+    assert source_record["attachment_count"] == 1
+    assert "raw_text" not in source_record
+
+
+def test_projection_rejects_conflicting_case_to_archive_source_mapping(tmp_path: Path) -> None:
+    events = tmp_path / "events.jsonl"
+    _write_jsonl(
+        events,
+        [
+            {
+                "event_id": "e1",
+                "case_id": "c1",
+                "activity": "opened",
+                "source_order": {"request_sequence": 7},
+            },
+            {
+                "event_id": "e2",
+                "case_id": "c1",
+                "activity": "closed",
+                "source_order": {"request_sequence": 8},
+            },
+        ],
+    )
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"requests": []}), encoding="utf-8")
+    with pytest.raises(ValueError, match="conflicting archive request identifiers"):
+        build_process_projection(
+            events_path=events, manifest_path=manifest, output_dir=tmp_path / "out"
+        )
+
+
+def test_source_records_use_stable_case_fallbacks_and_exclude_unresolved_or_takedown_rows(
+    tmp_path: Path,
+) -> None:
+    events = tmp_path / "events.jsonl"
+    manifest = tmp_path / "manifest.json"
+    takedown = tmp_path / "takedown.jsonl"
+    _write_jsonl(
+        events,
+        [
+            {
+                "event_id": "e8",
+                "case_id": "urn:fyi:nz-fyi:request:8",
+                "activity": "opened",
+            },
+            {
+                "event_id": "e9",
+                "case_id": "urn:fyi:nz-fyi:request:9",
+                "activity": "opened",
+            },
+            {
+                "event_id": "e10",
+                "case_id": "urn:fyi:nz-fyi:request:10",
+                "activity": "opened",
+            },
+            {
+                "event_id": "e7",
+                "case_id": "urn:fyi:nz-fyi:request:7",
+                "activity": "opened",
+            },
+        ],
+    )
+    manifest.write_text(
+        json.dumps({
+            "meta": {"record_count": 3, "source": "https://fyi.org.nz/"},
+            "requests": [
+                {
+                    "request_id": 8,
+                    "canonical_url": "https://archive.example/request/8",
+                    "content_sha256": "digest-8",
+                },
+                {"request_id": 9},
+            ],
+        }),
+        encoding="utf-8",
+    )
+    _write_jsonl(takedown, [{"case_id": "urn:fyi:nz-fyi:request:7"}])
+    output = tmp_path / "out"
+    coverage = build_process_projection(
+        events_path=events,
+        manifest_path=manifest,
+        takedown_path=takedown,
+        output_dir=output,
+    )
+    assert coverage["source_record_count_reconciles"] is False
+    assert pl.read_parquet(output / "source_records.parquet").to_dicts() == [
+        {
+            "case_id": "urn:fyi:nz-fyi:request:8",
+            "request_id": 8,
+            "canonical_url": "https://archive.example/request/8",
+            "content_sha256": "digest-8",
+            "warc_record_ids": [],
+            "attachment_count": 0,
+            "source_state": None,
+            "source_license": None,
+            "source_attribution": None,
+            "raw_material_location": "canonical_archive",
+        },
+        {
+            "case_id": "urn:fyi:nz-fyi:request:9",
+            "request_id": 9,
+            "canonical_url": None,
+            "content_sha256": None,
+            "warc_record_ids": [],
+            "attachment_count": 0,
+            "source_state": None,
+            "source_license": None,
+            "source_attribution": None,
+            "raw_material_location": "canonical_archive",
+        },
+    ]
 
 
 def test_projection_includes_historical_source_reconciliation(tmp_path: Path) -> None:
