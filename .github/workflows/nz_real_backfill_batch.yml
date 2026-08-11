@@ -104,6 +104,19 @@ jobs:
 
           source = Path(".tmp/reconciled_requests.jsonl")
           rows = [json.loads(line) for line in source.read_text(encoding="utf-8").splitlines() if line]
+          manifest = json.loads(
+              Path(".tmp/source/nz-historical-source-inputs/latest_manifest.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          manifest_count = manifest.get("meta", {}).get("record_count")
+          if not isinstance(manifest_count, int) or manifest_count < 1:
+              raise SystemExit("source manifest is missing a positive record_count")
+          if len(rows) != manifest_count:
+              raise SystemExit(
+                  "reconciled queue does not match captured manifest: "
+                  f"queue={len(rows)} manifest={manifest_count}"
+              )
           start = int(os.environ["START_OFFSET"])
           end = start + int(os.environ["BATCH_SIZE"])
           selected = rows[start:end]
@@ -113,7 +126,12 @@ jobs:
               "".join(json.dumps(row, sort_keys=True) + "\n" for row in selected),
               encoding="utf-8",
           )
-          print(json.dumps({"queue_count": len(rows), "start": start, "selected": len(selected)}))
+          print(json.dumps({
+              "queue_count": len(rows),
+              "manifest_count": manifest_count,
+              "start": start,
+              "selected": len(selected),
+          }))
           PY
       - name: Preflight live source health
         run: |
@@ -239,7 +257,7 @@ jobs:
             echo "Reached bounded auto-continuation cap: $current_batch/$MAX_AUTO_BATCHES"
             exit 0
           fi
-          next_offset=$((NEXT_OFFSET + BATCH_SIZE))
+          next_offset=$((START_OFFSET + BATCH_SIZE))
           gh workflow run nz_real_backfill_batch.yml \
             --repo "$GITHUB_REPOSITORY" \
             -f source_run_id="$SOURCE_RUN_ID" \

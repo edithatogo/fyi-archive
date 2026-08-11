@@ -79,3 +79,11 @@ def test_nz_source_index_uses_resumable_complete_cdx_export() -> None:
     assert "--attachments-output dist/process-events/attachments.jsonl" in (
         WORKFLOWS / "historical_backfill_batch.yml"
     ).read_text(encoding="utf-8")
+
+
+def test_nz_real_backfill_refuses_unreconciled_queues_and_advances_offsets() -> None:
+    workflow = (WORKFLOWS / "nz_real_backfill_batch.yml").read_text(encoding="utf-8")
+
+    assert "reconciled queue does not match captured manifest" in workflow
+    assert "next_offset=$((START_OFFSET + BATCH_SIZE))" in workflow
+    assert "NEXT_OFFSET" not in workflow
