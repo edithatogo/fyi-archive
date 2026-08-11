@@ -93,5 +93,8 @@ def test_nz_real_backfill_refuses_unreconciled_queues_and_leases_next_offset() -
     assert "jq -sr 'map(select(.source_url != null) | .source_url) | first // empty'" in workflow
     assert "| head -n 1" not in workflow
     assert "nz_backfill_controller.py next" in workflow
+    assert "nz_backfill_controller.py abandon" in workflow
+    assert "steps.failure_artifact.outputs.artifact-id != ''" in workflow
+    assert 'workflow_conclusion: "failure"' in workflow
     assert "next_offset=$((START_OFFSET + BATCH_SIZE))" not in workflow
     assert "NEXT_OFFSET" not in workflow

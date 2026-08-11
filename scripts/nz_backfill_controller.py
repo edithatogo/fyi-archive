@@ -11,13 +11,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from fyi_archive.backfill_state_codec import decode_state, state_body_from_state
-from fyi_archive.nz_backfill_state import complete_range, next_unclaimed_offset, reserve_range
+from fyi_archive.nz_backfill_state import (
+    abandon_range,
+    complete_range,
+    next_unclaimed_offset,
+    reserve_range,
+)
 
 
 def main() -> None:
     """Apply one fail-closed controller transition."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("action", choices=("reserve", "complete", "next"))
+    parser.add_argument("action", choices=("reserve", "complete", "abandon", "next"))
     parser.add_argument("--body", type=Path, required=True)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--start-offset", type=int)
@@ -41,11 +46,16 @@ def main() -> None:
             batch_size=args.batch_size,
             run_id=args.run_id,
         )
-    else:
+    elif args.action == "complete":
         if args.receipt is None:
             parser.error("--receipt is required to complete")
         receipt = json.loads(args.receipt.read_text(encoding="utf-8"))
         updated = complete_range(state, run_id=args.run_id, receipt=receipt)
+    else:
+        if args.receipt is None:
+            parser.error("--receipt is required to abandon")
+        receipt = json.loads(args.receipt.read_text(encoding="utf-8"))
+        updated = abandon_range(state, run_id=args.run_id, receipt=receipt)
     args.output.write_text(state_body_from_state(updated), encoding="utf-8")
 
 

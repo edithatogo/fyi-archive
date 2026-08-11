@@ -20,6 +20,7 @@ def new_state(*, queue_count: int, completed: list[dict[str, Any]] | None = None
         "completed": completed or [],
         "leases": [],
         "receipts": [],
+        "failures": [],
     }
     return validate_state(state)
 
@@ -43,6 +44,7 @@ def validate_state(state: dict[str, Any]) -> dict[str, Any]:
     normalized["completed"] = completed
     normalized["leases"] = leases
     normalized["receipts"] = list(normalized.get("receipts", []))
+    normalized["failures"] = list(normalized.get("failures", []))
     return normalized
 
 
@@ -81,6 +83,29 @@ def complete_range(
     stored_receipt["run_id"] = run_id
     stored_receipt["end_offset"] = lease["end_offset"]
     updated["receipts"].append(stored_receipt)
+    return validate_state(updated)
+
+
+def abandon_range(state: dict[str, Any], *, run_id: int, receipt: dict[str, Any]) -> dict[str, Any]:
+    """Release an exact failed lease while retaining its recovery evidence."""
+    updated = validate_state(state)
+    matches = [lease for lease in updated["leases"] if lease["run_id"] == run_id]
+    if len(matches) != 1:
+        raise ValueError("exactly one matching active lease is required")
+    lease = matches[0]
+    if int(receipt.get("start_offset", -1)) != lease["start_offset"]:
+        raise ValueError("failure receipt start_offset does not match lease")
+    if int(receipt.get("batch_size", -1)) != lease["end_offset"] - lease["start_offset"]:
+        raise ValueError("failure receipt batch_size does not match lease")
+    if receipt.get("workflow_conclusion") != "failure":
+        raise ValueError("failure receipt must record workflow_conclusion=failure")
+    if not receipt.get("artifact_url") or not receipt.get("artifact_digest"):
+        raise ValueError("failure receipt must identify its retained artifact")
+    updated["leases"] = []
+    stored_receipt = deepcopy(receipt)
+    stored_receipt["run_id"] = run_id
+    stored_receipt["end_offset"] = lease["end_offset"]
+    updated["failures"].append(stored_receipt)
     return validate_state(updated)
 
 
