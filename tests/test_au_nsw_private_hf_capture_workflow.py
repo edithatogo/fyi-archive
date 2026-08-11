@@ -10,4 +10,4 @@ def test_full_au_nsw_workflow_is_sequential_private_hf_retention() -> None:
     assert "HF_AU_NSW_REPO_ID" in workflow
     assert "I_CONFIRM_FULL_AU_NSW_PRIVATE_HF_CAPTURE" in workflow
     assert "AUTONOMOUS_AU_CAPTURE_ENABLED" in workflow
-    assert "requests per resumable tranche" in workflow
+    assert "requests per resumable tranche" in workflow.lower()

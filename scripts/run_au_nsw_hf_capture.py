@@ -203,7 +203,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     if len(selected) != request_total:
         raise RuntimeError("resumed AU-NSW selection is not the approved 179-record frame")
 
-    completed = set(int(value) for value in state.get("completed_tranches", []))
+    completed = {int(value) for value in state.get("completed_tranches", [])}
     tranche_count = (request_total + args.tranche_size - 1) // args.tranche_size
     for index in range(1, tranche_count + 1):
         if index in completed:
