@@ -94,11 +94,76 @@ jobs:
             [ -n "$run_id" ] || continue
             mkdir -p ".tmp/backfill-artifacts/$run_id"
             gh run download "$run_id" \
-              --pattern 'historical-backfill-*' \
               --dir ".tmp/backfill-artifacts/$run_id"
           done < .tmp/source-run-ids.txt
 
+      - name: Inspect supported batch artifacts
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import sys
+
+          sys.path.insert(0, str(Path("scripts")))
+
+          from backfill_state import controller_labels_from_chunk_labels
+
+          chunks_by_run: dict[str, list[str]] = {}
+          controller_labels: list[str] = []
+          counts: dict[str, int] = {}
+          for run_dir in sorted(Path(".tmp/backfill-artifacts").iterdir()):
+              if not run_dir.is_dir():
+                  continue
+              historical_labels: list[str] = []
+              live_labels: list[str] = []
+              record_count = 0
+              for manifest_path in sorted(run_dir.glob("*/manifests/latest_manifest.json")):
+                  artifact_label = manifest_path.parents[1].name
+                  if artifact_label.startswith("historical-backfill-"):
+                      historical_labels.append(artifact_label.removeprefix("historical-backfill-"))
+                  elif artifact_label.startswith("nz-real-backfill-"):
+                      live_labels.append(artifact_label)
+                  else:
+                      continue
+                  manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+                  record_count += int(manifest.get("meta", {}).get("record_count") or 0)
+              if not historical_labels and not live_labels:
+                  continue
+              if historical_labels and live_labels:
+                  raise SystemExit(f"Mixed legacy and NZ real artifacts in run {run_dir.name}")
+              if historical_labels:
+                  labels = controller_labels_from_chunk_labels(historical_labels)
+                  if len(labels) != 1:
+                      raise SystemExit(f"Expected one controller label for run {run_dir.name}, got {labels!r}")
+                  label = labels[0]
+                  controller_labels.append(label)
+              else:
+                  if len(live_labels) != 1:
+                      raise SystemExit(f"Expected one NZ real artifact for run {run_dir.name}, got {live_labels!r}")
+                  label = live_labels[0]
+              chunks_by_run[run_dir.name] = historical_labels or live_labels
+              if label in counts:
+                  raise SystemExit(f"Duplicate batch label found: {label}")
+              counts[label] = record_count
+          if not counts:
+              raise SystemExit("No supported historical or NZ real backfill artifacts were found")
+          Path(".tmp/backfill-chunk-labels.json").write_text(
+              json.dumps(chunks_by_run, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          Path(".tmp/backfill-merged-labels.json").write_text(
+              json.dumps(controller_labels, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          Path(".tmp/backfill-record-counts.json").write_text(
+              json.dumps(counts, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
       - name: Load persisted controller state
+        if: env.UPDATE_CONTROLLER_STATE == 'true'
         env:
           REPO: ${{ github.repository }}
         run: |
@@ -132,55 +197,6 @@ jobs:
           state_file = Path(".tmp/backfill-state.json")
           body = state_file.read_text(encoding="utf-8")
           state_file.write_text(json.dumps(decode_state(body), indent=2, sort_keys=True) + "\n", encoding="utf-8")
-          PY
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          import sys
-
-          sys.path.insert(0, str(Path("scripts")))
-
-          from backfill_state import controller_labels_from_chunk_labels
-
-          chunks_by_run: dict[str, list[str]] = {}
-          controller_labels: list[str] = []
-          counts: dict[str, int] = {}
-          for run_dir in sorted(Path(".tmp/backfill-artifacts").iterdir()):
-              if not run_dir.is_dir():
-                  continue
-              chunk_labels: list[str] = []
-              record_count = 0
-              for manifest_path in sorted(run_dir.glob("historical-backfill-*/manifests/latest_manifest.json")):
-                  artifact_label = manifest_path.parents[1].name.removeprefix("historical-backfill-")
-                  chunk_labels.append(artifact_label)
-                  manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-                  record_count += int(manifest.get("meta", {}).get("record_count") or 0)
-              if not chunk_labels:
-                  continue
-              run_controller_labels = controller_labels_from_chunk_labels(chunk_labels)
-              if len(run_controller_labels) != 1:
-                  raise SystemExit(f"Expected one controller label for run {run_dir.name}, got {run_controller_labels!r}")
-              controller_label = run_controller_labels[0]
-              chunks_by_run[run_dir.name] = chunk_labels
-              controller_labels.append(controller_label)
-              counts[controller_label] = record_count
-          if not controller_labels:
-              raise SystemExit("No historical backfill artifact labels were found")
-          if len(set(controller_labels)) != len(controller_labels):
-              duplicates = sorted({label for label in controller_labels if controller_labels.count(label) > 1})
-              raise SystemExit(f"Duplicate controller labels found: {duplicates}")
-          Path(".tmp/backfill-chunk-labels.json").write_text(
-              json.dumps(chunks_by_run, indent=2, sort_keys=True) + "\n",
-              encoding="utf-8",
-          )
-          Path(".tmp/backfill-merged-labels.json").write_text(
-              json.dumps(controller_labels, indent=2, sort_keys=True) + "\n",
-              encoding="utf-8",
-          )
-          Path(".tmp/backfill-record-counts.json").write_text(
-              json.dumps(counts, indent=2, sort_keys=True) + "\n",
-              encoding="utf-8",
-          )
           PY
 
       - name: Merge manifests
@@ -220,12 +236,9 @@ jobs:
 
           manifest = json.loads(Path("manifests/latest_manifest.json").read_text(encoding="utf-8"))
           record_count = int(manifest.get("meta", {}).get("record_count") or 0)
-          labels = json.loads(Path(".tmp/backfill-merged-labels.json").read_text(encoding="utf-8"))
           existing_counts = json.loads(Path(".tmp/backfill-record-counts.json").read_text(encoding="utf-8"))
           if sum(int(value) for value in existing_counts.values()) != record_count:
-              raise SystemExit("controller batch record counts do not match merged manifest record count")
-          counts = {str(label): int(existing_counts[str(label)]) for label in labels}
-          Path(".tmp/backfill-record-counts.json").write_text(json.dumps(counts, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+              raise SystemExit("backfill artifact record counts do not match merged manifest record count")
           PY
 
       - name: Merge process event logs
@@ -251,7 +264,7 @@ jobs:
             --manifest manifests/latest_manifest.json \
             "${attachment_args[@]}" \
             --output-dir dist/process-events/projection \
-            --snapshot-revision "historical-backfill-merge-${GITHUB_RUN_ID}" \
+            --snapshot-revision "backfill-merge-${GITHUB_RUN_ID}" \
             --require-live-manifest
           uv run fyi-archive process verify \
             --output-dir dist/process-events/projection
@@ -319,6 +332,8 @@ jobs:
           merged_labels_path = Path(".tmp/backfill-merged-labels.json")
           state = json.loads(state_path.read_text(encoding="utf-8"))
           merged_labels = json.loads(merged_labels_path.read_text(encoding="utf-8"))
+          if not merged_labels:
+              raise SystemExit("NZ real backfill artifacts cannot update the legacy controller state")
           updated = mark_merged_batches(
               state=state,
               merged_labels=list(merged_labels),
