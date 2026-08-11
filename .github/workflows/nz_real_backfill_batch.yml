@@ -32,18 +32,24 @@ on:
         required: true
         default: false
         type: boolean
-      max_auto_batches:
-        description: Maximum number of chained batches when auto_continue is enabled
+      auto_batches_remaining:
+        description: Additional verified batches to dispatch after this one (maximum four)
         required: true
-        default: "20"
+        default: "0"
+        type: string
+      state_label:
+        description: Open issue label containing durable NZ range-controller state
+        required: true
+        default: "nz-real-backfill-state"
         type: string
 
 permissions:
   actions: write
   contents: read
+  issues: write
 
 concurrency:
-  group: nz-real-backfill-${{ inputs.start_offset }}
+  group: nz-real-backfill-global-range-lease
   cancel-in-progress: false
 
 jobs:
@@ -57,7 +63,8 @@ jobs:
       MAX_RUNTIME_MINUTES: ${{ inputs.max_runtime_minutes }}
       MIN_INTERVAL: ${{ inputs.min_interval }}
       AUTO_CONTINUE: ${{ inputs.auto_continue }}
-      MAX_AUTO_BATCHES: ${{ inputs.max_auto_batches }}
+      AUTO_BATCHES_REMAINING: ${{ inputs.auto_batches_remaining }}
+      STATE_LABEL: ${{ inputs.state_label }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -71,14 +78,34 @@ jobs:
       - name: Validate bounded live settings
         run: |
           set -euo pipefail
-          for value in "$SOURCE_RUN_ID" "$START_OFFSET" "$BATCH_SIZE" "$MAX_RUNTIME_MINUTES"; do
+          for value in "$SOURCE_RUN_ID" "$START_OFFSET" "$BATCH_SIZE" "$MAX_RUNTIME_MINUTES" "$AUTO_BATCHES_REMAINING"; do
             [[ "$value" =~ ^[0-9]+$ ]]
           done
           [[ "$MIN_INTERVAL" =~ ^[0-9]+([.][0-9]+)?$ ]]
           test "$BATCH_SIZE" -ge 1 && test "$BATCH_SIZE" -le 100
           test "$MAX_RUNTIME_MINUTES" -ge 5 && test "$MAX_RUNTIME_MINUTES" -le 45
           test "$MIN_INTERVAL" -ge 1
-          test "$MAX_AUTO_BATCHES" -ge 1 && test "$MAX_AUTO_BATCHES" -le 100
+          test "$AUTO_BATCHES_REMAINING" -ge 0 && test "$AUTO_BATCHES_REMAINING" -le 4
+          echo "END_OFFSET=$((START_OFFSET + BATCH_SIZE))" >> "$GITHUB_ENV"
+      - name: Reserve non-overlapping NZ range
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          mkdir -p .tmp
+          issue_number="$(gh issue list --repo "$REPO" --label "$STATE_LABEL" --state open --limit 1 --json number --jq '.[0].number // ""')"
+          test -n "$issue_number" || { echo "No open NZ range-controller issue found"; exit 1; }
+          echo "$issue_number" > .tmp/nz-state-issue-number.txt
+          gh issue view "$issue_number" --repo "$REPO" --json body --jq .body > .tmp/nz-state-body.json
+          uv run python scripts/nz_backfill_controller.py reserve \
+            --body .tmp/nz-state-body.json \
+            --output .tmp/nz-state-body.reserved.json \
+            --start-offset "$START_OFFSET" \
+            --batch-size "$BATCH_SIZE" \
+            --run-id "$RUN_ID"
+          gh issue edit "$issue_number" --repo "$REPO" --body-file .tmp/nz-state-body.reserved.json
       - name: Download complete source evidence
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7
         with:
@@ -245,7 +272,7 @@ jobs:
       - name: Upload verified batch
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: nz-real-backfill-${{ inputs.start_offset }}-${{ github.run_id }}
+          name: nz-real-backfill-range-${{ inputs.start_offset }}-${{ env.END_OFFSET }}-${{ github.run_id }}
           retention-days: 90
           if-no-files-found: error
           path: |
@@ -254,18 +281,29 @@ jobs:
             manifests/latest_manifest.parquet
             dist/process-events/
             dist/nz-real-backfill-evidence.json
+      - name: Complete durable NZ range receipt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          issue_number="$(cat .tmp/nz-state-issue-number.txt)"
+          gh issue view "$issue_number" --repo "$REPO" --json body --jq .body > .tmp/nz-state-body.current.json
+          uv run python scripts/nz_backfill_controller.py complete \
+            --body .tmp/nz-state-body.current.json \
+            --output .tmp/nz-state-body.completed.json \
+            --receipt dist/nz-real-backfill-evidence.json \
+            --run-id "$RUN_ID"
+          gh issue edit "$issue_number" --repo "$REPO" --body-file .tmp/nz-state-body.completed.json
       - name: Dispatch next verified batch
-        if: ${{ success() && inputs.auto_continue == true }}
+        if: ${{ success() && inputs.auto_continue == true && inputs.auto_batches_remaining != '0' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          current_batch=$((START_OFFSET / BATCH_SIZE + 1))
-          if [ "$current_batch" -ge "$MAX_AUTO_BATCHES" ]; then
-            echo "Reached bounded auto-continuation cap: $current_batch/$MAX_AUTO_BATCHES"
-            exit 0
-          fi
-          next_offset=$((START_OFFSET + BATCH_SIZE))
+          next_offset="$(uv run python scripts/nz_backfill_controller.py next --body .tmp/nz-state-body.completed.json)"
+          remaining=$((AUTO_BATCHES_REMAINING - 1))
           gh workflow run nz_real_backfill_batch.yml \
             --repo "$GITHUB_REPOSITORY" \
             -f source_run_id="$SOURCE_RUN_ID" \
@@ -274,4 +312,5 @@ jobs:
             -f max_runtime_minutes="$MAX_RUNTIME_MINUTES" \
             -f min_interval="$MIN_INTERVAL" \
             -f auto_continue=true \
-            -f max_auto_batches="$MAX_AUTO_BATCHES"
+            -f auto_batches_remaining="$remaining" \
+            -f state_label="$STATE_LABEL"
