@@ -98,3 +98,15 @@ def test_nz_real_backfill_refuses_unreconciled_queues_and_leases_next_offset() -
     assert 'workflow_conclusion: "failure"' in workflow
     assert "next_offset=$((START_OFFSET + BATCH_SIZE))" not in workflow
     assert "NEXT_OFFSET" not in workflow
+
+
+def test_nz_real_backfill_monitor_dispatches_from_durable_state() -> None:
+    workflow = (WORKFLOWS / "nz_real_backfill_monitor.yml").read_text(encoding="utf-8")
+
+    assert "nz_backfill_controller.py next" in workflow
+    assert "status in queued in_progress" in workflow
+    assert '-f start_offset="${{ steps.state.outputs.next_offset }}"' in workflow
+    assert "-f auto_batches_remaining=4" in workflow
+    assert "-f state_label=nz-real-backfill-state" in workflow
+    assert "-f max_auto_batches=" not in workflow
+    assert "-f start_offset=0" not in workflow
