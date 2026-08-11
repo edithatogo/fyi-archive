@@ -28,6 +28,14 @@ def test_sampling_frame_rejects_implicit_unknowns_and_authorization() -> None:
     assert "unknown outcomes" in " ".join(result["errors"])
 
 
+def test_sampling_frame_rejects_non_positive_request_cap() -> None:
+    document = json.loads(FRAME.read_text(encoding="utf-8"))
+    document["strata"][1]["request_cap"] = 0
+    result = validate_sampling_frame(document)
+    assert result["ok"] is False
+    assert "request_cap must be a positive integer" in " ".join(result["errors"])
+
+
 def test_sampling_frame_reports_structural_and_rights_errors(tmp_path: Path) -> None:
     result = validate_sampling_frame({
         "schema": "wrong",
