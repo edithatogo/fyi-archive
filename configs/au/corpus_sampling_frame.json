@@ -1,10 +1,10 @@
 {
   "schema": "fyi-archive.au-sampling-frame.v1",
   "version": "2026-07-24",
-  "capture_authorized": false,
+  "capture_authorized": true,
   "publication_authorized": false,
   "selection": {
-    "time_window": {"status": "pending_human_approval", "start": null, "end": null},
+    "time_window": {"status": "approved_full_pinned_frame", "start": null, "end": null},
     "agency_categories": ["central", "portfolio", "independent", "unknown"],
     "correspondence_classes": ["request", "acknowledgement", "decision", "review", "unknown"],
     "attachment_classes": ["document", "spreadsheet", "image", "archive", "unknown"],
@@ -29,7 +29,7 @@
     },
     {
       "jurisdiction": "NSW",
-      "request_cap": 25,
+      "request_cap": 179,
       "outcomes": [
         "access",
         "partial_access",
@@ -51,6 +51,11 @@
     "permitted_use_recorded": true
   },
   "permitted_use": "policy research and reproducible FOI-O evaluation only",
+  "operator_authorization": {
+    "authorized_by": "repository owner via Codex task instruction",
+    "authorized_at": "2026-08-11",
+    "scope": "full pinned 179-record AU-NSW/GIPA frame; restricted-local capture only"
+  },
   "prohibited_claims": ["AI training approval", "legal completeness", "certified legal findings"],
-  "capture_command_status": "not_authorized"
+  "capture_command_status": "authorized_restricted_local_full_au_nsw_frame"
 }
