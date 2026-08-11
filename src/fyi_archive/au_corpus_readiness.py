@@ -54,7 +54,7 @@ def validate_sampling_frame(document: dict[str, Any]) -> dict[str, Any]:
         elif unknown := sorted(set(outcomes) - OUTCOME_CLASSES):
             errors.append(f"strata[{index}] has unknown outcomes: {unknown}")
         cap = stratum.get("request_cap")
-        if not isinstance(cap, int) or not 1 <= cap:
+        if not isinstance(cap, int) or cap < 1:
             errors.append(f"strata[{index}].request_cap must be a positive integer")
 
     if not {"FEDERAL", "NSW"}.issubset(seen):
