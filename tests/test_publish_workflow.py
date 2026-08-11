@@ -65,3 +65,11 @@ def test_merge_workflow_requires_explicit_dispatch_and_side_effect_opt_ins() -> 
     assert "if: env.PUBLISH_TO_HUGGING_FACE == 'true'" in workflow
     assert "if: env.UPDATE_CONTROLLER_STATE == 'true'" in workflow
     assert "dry_run cannot publish to Hugging Face" in workflow
+
+
+def test_merge_workflow_accepts_live_nz_artifacts_without_legacy_state_mutation() -> None:
+    workflow = Path(".github/workflows/merge_backfill_artifacts.yml").read_text(encoding="utf-8")
+
+    assert 'artifact_label.startswith("historical-backfill-")' in workflow
+    assert 'artifact_label.startswith("nz-real-backfill-")' in workflow
+    assert "NZ real backfill artifacts cannot update the legacy controller state" in workflow
