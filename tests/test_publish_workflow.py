@@ -73,3 +73,15 @@ def test_merge_workflow_accepts_live_nz_artifacts_without_legacy_state_mutation(
     assert 'artifact_label.startswith("historical-backfill-")' in workflow
     assert 'artifact_label.startswith("nz-real-backfill-")' in workflow
     assert "NZ real backfill artifacts cannot update the legacy controller state" in workflow
+
+
+def test_nz_real_backfill_uses_global_durable_range_lease() -> None:
+    workflow = Path(".github/workflows/nz_real_backfill_batch.yml").read_text(encoding="utf-8")
+
+    assert "group: nz-real-backfill-global-range-lease" in workflow
+    assert "name: Reserve non-overlapping NZ range" in workflow
+    assert "scripts/nz_backfill_controller.py reserve" in workflow
+    assert "name: Complete durable NZ range receipt" in workflow
+    assert "scripts/nz_backfill_controller.py complete" in workflow
+    assert "auto_batches_remaining" in workflow
+    assert "max_auto_batches" not in workflow
