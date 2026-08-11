@@ -208,7 +208,8 @@ jobs:
         with:
           name: nz-real-backfill-failures-${{ inputs.start_offset }}-${{ github.run_id }}
           retention-days: 90
-          if-no-files-found: error
+          # Preserve the originating failure when a pre-capture guard trips before files exist.
+          if-no-files-found: warn
           path: |
             .tmp/batch_requests.jsonl
             .tmp/source-health.json
