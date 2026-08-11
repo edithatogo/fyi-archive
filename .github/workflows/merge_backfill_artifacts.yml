@@ -1,9 +1,6 @@
 name: Merge Backfill Artifacts
 
 on:
-  workflow_run:
-    workflows: ["Historical Backfill Batch"]
-    types: [completed]
   workflow_dispatch:
     inputs:
       state_label:
@@ -12,7 +9,17 @@ on:
         default: "fyi-backfill-state"
         type: string
       dry_run:
-        description: Merge artifacts without updating controller state
+        description: Produce and verify a merge artifact without mutating controller state or publishing
+        required: true
+        default: true
+        type: boolean
+      update_controller_state:
+        description: Mark the supplied batches as merged in the controller issue (explicit opt-in)
+        required: true
+        default: false
+        type: boolean
+      publish_to_hugging_face:
+        description: Upload the verified projection to the allowlisted Hugging Face dataset (explicit opt-in)
         required: true
         default: false
         type: boolean
@@ -32,15 +39,28 @@ permissions:
 
 jobs:
   merge:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
-      DRY_RUN: ${{ inputs.dry_run || false }}
-      STATE_LABEL: ${{ inputs.state_label || 'fyi-backfill-state' }}
-      SOURCE_RUN_ID: ${{ inputs.run_id || github.event.workflow_run.id }}
-      SOURCE_RUN_IDS: ${{ inputs.run_ids || inputs.run_id || github.event.workflow_run.id }}
+      DRY_RUN: ${{ inputs.dry_run }}
+      UPDATE_CONTROLLER_STATE: ${{ inputs.update_controller_state }}
+      PUBLISH_TO_HUGGING_FACE: ${{ inputs.publish_to_hugging_face }}
+      STATE_LABEL: ${{ inputs.state_label }}
+      SOURCE_RUN_ID: ${{ inputs.run_id }}
+      SOURCE_RUN_IDS: ${{ inputs.run_ids || inputs.run_id }}
     steps:
+      - name: Validate explicit side-effect controls
+        run: |
+          set -euo pipefail
+          [ -n "$SOURCE_RUN_IDS" ] || { echo "run_id or run_ids is required"; exit 1; }
+          if [ "$DRY_RUN" = "true" ] && [ "$UPDATE_CONTROLLER_STATE" = "true" ]; then
+            echo "dry_run cannot update controller state"
+            exit 1
+          fi
+          if [ "$DRY_RUN" = "true" ] && [ "$PUBLISH_TO_HUGGING_FACE" = "true" ]; then
+            echo "dry_run cannot publish to Hugging Face"
+            exit 1
+          fi
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
@@ -248,7 +268,7 @@ jobs:
             --fetch-label "historical-backfill-merge-${RUN_ID}"
 
       - name: Upload verified process projection to Hugging Face
-        if: env.DRY_RUN != 'true'
+        if: env.PUBLISH_TO_HUGGING_FACE == 'true'
         env:
           HF_REPO_ID: ${{ vars.HF_REPO_ID || 'edithatogo/fyi-archive-nz' }}
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -274,7 +294,7 @@ jobs:
           PY
 
       - name: Persist merged backfill state
-        if: env.DRY_RUN != 'true'
+        if: env.UPDATE_CONTROLLER_STATE == 'true'
         env:
           ISSUE_NUMBER_PATH: .tmp/backfill-state-issue-number.txt
           REPO: ${{ github.repository }}

@@ -54,3 +54,14 @@ def test_merge_workflow_carries_attachment_rows_into_projection() -> None:
     workflow = Path(".github/workflows/merge_backfill_artifacts.yml").read_text(encoding="utf-8")
     assert "-name attachments.jsonl" in workflow
     assert "--attachments dist/process-events/attachments.jsonl" in workflow
+
+
+def test_merge_workflow_requires_explicit_dispatch_and_side_effect_opt_ins() -> None:
+    workflow = Path(".github/workflows/merge_backfill_artifacts.yml").read_text(encoding="utf-8")
+
+    assert "workflow_run:" not in workflow
+    assert "default: true\n        type: boolean\n      update_controller_state:" in workflow
+    assert "PUBLISH_TO_HUGGING_FACE: ${{ inputs.publish_to_hugging_face }}" in workflow
+    assert "if: env.PUBLISH_TO_HUGGING_FACE == 'true'" in workflow
+    assert "if: env.UPDATE_CONTROLLER_STATE == 'true'" in workflow
+    assert "dry_run cannot publish to Hugging Face" in workflow
