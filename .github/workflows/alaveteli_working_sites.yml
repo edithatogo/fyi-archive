@@ -93,4 +93,4 @@ jobs:
       request_ref: ${{ github.event_name == 'schedule' && '' || inputs.request_ref }}
       max_requests: ${{ github.event_name == 'schedule' && matrix.max_requests || inputs.max_requests }}
       min_interval: ${{ github.event_name == 'schedule' && matrix.min_interval_seconds || inputs.min_interval }}
-      discovery_max_pages: ${{ github.event_name == 'schedule' && matrix.discovery_max_pages || '2' }}
+      discovery_max_pages: ${{ github.event_name == 'schedule' && matrix.discovery_max_pages || 2 }}
