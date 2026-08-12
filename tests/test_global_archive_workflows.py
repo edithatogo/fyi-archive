@@ -27,7 +27,10 @@ def test_read_only_all_capture_export_is_scheduled_and_bounded() -> None:
 
 
 def test_live_capture_uses_repository_readiness_not_dispatch_prompts() -> None:
-    alaveteli = (WORKFLOWS / "alaveteli_working_sites.yml").read_text(encoding="utf-8")
+    alaveteli = "\n".join(
+        (WORKFLOWS / name).read_text(encoding="utf-8")
+        for name in ("alaveteli_working_sites.yml", "alaveteli_instance_capture.yml")
+    )
     assert "live_confirmation:" not in alaveteli
     assert "AUTONOMOUS_LIVE_CAPTURE_ENABLED" in alaveteli
 
