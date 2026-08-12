@@ -18,15 +18,15 @@ on:
       use_registry_defaults:
         description: Apply registry-owned bounds and pacing for scheduled capture
         required: true
-        type: boolean
+        type: string
       id_from:
         description: First request ID for the bounded fallback queue
         required: true
-        type: number
+        type: string
       id_to:
         description: Last request ID for the bounded fallback queue
         required: true
-        type: number
+        type: string
       request_ref:
         description: Optional explicit public request ID or slug for a capped smoke
         required: true
@@ -34,15 +34,15 @@ on:
       max_requests:
         description: Maximum captures per site
         required: true
-        type: number
+        type: string
       min_interval:
         description: Minimum seconds between requests to the host
         required: true
-        type: number
+        type: string
       discovery_max_pages:
         description: Maximum feed pages to discover in this run
         required: true
-        type: number
+        type: string
 
 permissions:
   contents: read

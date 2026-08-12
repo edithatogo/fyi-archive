@@ -64,10 +64,10 @@ jobs:
       instance: ${{ matrix.instance }}
       enabled: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
       dry_run: ${{ github.event_name != 'schedule' && inputs.dry_run }}
-      use_registry_defaults: ${{ github.event_name == 'schedule' }}
-      id_from: ${{ github.event_name == 'schedule' && 1 || inputs.id_from }}
-      id_to: ${{ github.event_name == 'schedule' && 1 || inputs.id_to }}
+      use_registry_defaults: ${{ github.event_name == 'schedule' && 'true' || 'false' }}
+      id_from: ${{ github.event_name == 'schedule' && '1' || format('{0}', inputs.id_from) }}
+      id_to: ${{ github.event_name == 'schedule' && '1' || format('{0}', inputs.id_to) }}
       request_ref: ${{ github.event_name == 'schedule' && '' || inputs.request_ref }}
-      max_requests: ${{ github.event_name == 'schedule' && 1 || inputs.max_requests }}
-      min_interval: ${{ github.event_name == 'schedule' && 1 || inputs.min_interval }}
-      discovery_max_pages: ${{ github.event_name == 'schedule' && 1 || 2 }}
+      max_requests: ${{ github.event_name == 'schedule' && '1' || format('{0}', inputs.max_requests) }}
+      min_interval: ${{ github.event_name == 'schedule' && '1' || format('{0}', inputs.min_interval) }}
+      discovery_max_pages: ${{ github.event_name == 'schedule' && '1' || '2' }}

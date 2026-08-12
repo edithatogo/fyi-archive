@@ -31,7 +31,12 @@ def test_capture_window_and_schedule_defaults_come_from_registry_matrix() -> Non
     assert "scripts/build_alaveteli_automation_matrix.py" in WORKER
     assert "select(.instance == $instance)" in WORKER
     assert 'if [ "$USE_REGISTRY_DEFAULTS" = "true" ]' in WORKER
-    assert "use_registry_defaults: ${{ github.event_name == 'schedule' }}" in CONTROLLER
+    assert (
+        "use_registry_defaults: ${{ github.event_name == 'schedule' && 'true' || 'false' }}"
+        in CONTROLLER
+    )
+    for name in ("id_from", "id_to", "max_requests", "min_interval"):
+        assert f"format('{{0}}', inputs.{name})" in CONTROLLER
     assert "matrix.timezone" not in CONTROLLER
     assert "matrix.discovery_max_pages" not in CONTROLLER
 
