@@ -21,6 +21,8 @@ EXPECTED_POLICIES = {
     "uy-quesabes": "America/Montevideo",
 }
 
+CONTROLLER = Path(".github/workflows/alaveteli_working_sites.yml").read_text(encoding="utf-8")
+
 
 def _documents() -> tuple[dict[str, Any], dict[str, Any]]:
     return (
@@ -34,6 +36,13 @@ def test_only_existing_working_sites_are_automation_enabled() -> None:
     assert [target.instance.id for target in targets] == sorted(EXPECTED_POLICIES)
     assert {target.instance.id: target.policy.timezone for target in targets} == EXPECTED_POLICIES
     assert get_instance("nz-fyi").automation is None
+
+
+def test_scheduler_expansion_and_choices_match_registry_enabled_ids() -> None:
+    enabled = sorted(EXPECTED_POLICIES)
+    rendered = ", ".join(enabled)
+    assert f"instance: [{rendered}]" in CONTROLLER
+    assert f"options: [all, {rendered}]" in CONTROLLER
 
 
 def test_enabled_policies_preserve_existing_schedule_defaults() -> None:

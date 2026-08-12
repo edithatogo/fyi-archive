@@ -18,9 +18,8 @@ def test_reusable_worker_has_a_bounded_per_instance_interface() -> None:
     assert "instance: ${{ matrix.instance }}" in CONTROLLER
     assert "enabled: ${{ github.event_name == 'schedule'" in CONTROLLER
     assert "if: ${{ inputs.enabled }}" in WORKER
-    assert "fromJSON(needs.plan.outputs.instances)" in CONTROLLER
-    assert "scripts/build_alaveteli_automation_matrix.py" in CONTROLLER
-    assert "Unknown or disabled automation instance" in CONTROLLER
+    assert "instance: [ge-askgov, se-handlingar, ua-dostup, uy-quesabes]" in CONTROLLER
+    assert "type: choice" in CONTROLLER
 
 
 def test_capture_window_and_schedule_defaults_come_from_registry_matrix() -> None:
@@ -33,7 +32,6 @@ def test_capture_window_and_schedule_defaults_come_from_registry_matrix() -> Non
     assert "select(.instance == $instance)" in WORKER
     assert 'if [ "$USE_REGISTRY_DEFAULTS" = "true" ]' in WORKER
     assert "use_registry_defaults: ${{ github.event_name == 'schedule' }}" in CONTROLLER
-    assert "instances=\"$(jq -c '[.include[].instance]'" in CONTROLLER
     assert "matrix.timezone" not in CONTROLLER
     assert "matrix.discovery_max_pages" not in CONTROLLER
 
