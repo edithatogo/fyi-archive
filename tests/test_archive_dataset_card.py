@@ -54,3 +54,14 @@ def test_hf_sync_passes_selected_instance_to_card_renderer() -> None:
     assert "INSTANCE: ${{ inputs.instance || 'nz-fyi' }}" in workflow
     assert 'if [ "$INSTANCE" = "nz-fyi" ]' in workflow
     assert 'get_instance(os.environ["INSTANCE"]).hf_repo_id' in workflow
+
+
+def test_hf_sync_dry_run_cannot_upload_dataset_card() -> None:
+    workflow = Path(".github/workflows/hf_sync.yml").read_text(encoding="utf-8")
+    upload_step = workflow.split("- name: Upload verified dataset card", maxsplit=1)[1]
+    upload_step = upload_step.split("- name: Upload sync artifacts", maxsplit=1)[0]
+    assert (
+        "if: ${{ github.event_name != 'workflow_dispatch' "
+        "|| inputs.dry_run == false }}" in upload_step
+    )
+    assert "HfApi" in upload_step
