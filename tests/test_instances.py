@@ -12,10 +12,12 @@ from fyi_archive.cli import app
 from fyi_archive.instances import (
     DEFAULT_INSTANCE_ID,
     get_instance,
+    instance_id_for_source,
     known_sources,
     list_instances,
     parse_instance_registry,
     resolve_instance,
+    source_for_instance,
 )
 from fyi_archive.manifest import assemble_manifest, build_manifest, validate_manifest
 from fyi_archive.seed import SeedCaps, SeedRequest, capture_with_fyi_cli
@@ -76,6 +78,18 @@ def test_declarative_registry_rejects_source_base_url_mismatch() -> None:
         parse_instance_registry(document, schema)
 
 
+def test_declarative_registry_requires_default_instance() -> None:
+    schema = json.loads(Path("schemas/archive-instances.schema.json").read_text(encoding="utf-8"))
+    document = json.loads(
+        Path("src/fyi_archive/config/archive_instances.json").read_text(encoding="utf-8")
+    )
+    document["instances"] = [
+        row for row in document["instances"] if row["id"] != DEFAULT_INSTANCE_ID
+    ]
+    with pytest.raises(ValueError, match="default 'nz-fyi' is missing"):
+        parse_instance_registry(document, schema)
+
+
 def test_au_rtk_instance_catalog_entry() -> None:
     instance = get_instance("au-rtk")
     assert instance.capture_base_url() == "https://www.righttoknow.org.au"
@@ -100,6 +114,21 @@ def test_resolve_instance_base_url_override() -> None:
     assert instance.id == "au-rtk"
     assert instance.capture_base_url() == "https://www.righttoknow.org.au"
     assert instance.source == "https://www.righttoknow.org.au/"
+
+
+def test_resolve_instance_uses_environment_override(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("FYI_ARCHIVE_BASE_URL", "https://mirror.example.test/")
+    instance = resolve_instance(instance_id="nz-fyi")
+    assert instance.base_url == "https://mirror.example.test"
+    assert instance.source == "https://mirror.example.test/"
+
+
+def test_source_helpers_normalize_and_reject_unknown_sources() -> None:
+    assert source_for_instance("nz-fyi") == "https://fyi.org.nz/"
+    assert instance_id_for_source("https://fyi.org.nz") == "nz-fyi"
+    assert instance_id_for_source("https://example.invalid/") is None
 
 
 def test_list_instances_includes_nz_and_au() -> None:
