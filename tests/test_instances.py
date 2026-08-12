@@ -11,6 +11,7 @@ from typer.testing import CliRunner
 from fyi_archive.cli import app
 from fyi_archive.instances import (
     DEFAULT_INSTANCE_ID,
+    _parse_registry,
     get_instance,
     known_sources,
     list_instances,
@@ -25,6 +26,54 @@ def test_default_instance_is_nz() -> None:
     assert instance.id == DEFAULT_INSTANCE_ID
     assert instance.source == "https://fyi.org.nz/"
     assert instance.rate_limit_name == "archive-discovery-nz-fyi"
+
+
+def test_declarative_registry_preserves_complete_nz_configuration() -> None:
+    instance = get_instance("nz-fyi")
+    assert instance == type(instance)(
+        id="nz-fyi",
+        base_url="https://fyi.org.nz",
+        country="NZ",
+        locale="en-NZ",
+        hf_repo_id="edithatogo/fyi-archive-nz",
+        rate_limit_name="archive-discovery-nz-fyi",
+        status="supported",
+        title="fyi-archive (fyi.org.nz OIA register)",
+        source="https://fyi.org.nz/",
+        catalog_url="https://fyi.org.nz/body/all-authorities.csv",
+        source_modes=("live_api", "atom_feed", "authority_catalog", "internet_archive"),
+        seed_cap=1000,
+    )
+
+
+def test_declarative_registry_is_schema_validated() -> None:
+    schema = json.loads(Path("schemas/archive-instances.schema.json").read_text(encoding="utf-8"))
+    malformed = {
+        "schema_version": 1,
+        "instances": [{"id": "nz-fyi", "unexpected": True}],
+    }
+    with pytest.raises(ValueError, match="Invalid archive instance registry"):
+        _parse_registry(malformed, schema)
+
+
+def test_declarative_registry_rejects_duplicate_ids() -> None:
+    schema = json.loads(Path("schemas/archive-instances.schema.json").read_text(encoding="utf-8"))
+    document = json.loads(
+        Path("src/fyi_archive/config/archive_instances.json").read_text(encoding="utf-8")
+    )
+    document["instances"].append(document["instances"][0])
+    with pytest.raises(ValueError, match="duplicate id 'au-rtk'"):
+        _parse_registry(document, schema)
+
+
+def test_declarative_registry_rejects_source_base_url_mismatch() -> None:
+    schema = json.loads(Path("schemas/archive-instances.schema.json").read_text(encoding="utf-8"))
+    document = json.loads(
+        Path("src/fyi_archive/config/archive_instances.json").read_text(encoding="utf-8")
+    )
+    document["instances"][0]["source"] = "https://example.invalid/"
+    with pytest.raises(ValueError, match="must equal base_url"):
+        _parse_registry(document, schema)
 
 
 def test_au_rtk_instance_catalog_entry() -> None:
