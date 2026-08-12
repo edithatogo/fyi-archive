@@ -75,16 +75,10 @@ def parse_instance_registry(document: object, schema: object) -> dict[str, Archi
         msg = f"Invalid archive instance registry: {error.message if isinstance(error, ValidationError) else error}"
         raise ValueError(msg) from error
 
-    if not isinstance(document, dict):
-        raise ValueError("Invalid archive instance registry: root must be an object")
     registry = cast("dict[str, object]", document)
-    rows = registry.get("instances")
-    if not isinstance(rows, list):
-        raise ValueError("Invalid archive instance registry: instances must be an array")
+    rows = cast("list[object]", registry["instances"])
     instances: dict[str, ArchiveInstance] = {}
-    for row in cast("list[object]", rows):
-        if not isinstance(row, dict):
-            raise ValueError("Invalid archive instance registry: instance must be an object")
+    for row in rows:
         typed_row = cast("_InstanceRow", row)
         instance_id = typed_row["id"]
         if instance_id in instances:
