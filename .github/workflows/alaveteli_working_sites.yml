@@ -7,11 +7,10 @@ on:
   workflow_dispatch:
     inputs:
       instance:
-        description: Site to process, or all four sites
+        description: Enabled registry instance to process, or all
         required: true
         default: all
-        type: choice
-        options: [all, se-handlingar, ua-dostup, uy-quesabes, ge-askgov]
+        type: string
       dry_run:
         description: Deterministic no-network run
         required: true
@@ -20,13 +19,13 @@ on:
       id_from:
         description: First request ID for the bounded fallback queue
         required: true
-        default: "1"
-        type: string
+        default: 1
+        type: number
       id_to:
         description: Last request ID for the bounded fallback queue
         required: true
-        default: "5"
-        type: string
+        default: 5
+        type: number
       request_ref:
         description: Optional explicit public request ID or slug for a capped smoke
         required: false
@@ -34,26 +33,50 @@ on:
       max_requests:
         description: Maximum captures per site
         required: true
-        default: "5"
-        type: string
+        default: 5
+        type: number
       min_interval:
         description: Minimum seconds between requests to the host
         required: true
-        default: "60"
-        type: string
+        default: 60
+        type: number
 
 permissions:
   contents: read
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - name: Build validated automation matrix
+        id: matrix
+        env:
+          SELECTED_INSTANCE: ${{ github.event_name == 'schedule' && 'all' || inputs.instance }}
+        run: |
+          set -euo pipefail
+          matrix="$(uv run --frozen python scripts/build_alaveteli_automation_matrix.py)"
+          if [ "$SELECTED_INSTANCE" != "all" ] \
+            && ! jq -e --arg selected "$SELECTED_INSTANCE" \
+              '.include | any(.instance == $selected)' <<<"$matrix" >/dev/null; then
+            echo "Unknown or disabled automation instance: $SELECTED_INSTANCE" >&2
+            exit 1
+          fi
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
   archive:
+    needs: plan
     strategy:
       fail-fast: false
       # Different hosts progress independently; the reusable worker serializes
       # runs that target the same instance.
       max-parallel: 4
-      matrix:
-        instance: [se-handlingar, ua-dostup, uy-quesabes, ge-askgov]
+      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
     permissions:
       contents: read
       actions: read
@@ -62,9 +85,12 @@ jobs:
       instance: ${{ matrix.instance }}
       enabled: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
       dry_run: ${{ github.event_name != 'schedule' && inputs.dry_run }}
-      id_from: ${{ github.event_name == 'schedule' && '1' || inputs.id_from }}
-      id_to: ${{ github.event_name == 'schedule' && '5' || inputs.id_to }}
+      timezone: ${{ matrix.timezone }}
+      window_start_hour: ${{ matrix.window_start_hour }}
+      window_end_hour: ${{ matrix.window_end_hour }}
+      id_from: ${{ github.event_name == 'schedule' && matrix.id_from || inputs.id_from }}
+      id_to: ${{ github.event_name == 'schedule' && matrix.id_to || inputs.id_to }}
       request_ref: ${{ github.event_name == 'schedule' && '' || inputs.request_ref }}
-      max_requests: ${{ github.event_name == 'schedule' && '5' || inputs.max_requests }}
-      min_interval: ${{ github.event_name == 'schedule' && '60' || inputs.min_interval }}
-      discovery_max_pages: ${{ github.event_name == 'schedule' && '10' || '2' }}
+      max_requests: ${{ github.event_name == 'schedule' && matrix.max_requests || inputs.max_requests }}
+      min_interval: ${{ github.event_name == 'schedule' && matrix.min_interval_seconds || inputs.min_interval }}
+      discovery_max_pages: ${{ github.event_name == 'schedule' && matrix.discovery_max_pages || '2' }}

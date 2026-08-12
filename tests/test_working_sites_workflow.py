@@ -18,7 +18,27 @@ def test_reusable_worker_has_a_bounded_per_instance_interface() -> None:
     assert "instance: ${{ matrix.instance }}" in CONTROLLER
     assert "enabled: ${{ github.event_name == 'schedule'" in CONTROLLER
     assert "if: ${{ inputs.enabled }}" in WORKER
-    assert "instance: [se-handlingar, ua-dostup, uy-quesabes, ge-askgov]" in CONTROLLER
+    assert "fromJson(needs.plan.outputs.matrix)" in CONTROLLER
+    assert "scripts/build_alaveteli_automation_matrix.py" in CONTROLLER
+    assert "Unknown or disabled automation instance" in CONTROLLER
+
+
+def test_capture_window_and_schedule_defaults_come_from_registry_matrix() -> None:
+    assert 'case "$INSTANCE" in' not in WORKER
+    assert 'TZ="$CAPTURE_TIMEZONE" date +%H' in WORKER
+    assert "WINDOW_START_HOUR" in WORKER
+    assert "WINDOW_END_HOUR" in WORKER
+    for field in (
+        "timezone",
+        "window_start_hour",
+        "window_end_hour",
+        "id_from",
+        "id_to",
+        "max_requests",
+        "min_interval_seconds",
+        "discovery_max_pages",
+    ):
+        assert f"matrix.{field}" in CONTROLLER
 
 
 def test_source_urls_cannot_be_overridden_and_are_resolved_from_configuration() -> None:
