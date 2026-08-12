@@ -53,4 +53,4 @@ def test_hf_sync_passes_selected_instance_to_card_renderer() -> None:
     assert "group: hf-sync-${{ inputs.instance || 'nz-fyi' }}" in workflow
     assert "INSTANCE: ${{ inputs.instance || 'nz-fyi' }}" in workflow
     assert 'if [ "$INSTANCE" = "nz-fyi" ]' in workflow
-    assert "get_instance(os.environ[\"INSTANCE\"]).hf_repo_id" in workflow
+    assert 'get_instance(os.environ["INSTANCE"]).hf_repo_id' in workflow
