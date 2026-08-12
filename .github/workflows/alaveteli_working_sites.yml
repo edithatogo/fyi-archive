@@ -53,18 +53,20 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: alaveteli-working-sites
-  cancel-in-progress: false
-
 jobs:
   archive:
+    concurrency:
+      group: alaveteli-working-site-${{ matrix.instance }}
+      cancel-in-progress: false
     permissions:
       contents: read
       actions: read
     strategy:
       fail-fast: false
-      max-parallel: 1
+      # Different hosts may progress independently. The per-instance
+      # concurrency group above still serializes restoration and capture for
+      # each site's durable state.
+      max-parallel: 4
       matrix:
         instance: [se-handlingar, ua-dostup, uy-quesabes, ge-askgov]
     runs-on: ubuntu-latest
