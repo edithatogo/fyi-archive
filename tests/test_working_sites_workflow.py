@@ -28,19 +28,14 @@ def test_capture_window_and_schedule_defaults_come_from_registry_matrix() -> Non
     assert 'TZ="$CAPTURE_TIMEZONE" date +%H' in WORKER
     assert "WINDOW_START_HOUR" in WORKER
     assert "WINDOW_END_HOUR" in WORKER
-    for field in (
-        "timezone",
-        "window_start_hour",
-        "window_end_hour",
-        "id_from",
-        "id_to",
-        "max_requests",
-        "min_interval_seconds",
-        "discovery_max_pages",
-    ):
-        assert f"matrix.{field}" in CONTROLLER
-    assert "matrix.discovery_max_pages || 2" in CONTROLLER
-    assert "matrix.discovery_max_pages || '2'" not in CONTROLLER
+    assert "Resolve validated instance automation policy" in WORKER
+    assert "scripts/build_alaveteli_automation_matrix.py" in WORKER
+    assert "select(.instance == $instance)" in WORKER
+    assert 'if [ "$USE_REGISTRY_DEFAULTS" = "true" ]' in WORKER
+    assert "use_registry_defaults: ${{ github.event_name == 'schedule' }}" in CONTROLLER
+    assert "matrix=\"$(jq -c '{include: [.include[] | {instance}]}'" in CONTROLLER
+    assert "matrix.timezone" not in CONTROLLER
+    assert "matrix.discovery_max_pages" not in CONTROLLER
 
 
 def test_source_urls_cannot_be_overridden_and_are_resolved_from_configuration() -> None:
