@@ -11,10 +11,10 @@ from typer.testing import CliRunner
 from fyi_archive.cli import app
 from fyi_archive.instances import (
     DEFAULT_INSTANCE_ID,
-    _parse_registry,
     get_instance,
     known_sources,
     list_instances,
+    parse_instance_registry,
     resolve_instance,
 )
 from fyi_archive.manifest import assemble_manifest, build_manifest, validate_manifest
@@ -53,7 +53,7 @@ def test_declarative_registry_is_schema_validated() -> None:
         "instances": [{"id": "nz-fyi", "unexpected": True}],
     }
     with pytest.raises(ValueError, match="Invalid archive instance registry"):
-        _parse_registry(malformed, schema)
+        parse_instance_registry(malformed, schema)
 
 
 def test_declarative_registry_rejects_duplicate_ids() -> None:
@@ -63,7 +63,7 @@ def test_declarative_registry_rejects_duplicate_ids() -> None:
     )
     document["instances"].append(document["instances"][0])
     with pytest.raises(ValueError, match="duplicate id 'au-rtk'"):
-        _parse_registry(document, schema)
+        parse_instance_registry(document, schema)
 
 
 def test_declarative_registry_rejects_source_base_url_mismatch() -> None:
@@ -73,7 +73,7 @@ def test_declarative_registry_rejects_source_base_url_mismatch() -> None:
     )
     document["instances"][0]["source"] = "https://example.invalid/"
     with pytest.raises(ValueError, match="must equal base_url"):
-        _parse_registry(document, schema)
+        parse_instance_registry(document, schema)
 
 
 def test_au_rtk_instance_catalog_entry() -> None:

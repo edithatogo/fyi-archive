@@ -67,7 +67,7 @@ def _read_packaged_json(resource: str) -> object:
     return cast("object", json.loads(content))
 
 
-def _parse_registry(document: object, schema: object) -> dict[str, ArchiveInstance]:
+def parse_instance_registry(document: object, schema: object) -> dict[str, ArchiveInstance]:
     """Validate and materialize one declarative registry document."""
     try:
         Draft202012Validator(schema, format_checker=FormatChecker()).validate(document)  # pyright: ignore[reportUnknownMemberType, reportArgumentType]
@@ -118,7 +118,7 @@ def _parse_registry(document: object, schema: object) -> dict[str, ArchiveInstan
 
 
 def _load_instances() -> dict[str, ArchiveInstance]:
-    return _parse_registry(
+    return parse_instance_registry(
         _read_packaged_json(_CONFIG_RESOURCE),
         _read_packaged_json(_SCHEMA_RESOURCE),
     )
