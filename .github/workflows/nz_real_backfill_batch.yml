@@ -33,7 +33,7 @@ on:
         default: false
         type: boolean
       auto_batches_remaining:
-        description: Additional verified batches to dispatch after this one (maximum four)
+        description: Additional verified batches to dispatch after this one (maximum nine)
         required: true
         default: "0"
         type: string
@@ -85,7 +85,7 @@ jobs:
           test "$BATCH_SIZE" -ge 1 && test "$BATCH_SIZE" -le 100
           test "$MAX_RUNTIME_MINUTES" -ge 5 && test "$MAX_RUNTIME_MINUTES" -le 45
           test "$MIN_INTERVAL" -ge 1
-          test "$AUTO_BATCHES_REMAINING" -ge 0 && test "$AUTO_BATCHES_REMAINING" -le 4
+          test "$AUTO_BATCHES_REMAINING" -ge 0 && test "$AUTO_BATCHES_REMAINING" -le 9
           echo "END_OFFSET=$((START_OFFSET + BATCH_SIZE))" >> "$GITHUB_ENV"
       - name: Reserve non-overlapping NZ range
         id: reserve

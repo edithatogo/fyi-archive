@@ -106,7 +106,7 @@ def test_nz_real_backfill_monitor_dispatches_from_durable_state() -> None:
     assert "nz_backfill_controller.py next" in workflow
     assert "status in queued in_progress" in workflow
     assert '-f start_offset="${{ steps.state.outputs.next_offset }}"' in workflow
-    assert "-f auto_batches_remaining=4" in workflow
+    assert "-f auto_batches_remaining=9" in workflow
     assert "-f state_label=nz-real-backfill-state" in workflow
     assert "-f max_auto_batches=" not in workflow
     assert "-f start_offset=0" not in workflow

@@ -115,5 +115,5 @@ jobs:
             -f max_runtime_minutes=40 \
             -f min_interval=2 \
             -f auto_continue=true \
-            -f auto_batches_remaining=4 \
+            -f auto_batches_remaining=9 \
             -f state_label=nz-real-backfill-state
