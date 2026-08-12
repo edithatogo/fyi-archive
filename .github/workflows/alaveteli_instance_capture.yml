@@ -15,18 +15,10 @@ on:
         description: Deterministic no-network run
         required: true
         type: boolean
-      timezone:
-        description: IANA timezone from the validated instance registry
+      use_registry_defaults:
+        description: Apply registry-owned bounds and pacing for scheduled capture
         required: true
-        type: string
-      window_start_hour:
-        description: Inclusive local-hour start for autonomous capture
-        required: true
-        type: number
-      window_end_hour:
-        description: Exclusive local-hour end for autonomous capture
-        required: true
-        type: number
+        type: boolean
       id_from:
         description: First request ID for the bounded fallback queue
         required: true
@@ -75,9 +67,7 @@ jobs:
       MAX_REQUESTS: ${{ inputs.max_requests }}
       MIN_INTERVAL: ${{ inputs.min_interval }}
       DISCOVERY_MAX_PAGES: ${{ inputs.discovery_max_pages }}
-      CAPTURE_TIMEZONE: ${{ inputs.timezone }}
-      WINDOW_START_HOUR: ${{ inputs.window_start_hour }}
-      WINDOW_END_HOUR: ${{ inputs.window_end_hour }}
+      USE_REGISTRY_DEFAULTS: ${{ inputs.use_registry_defaults }}
       AUTONOMOUS_LIVE_CAPTURE_ENABLED: ${{ vars.AUTONOMOUS_LIVE_CAPTURE_ENABLED || 'false' }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -89,6 +79,25 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: uv sync --extra dev --frozen
+      - name: Resolve validated instance automation policy
+        run: |
+          set -euo pipefail
+          policy="$(uv run --frozen python scripts/build_alaveteli_automation_matrix.py \
+            | jq -ce --arg instance "$INSTANCE" '.include[] | select(.instance == $instance)')"
+          {
+            echo "CAPTURE_TIMEZONE=$(jq -r '.timezone' <<<"$policy")"
+            echo "WINDOW_START_HOUR=$(jq -r '.window_start_hour' <<<"$policy")"
+            echo "WINDOW_END_HOUR=$(jq -r '.window_end_hour' <<<"$policy")"
+          } >> "$GITHUB_ENV"
+          if [ "$USE_REGISTRY_DEFAULTS" = "true" ]; then
+            {
+              echo "ID_FROM=$(jq -r '.id_from' <<<"$policy")"
+              echo "ID_TO=$(jq -r '.id_to' <<<"$policy")"
+              echo "MAX_REQUESTS=$(jq -r '.max_requests' <<<"$policy")"
+              echo "MIN_INTERVAL=$(jq -r '.min_interval_seconds' <<<"$policy")"
+              echo "DISCOVERY_MAX_PAGES=$(jq -r '.discovery_max_pages' <<<"$policy")"
+            } >> "$GITHUB_ENV"
+          fi
       - name: Restore latest verified site state
         env:
           GH_TOKEN: ${{ github.token }}

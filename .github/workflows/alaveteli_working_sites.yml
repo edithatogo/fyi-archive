@@ -60,13 +60,14 @@ jobs:
           SELECTED_INSTANCE: ${{ github.event_name == 'schedule' && 'all' || inputs.instance }}
         run: |
           set -euo pipefail
-          matrix="$(uv run --frozen python scripts/build_alaveteli_automation_matrix.py)"
+          policies="$(uv run --frozen python scripts/build_alaveteli_automation_matrix.py)"
           if [ "$SELECTED_INSTANCE" != "all" ] \
             && ! jq -e --arg selected "$SELECTED_INSTANCE" \
-              '.include | any(.instance == $selected)' <<<"$matrix" >/dev/null; then
+              '.include | any(.instance == $selected)' <<<"$policies" >/dev/null; then
             echo "Unknown or disabled automation instance: $SELECTED_INSTANCE" >&2
             exit 1
           fi
+          matrix="$(jq -c '{include: [.include[] | {instance}]}' <<<"$policies")"
           echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
 
   archive:
@@ -85,12 +86,10 @@ jobs:
       instance: ${{ matrix.instance }}
       enabled: ${{ github.event_name == 'schedule' || inputs.instance == 'all' || inputs.instance == matrix.instance }}
       dry_run: ${{ github.event_name != 'schedule' && inputs.dry_run }}
-      timezone: ${{ matrix.timezone }}
-      window_start_hour: ${{ matrix.window_start_hour }}
-      window_end_hour: ${{ matrix.window_end_hour }}
-      id_from: ${{ github.event_name == 'schedule' && matrix.id_from || inputs.id_from }}
-      id_to: ${{ github.event_name == 'schedule' && matrix.id_to || inputs.id_to }}
+      use_registry_defaults: ${{ github.event_name == 'schedule' }}
+      id_from: ${{ github.event_name == 'schedule' && 1 || inputs.id_from }}
+      id_to: ${{ github.event_name == 'schedule' && 1 || inputs.id_to }}
       request_ref: ${{ github.event_name == 'schedule' && '' || inputs.request_ref }}
-      max_requests: ${{ github.event_name == 'schedule' && matrix.max_requests || inputs.max_requests }}
-      min_interval: ${{ github.event_name == 'schedule' && matrix.min_interval_seconds || inputs.min_interval }}
-      discovery_max_pages: ${{ github.event_name == 'schedule' && matrix.discovery_max_pages || 2 }}
+      max_requests: ${{ github.event_name == 'schedule' && 1 || inputs.max_requests }}
+      min_interval: ${{ github.event_name == 'schedule' && 1 || inputs.min_interval }}
+      discovery_max_pages: ${{ github.event_name == 'schedule' && 1 || 2 }}
