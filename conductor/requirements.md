@@ -103,6 +103,12 @@ operational transparency**, not AI training.
 | R-49 | **C** | English Alaveteli fleet archive onboarding template (post-AU). | global ladder | `english_alaveteli_archive_template_20260709` |
 | R-50 | **C** | Non-English Alaveteli archive onboarding (post-English). | global ladder | `global_alaveteli_archive_template_20260709` |
 | R-51 | **W** | Non-Alaveteli FOI portals; LLM training pipelines; NLP over archives. | explicit non-goal | future |
+| R-52 | **M** | Use one schema-validated registry keyed by archive instance; represent countries and legal regimes as metadata or profiles, not scheduler units. | instance-pipeline consolidation | `generic_instance_backfill_controller_20260812` |
+| R-53 | **M** | Delegate live-origin, Internet Archive discovery/replay, and other source-network access to versioned `fyi-cli` adapters. Existing direct `fyi-archive` network paths remain operational only until parity-tested replacement. | R-05/R-06 enforcement | `generic_instance_backfill_controller_20260812` |
+| R-54 | **M** | Emit immutable, checksummed handoff packages containing instance, schema, source revision, takedown revision, ordering, coverage, and retention metadata for downstream `foi-process` consumption. | cross-repository pipeline contract | `generic_instance_backfill_controller_20260812`, `full_corpus_process_projection_20260721` |
+| R-55 | **M** | Preserve active NZ workflows until queue, case, event, attachment, revision, lease, and checkpoint parity is proven by shadow runs. | NZ-first migration safety | `generic_instance_backfill_controller_20260812` |
+| R-56 | **S** | Publish compacted snapshots plus ordered deltas so downstream consumers need not reconstruct state from expiring GitHub Actions artifacts. | durable continuation | `generic_instance_backfill_controller_20260812` |
+| R-57 | **S** | Keep raw archive publication and derived process publication as separate, traceable products with independent governance and publication gates. | publication boundary | `generic_instance_backfill_controller_20260812`, downstream `foi-process` issue #114 |
 
 ---
 
@@ -129,3 +135,5 @@ operational transparency**, not AI training.
 | R-48 | `multi_instance_observability_20260709` |
 | R-49 | `english_alaveteli_archive_template_20260709` |
 | R-50 | `global_alaveteli_archive_template_20260709` |
+| R-52, R-53, R-55 | `generic_instance_backfill_controller_20260812` |
+| R-54, R-56, R-57 | `generic_instance_backfill_controller_20260812`, `full_corpus_process_projection_20260721`, downstream `foi-process` issue #114 |

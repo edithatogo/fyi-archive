@@ -1,5 +1,12 @@
 # Project Tracks
 
+## [ ] Track: Generic instance acquisition and continuation controller
+Track ID: `generic_instance_backfill_controller_20260812`
+Goal: Replace country-specific orchestration with an instance-keyed controller
+while preserving the active NZ backfill until shadow parity is proven.
+Issue: [#370](https://github.com/edithatogo/fyi-archive/issues/370), a sub-issue of [#196](https://github.com/edithatogo/fyi-archive/issues/196).
+Link: [./tracks/generic_instance_backfill_controller_20260812/](./tracks/generic_instance_backfill_controller_20260812/)
+
 ## [~] Track: Remaining-work reconciliation and closure
 Track ID: `remaining_work_reconciliation_20260803`
 Goal: Reconcile all open operational, hosted-provider, and archive-completeness work

@@ -305,3 +305,29 @@ flowchart LR
   SUB --> PRJ["Repo project board<br/>native workflows"]
   PRJ --> RIOPA["RIOPA umbrella<br/>item mirror sync"]
 ```
+
+## 14. Consolidated instance pipeline
+
+The execution unit is an archive instance, not a country. A country or legal
+regime may select one or more profiles within an instance, but it does not fork
+the capture controller. Source-network operations are `fyi-cli` adapter calls;
+`fyi-archive` owns orchestration, durable state, package assembly, verification,
+and publication.
+
+```mermaid
+flowchart LR
+  SRC["Live Alaveteli or preservation source"] --> CLI["fyi-cli source adapter"]
+  CLI --> PKG["fyi-archive immutable package"]
+  PKG --> RAW["Raw archive mirrors"]
+  PKG --> PROC["foi-process validation and mining"]
+  PROC --> DERIVED["Derived event-log dataset"]
+  DERIVED --> SPACE["Static Hugging Face dashboard"]
+```
+
+The raw archive mirror and derived process outputs are intentionally separate.
+`foi-process` may download a pinned `fyi-archive` package or manifest; it must
+not rediscover or recapture the source site. The existing all-instance CDX and
+replay scripts are a temporary architectural exception and must be replaced by
+versioned `fyi-cli` adapters after parity tests. The active NZ controller is not
+retired until its shadow replacement produces equivalent queues, captures,
+sidecars, revisions, leases, and checkpoints.
