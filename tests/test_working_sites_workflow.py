@@ -39,6 +39,8 @@ def test_capture_window_and_schedule_defaults_come_from_registry_matrix() -> Non
         "discovery_max_pages",
     ):
         assert f"matrix.{field}" in CONTROLLER
+    assert "matrix.discovery_max_pages || 2" in CONTROLLER
+    assert "matrix.discovery_max_pages || '2'" not in CONTROLLER
 
 
 def test_source_urls_cannot_be_overridden_and_are_resolved_from_configuration() -> None:
