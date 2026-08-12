@@ -91,19 +91,53 @@ def test_run_sync_materializes_new_records(tmp_path: Path) -> None:
     assert manifest["requests"][0]["content_sha256"] == HEX
 
 
-def test_run_sync_does_not_advance_state_on_verify_failure(tmp_path: Path) -> None:
+def test_run_sync_dry_run_does_not_compare_prospective_manifest_to_remote(
+    tmp_path: Path,
+) -> None:
     paths = sync_paths(tmp_path)
     write_changes(
         paths["changes_path"],
         added=[{"request_id": 123, "url_title": "new-request", "content_sha256": HEX}],
     )
 
+    verifier_called = False
+
+    def unexpected_verifier(**_: object) -> bool:
+        nonlocal verifier_called
+        verifier_called = True
+        return False
+
+    summary = run_sync(
+        **paths,
+        fyi_cli_version="1.0.0",
+        dry_run=True,
+        hf_repo_id="edithatogo/fyi-archive-nz",
+        verify_remote=unexpected_verifier,
+    )
+
+    assert verifier_called is False
+    assert summary["verified"] is None
+
+
+def test_run_sync_live_does_not_advance_state_on_verify_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = sync_paths(tmp_path)
+
+    monkeypatch.setattr("fyi_archive.sync.restore_hf_dataset", lambda **_: None)
+    monkeypatch.setattr(
+        "fyi_archive.sync.run_fyi_cli_diff",
+        lambda **_: write_changes(paths["changes_path"]),
+    )
+
     with pytest.raises(RuntimeError, match="Remote manifest SHA-256 verification failed"):
         run_sync(
             **paths,
             fyi_cli_version="1.0.0",
-            dry_run=True,
+            dry_run=False,
             hf_repo_id="edithatogo/fyi-archive-nz",
+            hf_token="token",
             verify_remote=lambda **_: False,
         )
 
