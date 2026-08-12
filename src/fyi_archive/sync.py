@@ -362,9 +362,9 @@ def run_sync(
 
     sync_has_changes = changes_have_records(changes)
     revision = None
-    verified = True
-    if hf_repo_id is not None:
-        if sync_has_changes and not dry_run:
+    verified: bool | None = None if dry_run else True
+    if hf_repo_id is not None and not dry_run:
+        if sync_has_changes:
             if hf_token is None:
                 msg = "HF token is required to publish prospective sync changes"
                 raise RuntimeError(msg)
@@ -381,7 +381,7 @@ def run_sync(
             token=hf_token,
             revision=revision,
         )
-    if not verified:
+    if verified is False:
         msg = "Remote manifest SHA-256 verification failed"
         raise RuntimeError(msg)
 
