@@ -62,7 +62,37 @@
             ]
           }
         },
-        "seed_cap": { "type": "integer", "minimum": 1 }
+        "seed_cap": { "type": "integer", "minimum": 1 },
+        "automation": { "$ref": "#/$defs/automation" }
+      }
+    },
+    "automation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "timezone",
+        "window_start_hour",
+        "window_end_hour",
+        "id_from",
+        "id_to",
+        "max_requests",
+        "min_interval_seconds",
+        "discovery_max_pages"
+      ],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "timezone": {
+          "type": "string",
+          "pattern": "^[A-Za-z_]+(?:/[A-Za-z0-9_+.-]+)+$"
+        },
+        "window_start_hour": { "type": "integer", "minimum": 0, "maximum": 23 },
+        "window_end_hour": { "type": "integer", "minimum": 0, "maximum": 23 },
+        "id_from": { "type": "integer", "minimum": 1 },
+        "id_to": { "type": "integer", "minimum": 1 },
+        "max_requests": { "type": "integer", "minimum": 1 },
+        "min_interval_seconds": { "type": "number", "exclusiveMinimum": 0 },
+        "discovery_max_pages": { "type": "integer", "minimum": 1 }
       }
     }
   }
