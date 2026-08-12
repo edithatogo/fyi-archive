@@ -10,7 +10,8 @@ on:
         description: Enabled registry instance to process, or all
         required: true
         default: all
-        type: string
+        type: choice
+        options: [all, ge-askgov, se-handlingar, ua-dostup, uy-quesabes]
       dry_run:
         description: Deterministic no-network run
         required: true
@@ -45,40 +46,16 @@ permissions:
   contents: read
 
 jobs:
-  plan:
-    runs-on: ubuntu-latest
-    outputs:
-      instances: ${{ steps.matrix.outputs.instances }}
-    steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          persist-credentials: false
-      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
-      - name: Build validated automation matrix
-        id: matrix
-        env:
-          SELECTED_INSTANCE: ${{ github.event_name == 'schedule' && 'all' || inputs.instance }}
-        run: |
-          set -euo pipefail
-          policies="$(uv run --frozen python scripts/build_alaveteli_automation_matrix.py)"
-          if [ "$SELECTED_INSTANCE" != "all" ] \
-            && ! jq -e --arg selected "$SELECTED_INSTANCE" \
-              '.include | any(.instance == $selected)' <<<"$policies" >/dev/null; then
-            echo "Unknown or disabled automation instance: $SELECTED_INSTANCE" >&2
-            exit 1
-          fi
-          instances="$(jq -c '[.include[].instance]' <<<"$policies")"
-          echo "instances=$instances" >> "$GITHUB_OUTPUT"
-
   archive:
-    needs: plan
     strategy:
       fail-fast: false
       # Different hosts progress independently; the reusable worker serializes
       # runs that target the same instance.
       max-parallel: 4
+      # GitHub does not expand reusable-workflow matrices from prior job
+      # outputs reliably. CI enforces exact parity with registry-enabled IDs.
       matrix:
-        instance: ${{ fromJSON(needs.plan.outputs.instances) }}
+        instance: [ge-askgov, se-handlingar, ua-dostup, uy-quesabes]
     permissions:
       contents: read
       actions: read
