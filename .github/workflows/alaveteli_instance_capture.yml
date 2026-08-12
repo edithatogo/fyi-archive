@@ -15,14 +15,26 @@ on:
         description: Deterministic no-network run
         required: true
         type: boolean
+      timezone:
+        description: IANA timezone from the validated instance registry
+        required: true
+        type: string
+      window_start_hour:
+        description: Inclusive local-hour start for autonomous capture
+        required: true
+        type: number
+      window_end_hour:
+        description: Exclusive local-hour end for autonomous capture
+        required: true
+        type: number
       id_from:
         description: First request ID for the bounded fallback queue
         required: true
-        type: string
+        type: number
       id_to:
         description: Last request ID for the bounded fallback queue
         required: true
-        type: string
+        type: number
       request_ref:
         description: Optional explicit public request ID or slug for a capped smoke
         required: true
@@ -30,15 +42,15 @@ on:
       max_requests:
         description: Maximum captures per site
         required: true
-        type: string
+        type: number
       min_interval:
         description: Minimum seconds between requests to the host
         required: true
-        type: string
+        type: number
       discovery_max_pages:
         description: Maximum feed pages to discover in this run
         required: true
-        type: string
+        type: number
 
 permissions:
   contents: read
@@ -63,6 +75,9 @@ jobs:
       MAX_REQUESTS: ${{ inputs.max_requests }}
       MIN_INTERVAL: ${{ inputs.min_interval }}
       DISCOVERY_MAX_PAGES: ${{ inputs.discovery_max_pages }}
+      CAPTURE_TIMEZONE: ${{ inputs.timezone }}
+      WINDOW_START_HOUR: ${{ inputs.window_start_hour }}
+      WINDOW_END_HOUR: ${{ inputs.window_end_hour }}
       AUTONOMOUS_LIVE_CAPTURE_ENABLED: ${{ vars.AUTONOMOUS_LIVE_CAPTURE_ENABLED || 'false' }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -125,34 +140,29 @@ jobs:
             echo "Set repository variable AUTONOMOUS_LIVE_CAPTURE_ENABLED=true after recording readiness evidence." >&2
             exit 1
           fi
-          case "$INSTANCE" in
-            se-handlingar) tz="Europe/Stockholm" ;;
-            ua-dostup) tz="Europe/Kyiv" ;;
-            uy-quesabes) tz="America/Montevideo" ;;
-            ge-askgov) tz="Asia/Tbilisi" ;;
-            *) echo "No local timezone configured for $INSTANCE"; exit 1 ;;
-          esac
-          hour="$(TZ="$tz" date +%H)"
+          hour="$((10#$(TZ="$CAPTURE_TIMEZONE" date +%H)))"
           if [ -n "$REQUEST_REF" ]; then
             eligible=true
             reason="explicit-request-reference"
+          elif [ "$WINDOW_START_HOUR" -lt "$WINDOW_END_HOUR" ] \
+            && [ "$hour" -ge "$WINDOW_START_HOUR" ] \
+            && [ "$hour" -lt "$WINDOW_END_HOUR" ]; then
+            eligible=true
+            reason="capture-window"
+          elif [ "$WINDOW_START_HOUR" -gt "$WINDOW_END_HOUR" ] \
+            && { [ "$hour" -ge "$WINDOW_START_HOUR" ] \
+              || [ "$hour" -lt "$WINDOW_END_HOUR" ]; }; then
+            eligible=true
+            reason="overnight-window"
           else
-            case "$hour" in
-              20|21|22|23|00|01|02|03|04|05|06|07|08|09)
-                eligible=true
-                reason="overnight-window"
-                ;;
-              *)
-                eligible=false
-                reason="outside-window"
-                ;;
-            esac
+            eligible=false
+            reason="outside-window"
           fi
           echo "eligible=$eligible" >> "$GITHUB_OUTPUT"
           echo "reason=$reason" >> "$GITHUB_OUTPUT"
-          echo "timezone=$tz" >> "$GITHUB_OUTPUT"
+          echo "timezone=$CAPTURE_TIMEZONE" >> "$GITHUB_OUTPUT"
           echo "local_hour=$hour" >> "$GITHUB_OUTPUT"
-          echo "Live window: eligible=$eligible reason=$reason timezone=$tz local_hour=$hour"
+          echo "Live window: eligible=$eligible reason=$reason timezone=$CAPTURE_TIMEZONE local_hour=$hour"
       - name: Record run window
         env:
           WINDOW_ELIGIBLE: ${{ steps.window.outputs.eligible }}
