@@ -12,7 +12,7 @@ from fyi_archive.internet_archive_sites import ADDITIONAL_SITES, list_internet_a
 
 SOURCE_GRAPH_CONFIG = Path("configs/archive_source_graph.json")
 JURISDICTION_TARGETS = Path("configs/jurisdiction_archive_targets.json")
-INSTANCE_REGISTRY = Path("src/fyi_archive/instances.py")
+INSTANCE_REGISTRY = Path("src/fyi_archive/config/archive_instances.json")
 TRANSFORMATION_VERSION = "normalize-archive-sources-v1"
 
 
