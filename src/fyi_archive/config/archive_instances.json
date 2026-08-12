@@ -97,7 +97,18 @@
       "source": "https://askgov.ge/",
       "catalog_url": "https://askgov.ge/body/all-authorities.csv",
       "source_modes": ["live_api", "atom_feed", "authority_catalog", "internet_archive"],
-      "seed_cap": 1000
+      "seed_cap": 1000,
+      "automation": {
+        "enabled": true,
+        "timezone": "Asia/Tbilisi",
+        "window_start_hour": 20,
+        "window_end_hour": 10,
+        "id_from": 1,
+        "id_to": 5,
+        "max_requests": 5,
+        "min_interval_seconds": 60,
+        "discovery_max_pages": 10
+      }
     },
     {
       "id": "gr-arthro5a",
@@ -251,7 +262,18 @@
       "source": "https://handlingar.se/",
       "catalog_url": "https://handlingar.se/body/all-authorities.csv",
       "source_modes": ["live_api", "atom_feed", "authority_catalog", "internet_archive"],
-      "seed_cap": 1000
+      "seed_cap": 1000,
+      "automation": {
+        "enabled": true,
+        "timezone": "Europe/Stockholm",
+        "window_start_hour": 20,
+        "window_end_hour": 10,
+        "id_from": 1,
+        "id_to": 5,
+        "max_requests": 5,
+        "min_interval_seconds": 60,
+        "discovery_max_pages": 10
+      }
     },
     {
       "id": "ua-dostup",
@@ -265,7 +287,18 @@
       "source": "https://dostup.org.ua/",
       "catalog_url": "https://dostup.org.ua/body/all-authorities.csv",
       "source_modes": ["live_api", "atom_feed", "authority_catalog", "internet_archive"],
-      "seed_cap": 1000
+      "seed_cap": 1000,
+      "automation": {
+        "enabled": true,
+        "timezone": "Europe/Kyiv",
+        "window_start_hour": 20,
+        "window_end_hour": 10,
+        "id_from": 1,
+        "id_to": 5,
+        "max_requests": 5,
+        "min_interval_seconds": 60,
+        "discovery_max_pages": 10
+      }
     },
     {
       "id": "uk-wdtk",
@@ -307,7 +340,18 @@
       "source": "https://quesabes.org/",
       "catalog_url": "https://quesabes.org/body/all-authorities.csv",
       "source_modes": ["live_api", "atom_feed", "authority_catalog", "internet_archive"],
-      "seed_cap": 1000
+      "seed_cap": 1000,
+      "automation": {
+        "enabled": true,
+        "timezone": "America/Montevideo",
+        "window_start_hour": 20,
+        "window_end_hour": 10,
+        "id_from": 1,
+        "id_to": 5,
+        "max_requests": 5,
+        "min_interval_seconds": 60,
+        "discovery_max_pages": 10
+      }
     },
     {
       "id": "xk-dumedite",

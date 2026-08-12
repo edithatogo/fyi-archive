@@ -7,7 +7,7 @@ import os
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
-from typing import TypedDict, cast
+from typing import NotRequired, TypedDict, cast
 
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import ValidationError
@@ -15,6 +15,18 @@ from jsonschema.exceptions import ValidationError
 DEFAULT_INSTANCE_ID = "nz-fyi"
 _CONFIG_RESOURCE = "config/archive_instances.json"
 _SCHEMA_RESOURCE = "schemas/archive-instances.schema.json"
+
+
+class _AutomationRow(TypedDict):
+    enabled: bool
+    timezone: str
+    window_start_hour: int
+    window_end_hour: int
+    id_from: int
+    id_to: int
+    max_requests: int
+    min_interval_seconds: float
+    discovery_max_pages: int
 
 
 class _InstanceRow(TypedDict):
@@ -30,6 +42,22 @@ class _InstanceRow(TypedDict):
     catalog_url: str | None
     source_modes: list[str]
     seed_cap: int
+    automation: NotRequired[_AutomationRow]
+
+
+@dataclass(frozen=True, slots=True)
+class AutomationPolicy:
+    """Bounded scheduling defaults for one autonomously captured instance."""
+
+    enabled: bool
+    timezone: str
+    window_start_hour: int
+    window_end_hour: int
+    id_from: int
+    id_to: int
+    max_requests: int
+    min_interval_seconds: float
+    discovery_max_pages: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +76,7 @@ class ArchiveInstance:
     catalog_url: str | None = None
     source_modes: tuple[str, ...] = ("live_api", "atom_feed", "internet_archive")
     seed_cap: int = 1000
+    automation: AutomationPolicy | None = None
 
     def capture_base_url(self) -> str:
         """Return base URL without trailing slash for fyi-cli --base-url."""
@@ -90,6 +119,18 @@ def parse_instance_registry(document: object, schema: object) -> dict[str, Archi
                 f"Invalid archive instance registry: source for {instance_id!r} "
                 "must equal base_url with one trailing slash"
             )
+        automation = _parse_automation(instance_id, typed_row.get("automation"))
+        if automation is not None and automation.enabled:
+            if "live_api" not in typed_row["source_modes"]:
+                raise ValueError(
+                    f"Invalid archive instance registry: automated instance {instance_id!r} "
+                    "must support live_api"
+                )
+            if typed_row["catalog_url"] is None:
+                raise ValueError(
+                    f"Invalid archive instance registry: automated instance {instance_id!r} "
+                    "must define catalog_url"
+                )
         instances[instance_id] = ArchiveInstance(
             id=instance_id,
             base_url=base_url,
@@ -103,12 +144,38 @@ def parse_instance_registry(document: object, schema: object) -> dict[str, Archi
             catalog_url=typed_row["catalog_url"],
             source_modes=tuple(typed_row["source_modes"]),
             seed_cap=typed_row["seed_cap"],
+            automation=automation,
         )
     if DEFAULT_INSTANCE_ID not in instances:
         raise ValueError(
             f"Invalid archive instance registry: default {DEFAULT_INSTANCE_ID!r} is missing"
         )
     return instances
+
+
+def _parse_automation(instance_id: str, row: _AutomationRow | None) -> AutomationPolicy | None:
+    if row is None:
+        return None
+    if row["window_start_hour"] == row["window_end_hour"]:
+        raise ValueError(
+            f"Invalid archive instance registry: automation window for {instance_id!r} is empty"
+        )
+    if row["id_to"] < row["id_from"]:
+        raise ValueError(
+            f"Invalid archive instance registry: automation id bounds for {instance_id!r} "
+            "must be ordered"
+        )
+    return AutomationPolicy(
+        enabled=row["enabled"],
+        timezone=row["timezone"],
+        window_start_hour=row["window_start_hour"],
+        window_end_hour=row["window_end_hour"],
+        id_from=row["id_from"],
+        id_to=row["id_to"],
+        max_requests=row["max_requests"],
+        min_interval_seconds=float(row["min_interval_seconds"]),
+        discovery_max_pages=row["discovery_max_pages"],
+    )
 
 
 def _load_instances() -> dict[str, ArchiveInstance]:
@@ -172,6 +239,7 @@ def resolve_instance(
         catalog_url=instance.catalog_url,
         source_modes=instance.source_modes,
         seed_cap=instance.seed_cap,
+        automation=instance.automation,
     )
 
 
