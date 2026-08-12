@@ -1,0 +1,328 @@
+name: Alaveteli instance capture
+
+on:
+  workflow_call:
+    inputs:
+      instance:
+        description: Configured Alaveteli instance to process
+        required: true
+        type: string
+      enabled:
+        description: Whether this matrix member should run
+        required: true
+        type: boolean
+      dry_run:
+        description: Deterministic no-network run
+        required: true
+        type: boolean
+      id_from:
+        description: First request ID for the bounded fallback queue
+        required: true
+        type: string
+      id_to:
+        description: Last request ID for the bounded fallback queue
+        required: true
+        type: string
+      request_ref:
+        description: Optional explicit public request ID or slug for a capped smoke
+        required: true
+        type: string
+      max_requests:
+        description: Maximum captures per site
+        required: true
+        type: string
+      min_interval:
+        description: Minimum seconds between requests to the host
+        required: true
+        type: string
+      discovery_max_pages:
+        description: Maximum feed pages to discover in this run
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    if: ${{ inputs.enabled }}
+    concurrency:
+      group: alaveteli-working-site-${{ inputs.instance }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      actions: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      INSTANCE: ${{ inputs.instance }}
+      DRY_RUN: ${{ inputs.dry_run }}
+      ID_FROM: ${{ inputs.id_from }}
+      ID_TO: ${{ inputs.id_to }}
+      REQUEST_REF: ${{ inputs.request_ref }}
+      MAX_REQUESTS: ${{ inputs.max_requests }}
+      MIN_INTERVAL: ${{ inputs.min_interval }}
+      DISCOVERY_MAX_PAGES: ${{ inputs.discovery_max_pages }}
+      AUTONOMOUS_LIVE_CAPTURE_ENABLED: ${{ vars.AUTONOMOUS_LIVE_CAPTURE_ENABLED || 'false' }}
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: uv sync --extra dev --frozen
+      - name: Restore latest verified site state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          root="data/$INSTANCE"
+          restore=".tmp/restore-$INSTANCE"
+          mkdir -p "$root" "$restore" .tmp
+          restored=false
+          mapfile -t runs < <(
+            gh run list --repo "$GITHUB_REPOSITORY" \
+              --workflow alaveteli_working_sites.yml --branch "$GITHUB_REF_NAME" \
+              --limit 30 --json databaseId,conclusion \
+              --jq '.[] | select(.conclusion == "success") | .databaseId'
+          )
+          for run_id in "${runs[@]}"; do
+            [ "$run_id" = "$GITHUB_RUN_ID" ] && continue
+            candidate="$restore/$run_id"
+            rm -rf "$candidate"
+            mkdir -p "$candidate"
+            if ! gh run download "$run_id" \
+              --repo "$GITHUB_REPOSITORY" \
+              --name "alaveteli-$INSTANCE-$run_id" \
+              --dir "$candidate" >/dev/null 2>&1; then
+              continue
+            fi
+            ledger_file="$(find "$candidate" -type f -path '*/_state/ledger.jsonl' -print -quit)"
+            [ -n "$ledger_file" ] || continue
+            site_root="${ledger_file%/_state/ledger.jsonl}"
+            ledger="$site_root/_state/ledger.jsonl"
+            if [ -s "$ledger" ] && grep -q '"status": "completed"' "$ledger" && grep -q '"dry_run": false' "$ledger"; then
+              cp -a "$site_root/." "$root/"
+              echo "Restored verified live state from run $run_id"
+              echo "restored_run=$run_id" >> "$GITHUB_STEP_SUMMARY"
+              restored=true
+              break
+            fi
+          done
+          if [ "$restored" != "true" ]; then
+            echo "No prior verified live state artifact found for $INSTANCE; starting with an empty state."
+            echo "restored_run=none" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Enforce live safety gates
+        id: window
+        if: ${{ !inputs.dry_run }}
+        run: |
+          set -euo pipefail
+          if [ "$AUTONOMOUS_LIVE_CAPTURE_ENABLED" != "true" ]; then
+            echo "Set repository variable AUTONOMOUS_LIVE_CAPTURE_ENABLED=true after recording readiness evidence." >&2
+            exit 1
+          fi
+          case "$INSTANCE" in
+            se-handlingar) tz="Europe/Stockholm" ;;
+            ua-dostup) tz="Europe/Kyiv" ;;
+            uy-quesabes) tz="America/Montevideo" ;;
+            ge-askgov) tz="Asia/Tbilisi" ;;
+            *) echo "No local timezone configured for $INSTANCE"; exit 1 ;;
+          esac
+          hour="$(TZ="$tz" date +%H)"
+          if [ -n "$REQUEST_REF" ]; then
+            eligible=true
+            reason="explicit-request-reference"
+          else
+            case "$hour" in
+              20|21|22|23|00|01|02|03|04|05|06|07|08|09)
+                eligible=true
+                reason="overnight-window"
+                ;;
+              *)
+                eligible=false
+                reason="outside-window"
+                ;;
+            esac
+          fi
+          echo "eligible=$eligible" >> "$GITHUB_OUTPUT"
+          echo "reason=$reason" >> "$GITHUB_OUTPUT"
+          echo "timezone=$tz" >> "$GITHUB_OUTPUT"
+          echo "local_hour=$hour" >> "$GITHUB_OUTPUT"
+          echo "Live window: eligible=$eligible reason=$reason timezone=$tz local_hour=$hour"
+      - name: Record run window
+        env:
+          WINDOW_ELIGIBLE: ${{ steps.window.outputs.eligible }}
+          WINDOW_REASON: ${{ steps.window.outputs.reason }}
+          WINDOW_TIMEZONE: ${{ steps.window.outputs.timezone }}
+          WINDOW_LOCAL_HOUR: ${{ steps.window.outputs.local_hour }}
+        run: |
+          set -euo pipefail
+          mkdir -p "data/$INSTANCE/_state"
+          mode="live-skipped-outside-window"
+          if [ "$DRY_RUN" = "true" ]; then
+            mode="dry-run"
+          elif [ "$WINDOW_ELIGIBLE" = "true" ]; then
+            mode="live-eligible"
+          fi
+          printf '{"instance_id":"%s","mode":"%s","reason":"%s","timezone":"%s","local_hour":"%s"}\n' \
+            "$INSTANCE" "$mode" "$WINDOW_REASON" "$WINDOW_TIMEZONE" "$WINDOW_LOCAL_HOUR" \
+            > "data/$INSTANCE/_state/run-window.json"
+      - name: Discover authority catalog
+        if: ${{ !inputs.dry_run && steps.window.outputs.eligible == 'true' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "data/$INSTANCE/_state"
+          catalog_url="$(uv run python -c 'from fyi_archive.instances import get_instance; print(get_instance("'"$INSTANCE"'").catalog_url or "")')"
+          test -n "$catalog_url"
+          uv run fyi-archive discover bodies \
+            --instance "$INSTANCE" \
+            --catalog-url "$catalog_url" \
+            --delay-seconds "$MIN_INTERVAL" \
+            --output "data/$INSTANCE/_state/discovered_bodies.json" \
+            --provenance "data/$INSTANCE/_state/discovered_bodies.provenance.json" \
+            --shared-rate-limit-db "data/$INSTANCE/_state/fyi-cli.db" \
+            --fallback \
+            --repository "${{ github.repository }}" \
+            --workflow "alaveteli_working_sites.yml"
+      - name: Prepare resumable request queue
+        id: queue
+        if: ${{ !inputs.dry_run && steps.window.outputs.eligible == 'true' }}
+        run: |
+          set -euo pipefail
+          root="data/$INSTANCE"
+          mkdir -p "$root/_state" .tmp
+          uv run python scripts/manage_alaveteli_queue.py \
+            --queue "$root/_state/discovered_requests.jsonl" \
+            --ledger "$root/_state/ledger.jsonl" \
+            --output "$root/_state/discovered_requests.jsonl" \
+            > .tmp/queue-state.json
+          pending="$(jq -r '.pending' .tmp/queue-state.json)"
+          echo "pending=$pending" >> "$GITHUB_OUTPUT"
+          echo "queue_pending=$pending" >> "$GITHUB_STEP_SUMMARY"
+      - name: Discover next request queue page or use bounded fallback IDs
+        if: ${{ !inputs.dry_run && steps.window.outputs.eligible == 'true' && steps.queue.outputs.pending == '0' }}
+        run: |
+          set -euo pipefail
+          mkdir -p "data/$INSTANCE/_state"
+          capture_base_url="$(uv run python -c 'from fyi_archive.instances import get_instance; print(get_instance("'"$INSTANCE"'").capture_base_url())')"
+          incoming=".tmp/$INSTANCE-discovered-requests.jsonl"
+          rm -f "$incoming"
+          if uv run fyi discover --base-url "$capture_base_url" \
+            --delay-seconds "$MIN_INTERVAL" --db "data/$INSTANCE/_state/fyi-cli.db" \
+            --checkpoint "data/$INSTANCE/_state/discovery.checkpoint" \
+            --max-pages "$DISCOVERY_MAX_PAGES" \
+            --output "$incoming" \
+            && test -s "$incoming" \
+            && grep -q '[^[:space:]]' "$incoming"; then
+            discovery="feed"
+          elif uv run fyi discover --base-url "$capture_base_url" \
+            --backfill-ids --id-from "$ID_FROM" --id-to "$ID_TO" \
+            --delay-seconds "$MIN_INTERVAL" --db "data/$INSTANCE/_state/fyi-cli.db" \
+            --output "$incoming" \
+            && test -s "$incoming" \
+            && grep -q '[^[:space:]]' "$incoming"; then
+            discovery="bounded-id-fallback"
+          else
+            discovery="empty"
+          fi
+          uv run python scripts/manage_alaveteli_queue.py \
+            --queue "data/$INSTANCE/_state/discovered_requests.jsonl" \
+            --ledger "data/$INSTANCE/_state/ledger.jsonl" \
+            --incoming "$incoming" \
+            --output "data/$INSTANCE/_state/discovered_requests.jsonl" \
+            | tee .tmp/queue-state-after-discovery.json
+          echo "discovery=$discovery" >> "$GITHUB_STEP_SUMMARY"
+      - name: Run gentle seed
+        if: ${{ inputs.dry_run || steps.window.outputs.eligible == 'true' }}
+        run: |
+          set -euo pipefail
+          root="data/$INSTANCE"
+          capture_base_url="$(uv run python -c 'from fyi_archive.instances import get_instance; print(get_instance("'"$INSTANCE"'").capture_base_url())')"
+          args=(
+            --instance "$INSTANCE"
+            --base-url "$capture_base_url"
+            --ledger-path "$root/_state/ledger.jsonl"
+            --data-dir "$root"
+            --derived-dir "$root/derived/requests"
+            --dist-dir "$root/dist"
+            --max-requests "$MAX_REQUESTS"
+            --max-runtime-minutes 30
+            --max-disk-gb 5
+            --min-interval "$MIN_INTERVAL"
+            --concurrency 1
+            --continue-on-error
+          )
+          if [ -n "$REQUEST_REF" ]; then
+            args+=(--request-ref "$REQUEST_REF")
+          fi
+          if [ "$DRY_RUN" = "true" ]; then
+            args+=(--dry-run)
+          elif [ -n "$REQUEST_REF" ]; then
+            : # explicit request reference already added above
+          elif [ -f "$root/_state/discovered_requests.jsonl" ]; then
+            args+=(--requests-file "$root/_state/discovered_requests.jsonl")
+          else
+            args+=(--id-from "$ID_FROM" --id-to "$ID_TO" --allow-undiscovered)
+          fi
+          uv run fyi-archive seed run "${args[@]}"
+      - name: Build manifest
+        if: ${{ inputs.dry_run || steps.window.outputs.eligible == 'true' }}
+        run: |
+          set -euo pipefail
+          root="data/$INSTANCE"
+          derived="$root/derived/requests"
+          if [ "$DRY_RUN" != "true" ]; then
+            derived="$root/raw/requests"
+          fi
+          uv run fyi-archive manifest build \
+            --instance "$INSTANCE" \
+            --derived-dir "$derived" \
+            --manifest-path "$root/manifest.json" \
+            --parquet-path "$root/manifest.parquet" \
+            --authorities-path "$root/authorities.json" \
+            --fyi-cli-version 1.2.0
+      - name: Verify explicit live capture
+        if: ${{ inputs.request_ref != '' && !inputs.dry_run && steps.window.outputs.eligible == 'true' }}
+        run: |
+          set -euo pipefail
+          uv run python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("data") / os.environ["INSTANCE"]
+          ledger_path = root / "_state" / "ledger.jsonl"
+          entries = [
+              json.loads(line)
+              for line in ledger_path.read_text(encoding="utf-8").splitlines()
+              if line.strip()
+          ]
+          matches = [
+              entry for entry in entries if str(entry.get("request_id")) == os.environ["REQUEST_REF"]
+          ]
+          if not matches:
+              raise SystemExit(f"explicit request {os.environ['REQUEST_REF']} is absent from the ledger")
+          entry = matches[-1]
+          if entry.get("status") != "completed":
+              raise SystemExit(
+                  f"explicit request {os.environ['REQUEST_REF']} did not complete: "
+                  f"{entry.get('status')} {entry.get('error', '')}".strip()
+              )
+          manifest = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
+          record_count = int(manifest.get("meta", {}).get("record_count") or 0)
+          if record_count < 1:
+              raise SystemExit(f"explicit request {os.environ['REQUEST_REF']} produced an empty manifest")
+          print(f"Verified explicit live capture: {os.environ['REQUEST_REF']} ({record_count} record(s))")
+          PY
+      - name: Upload site archive evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: alaveteli-${{ inputs.instance }}-${{ github.run_id }}
+          retention-days: 90
+          if-no-files-found: error
+          path: data/${{ inputs.instance }}/
