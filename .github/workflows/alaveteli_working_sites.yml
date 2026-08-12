@@ -48,7 +48,7 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.matrix.outputs.matrix }}
+      instances: ${{ steps.matrix.outputs.instances }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -67,8 +67,8 @@ jobs:
             echo "Unknown or disabled automation instance: $SELECTED_INSTANCE" >&2
             exit 1
           fi
-          matrix="$(jq -c '{include: [.include[] | {instance}]}' <<<"$policies")"
-          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          instances="$(jq -c '[.include[].instance]' <<<"$policies")"
+          echo "instances=$instances" >> "$GITHUB_OUTPUT"
 
   archive:
     needs: plan
@@ -77,7 +77,8 @@ jobs:
       # Different hosts progress independently; the reusable worker serializes
       # runs that target the same instance.
       max-parallel: 4
-      matrix: ${{ fromJson(needs.plan.outputs.matrix) }}
+      matrix:
+        instance: ${{ fromJSON(needs.plan.outputs.instances) }}
     permissions:
       contents: read
       actions: read
