@@ -3,6 +3,12 @@ from pathlib import Path
 WORKFLOW = Path(".github/workflows/alaveteli_working_sites.yml").read_text(encoding="utf-8")
 
 
+def test_instances_run_in_parallel_but_each_instance_is_serialized() -> None:
+    assert "group: alaveteli-working-site-${{ matrix.instance }}" in WORKFLOW
+    assert "group: alaveteli-working-sites\n" not in WORKFLOW
+    assert "max-parallel: 4" in WORKFLOW
+
+
 def test_request_discovery_uses_checkpointed_feed_before_bounded_fallback() -> None:
     discovery = WORKFLOW[WORKFLOW.index("Discover next request queue page") :]
     assert "Prepare resumable request queue" in WORKFLOW
