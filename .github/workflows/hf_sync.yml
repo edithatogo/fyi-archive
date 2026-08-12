@@ -95,6 +95,7 @@ jobs:
             --output rendered-dataset-card.md
 
       - name: Upload verified dataset card
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.dry_run == false }}
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
