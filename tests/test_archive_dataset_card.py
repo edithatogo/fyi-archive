@@ -50,3 +50,7 @@ def test_catalog_orders_supported_before_experimental_and_historical() -> None:
 def test_hf_sync_passes_selected_instance_to_card_renderer() -> None:
     workflow = Path(".github/workflows/hf_sync.yml").read_text(encoding="utf-8")
     assert '--instance "$INSTANCE"' in workflow
+    assert "group: hf-sync-${{ inputs.instance || 'nz-fyi' }}" in workflow
+    assert "INSTANCE: ${{ inputs.instance || 'nz-fyi' }}" in workflow
+    assert 'if [ "$INSTANCE" = "nz-fyi" ]' in workflow
+    assert "get_instance(os.environ[\"INSTANCE\"]).hf_repo_id" in workflow
