@@ -104,12 +104,24 @@ def test_catalog_helpers_fail_closed_and_write_digest(tmp_path: Path) -> None:
     else:
         raise AssertionError("missing provenance checksum must fail closed")
     with pytest.raises(catalog_fallback.CatalogArtifactError, match="list of objects"):
-        catalog_fallback.validate_catalog_payload(
-            {
-                "bodies": ["not-an-object"],
-                "provenance": {"payload_sha256": "abc"},
-            }
-        )
+        catalog_fallback.validate_catalog_payload({
+            "bodies": ["not-an-object"],
+            "provenance": {"payload_sha256": "abc"},
+        })
+
+
+def test_catalog_archive_wraps_malformed_zip_seek_errors(monkeypatch) -> None:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+
+    def fail_open(*_args, **_kwargs):
+        raise ValueError("negative seek value -20")
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", fail_open)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="negative seek value"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
 
 
 def test_restore_requires_token_and_verified_files(monkeypatch, tmp_path: Path) -> None:

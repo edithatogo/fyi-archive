@@ -11,7 +11,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from fyi_archive.health import parity_report
-from scripts.build_historical_archive_manifest import _declared_artifact_path
+from scripts.build_historical_archive_manifest import declared_artifact_path
 
 
 def canonical_hash_stable(data: dict[str, Any]) -> str:
@@ -82,7 +82,7 @@ def test_declared_artifact_paths_never_escape_root(parts: list[str]) -> None:
     value = "/".join(parts)
     root = Path("synthetic-fuzz-root")
     try:
-        _, candidate = _declared_artifact_path(root, value)
+        _, candidate = declared_artifact_path(root, value)
     except ValueError:
         return
     candidate.resolve(strict=False).relative_to(root.resolve())

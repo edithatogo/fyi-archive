@@ -87,6 +87,7 @@ def parse_catalog_archive(archive: bytes) -> tuple[dict[str, Any], dict[str, Any
             )
     except (
         OSError,
+        ValueError,
         UnicodeDecodeError,
         zipfile.BadZipFile,
         EOFError,

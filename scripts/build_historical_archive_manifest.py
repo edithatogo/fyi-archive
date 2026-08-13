@@ -13,15 +13,10 @@ from typing import Any, cast
 INSTANCE_ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
-def _declared_artifact_path(root: Path, value: object) -> tuple[str, Path]:
-    if (
-        not isinstance(value, str)
-        or not value
-        or "\\" in value
-        or ":" in value
-        or value.startswith("./")
-        or "/./" in value
-    ):
+def declared_artifact_path(root: Path, value: object) -> tuple[str, Path]:
+    if not isinstance(value, str) or not value:
+        raise ValueError("artifact path must be a relative POSIX path")
+    if "\\" in value or ":" in value or value.startswith("./") or "/./" in value:
         raise ValueError("artifact path must be a relative POSIX path")
     relative = PurePosixPath(value)
     if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
@@ -58,7 +53,7 @@ def build_manifest(
         status_relative = status_path.relative_to(root).as_posix()
     except ValueError as error:
         raise ValueError("status artifact must be below the manifest root") from error
-    _, validated_status_path = _declared_artifact_path(root, status_relative)
+    _, validated_status_path = declared_artifact_path(root, status_relative)
     if validated_status_path != status_path or not status_path.is_file():
         raise ValueError(f"missing status artifact: {status_path}")
     status = cast("dict[str, Any]", json.loads(status_path.read_text(encoding="utf-8")))
@@ -70,7 +65,7 @@ def build_manifest(
     declared = cast("dict[str, Any]", artifacts)
     files: list[dict[str, Any]] = []
     for raw_name, raw_metadata in sorted(declared.items()):
-        name, path = _declared_artifact_path(root, raw_name)
+        name, path = declared_artifact_path(root, raw_name)
         if not isinstance(raw_metadata, dict):
             raise ValueError(f"artifact metadata must contain an object: {name}")
         metadata = cast("dict[str, Any]", raw_metadata)

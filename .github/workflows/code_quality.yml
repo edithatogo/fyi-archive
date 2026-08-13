@@ -83,7 +83,10 @@ jobs:
       - name: Install the locked environment
         run: uv sync --extra dev --frozen
       - name: Audit installed dependencies
-        run: uv run pip-audit --strict
+        run: |
+          uv export --frozen --extra dev --no-emit-project --no-emit-package fyi-cli \
+            --output-file requirements-audit.txt
+          uv run pip-audit --strict --requirement requirements-audit.txt
 
   zizmor-advisory:
     runs-on: ubuntu-latest
