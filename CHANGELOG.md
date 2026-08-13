@@ -22,6 +22,7 @@ bootstrap release.
 ### Bug Fixes
 
 * bound seed queues and reject unsafe output paths ([#393](https://github.com/edithatogo/fyi-archive/issues/393)) ([cf80a94](https://github.com/edithatogo/fyi-archive/commit/cf80a9434c17984d6a4e12b4570edc582b0f76bc))
+* migrate all-instance CDX discovery to pinned fyi-cli ([#390](https://github.com/edithatogo/fyi-archive/issues/390)) ([ef18fad](https://github.com/edithatogo/fyi-archive/commit/ef18fad2a7cd9ebf0aa8143cfb466eb6573e92bd))
 * enforce registry parity at static expansion ([#387](https://github.com/edithatogo/fyi-archive/issues/387)) ([516b613](https://github.com/edithatogo/fyi-archive/commit/516b613b00db0a03b538c85ac21f5862d0f816ac))
 * expand registry as instance array ([#386](https://github.com/edithatogo/fyi-archive/issues/386)) ([48b797b](https://github.com/edithatogo/fyi-archive/commit/48b797b16781d8ef4ef46f94da53c2c0699384ca))
 * guard NZ backfill continuation parity ([#354](https://github.com/edithatogo/fyi-archive/issues/354)) ([6d33181](https://github.com/edithatogo/fyi-archive/commit/6d33181858dae7ffb72b1d13bc75c1ab1774c168))
@@ -38,6 +39,11 @@ bootstrap release.
 ### Performance Improvements
 
 * stream seed queues and preserve controller contracts ([#392](https://github.com/edithatogo/fyi-archive/issues/392)) ([7e9a1f3](https://github.com/edithatogo/fyi-archive/commit/7e9a1f3a06c04672cf8dcebac274ea3a37337b01))
+
+
+### Security
+
+* harden archive parsing and add bounded fuzzing ([#391](https://github.com/edithatogo/fyi-archive/issues/391)) ([d5d1599](https://github.com/edithatogo/fyi-archive/commit/d5d15996ae1a6e82732d82f067f9a2b05b0d2119))
 
 
 ### Documentation
