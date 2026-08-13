@@ -87,6 +87,8 @@ def run(
     """Run historical seed orchestration."""
     if concurrency < 1:
         raise typer.BadParameter("--concurrency must be positive")
+    if max_requests is not None and max_requests < 1:
+        raise typer.BadParameter("--max-requests must be positive")
     if request_ref is not None and requests_file is not None:
         raise typer.BadParameter("use either --request-ref or --requests-file, not both")
     if request_ref is not None:
