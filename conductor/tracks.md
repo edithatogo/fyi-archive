@@ -279,6 +279,13 @@ Goal: Preserve immutable, replayable and public-safe archive evidence for every 
 Link: [./tracks/jurisdiction_archive_completion_20260721/](./tracks/jurisdiction_archive_completion_20260721/)
 GitHub: [#210](https://github.com/edithatogo/fyi-archive/issues/210); programme parent [foi-o #81](https://github.com/edithatogo/foi-o/issues/81).
 
+### [~] Track: Security, quality, and fuzzing hardening
+Track ID: `security_quality_fuzzing_20260813` — satisfies **R-18**
+Goal: Exercise untrusted archive, manifest, path, and parser boundaries with
+Hypothesis properties and bounded Atheris campaigns.
+Link: [./tracks/security_quality_fuzzing_20260813/](./tracks/security_quality_fuzzing_20260813/)
+Status: local implementation complete; hosted PR and scheduled campaign evidence pending.
+
 ## Archived tracks
 
 ### [x] Track: GitHub project best practices and workflow maximization

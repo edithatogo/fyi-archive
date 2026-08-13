@@ -1,0 +1,96 @@
+name: Security fuzzing
+
+on:
+  pull_request:
+  schedule:
+    - cron: "23 4 * * 3"
+  workflow_dispatch:
+    inputs:
+      seconds_per_target:
+        description: Coverage-guided runtime for each target
+        type: choice
+        required: true
+        default: "300"
+        options: ["120", "300", "900"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fuzz-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  property-smoke:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --extra dev --frozen
+      - name: Hypothesis property smoke
+        run: uv run pytest -q tests/test_hypothesis.py
+
+  atheris-smoke:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - name: Run bounded coverage-guided smoke
+        run: >-
+          uv run --with atheris==3.1.0 python scripts/run_fuzzers.py
+          --seconds-per-target 20 --rss-limit-mb 512
+      - name: Retain failure corpus
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: atheris-pr-failures-${{ github.run_id }}
+          path: |
+            fuzz/artifacts/
+            fuzz/corpus/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  atheris-long:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - name: Run longer coverage-guided campaign
+        env:
+          REQUESTED_SECONDS: ${{ inputs.seconds_per_target || '300' }}
+        run: >-
+          uv run --with atheris==3.1.0 python scripts/run_fuzzers.py
+          --seconds-per-target "$REQUESTED_SECONDS"
+      - name: Retain failure corpus
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: atheris-long-failures-${{ github.run_id }}
+          path: |
+            fuzz/artifacts/
+            fuzz/corpus/
+          if-no-files-found: ignore
+          retention-days: 30

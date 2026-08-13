@@ -65,3 +65,6 @@ htmlcov/
 .DS_Store
 Thumbs.db
 *.swp
+# Generated fuzzing corpora and crash artifacts
+fuzz/corpus/
+fuzz/artifacts/

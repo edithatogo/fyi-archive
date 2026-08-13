@@ -14,6 +14,15 @@ import pytest
 from fyi_archive import catalog_fallback
 
 
+def _duplicate_catalog_archive() -> bytes:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+    return archive.getvalue()
+
+
 def test_restore_latest_verified_catalog_accepts_checksum_matched_artifact(
     monkeypatch, tmp_path: Path
 ) -> None:
@@ -57,8 +66,8 @@ def test_restore_latest_verified_catalog_accepts_checksum_matched_artifact(
         def __exit__(self, *args):
             return None
 
-        def read(self):
-            return archive.getvalue()
+        def read(self, size: int = -1):
+            return archive.getvalue()[:size] if size >= 0 else archive.getvalue()
 
     monkeypatch.setattr(
         catalog_fallback.urllib.request, "urlopen", lambda *args, **kwargs: Response()
@@ -95,10 +104,12 @@ def test_catalog_helpers_fail_closed_and_write_digest(tmp_path: Path) -> None:
     else:
         raise AssertionError("missing provenance checksum must fail closed")
     with pytest.raises(catalog_fallback.CatalogArtifactError, match="list of objects"):
-        catalog_fallback.validate_catalog_payload({
-            "bodies": ["not-an-object"],
-            "provenance": {"payload_sha256": "abc"},
-        })
+        catalog_fallback.validate_catalog_payload(
+            {
+                "bodies": ["not-an-object"],
+                "provenance": {"payload_sha256": "abc"},
+            }
+        )
 
 
 def test_restore_requires_token_and_verified_files(monkeypatch, tmp_path: Path) -> None:
@@ -141,8 +152,8 @@ def test_github_json_and_artifact_schema_failures(monkeypatch, tmp_path: Path) -
         def __exit__(self, *args):
             return None
 
-        def read(self):
-            return self.payload
+        def read(self, size: int = -1):
+            return self.payload[:size] if size >= 0 else self.payload
 
     monkeypatch.setattr(
         catalog_fallback.urllib.request,
@@ -204,8 +215,8 @@ def test_restore_rejects_non_object_and_checksum_mismatch(monkeypatch, tmp_path:
         def __exit__(self, *args):
             return None
 
-        def read(self):
-            return self.payload
+        def read(self, size: int = -1):
+            return self.payload[:size] if size >= 0 else self.payload
 
     def api(url, token):
         if url.endswith("/runs?status=success&per_page=20"):
@@ -302,7 +313,7 @@ def test_restore_rejects_invalid_zip_and_skips_invalid_run(monkeypatch, tmp_path
             {
                 "__enter__": lambda self: self,
                 "__exit__": lambda self, *args: None,
-                "read": lambda self: b"not-a-zip",
+                "read": lambda self, size=-1: b"not-a-zip"[:size],
             },
         )(),
     )
@@ -314,3 +325,37 @@ def test_restore_rejects_invalid_zip_and_skips_invalid_run(monkeypatch, tmp_path
             workflow="rollout.yml",
             token="token",
         )
+
+
+def test_catalog_archive_rejects_duplicate_and_oversized_members(monkeypatch) -> None:
+    with pytest.warns(UserWarning, match="Duplicate name"):
+        duplicate = _duplicate_catalog_archive()
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="duplicate"):
+        catalog_fallback.parse_catalog_archive(duplicate)
+
+    oversized = io.BytesIO()
+    with zipfile.ZipFile(oversized, "w", zipfile.ZIP_DEFLATED) as bundle:
+        bundle.writestr("discovered_bodies.json", "x" * 128)
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+    monkeypatch.setattr(catalog_fallback, "MAX_CATALOG_MEMBER_BYTES", 64)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="member exceeds"):
+        catalog_fallback.parse_catalog_archive(oversized.getvalue())
+
+
+def test_bounded_reader_rejects_oversized_response() -> None:
+    class Response:
+        def read(self, size: int) -> bytes:
+            return b"x" * size
+
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="exceeds"):
+        catalog_fallback._read_bounded(Response(), limit=8, label="response")
+
+
+def test_catalog_member_read_is_bounded_even_when_zip_metadata_is_forged(monkeypatch) -> None:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+    monkeypatch.setattr(catalog_fallback, "MAX_CATALOG_MEMBER_BYTES", 1)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="exceeds"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
