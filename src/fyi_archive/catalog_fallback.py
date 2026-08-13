@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import lzma
 import os
 import urllib.error
 import urllib.request
@@ -94,6 +95,7 @@ def parse_catalog_archive(archive: bytes) -> tuple[dict[str, Any], dict[str, Any
         KeyError,
         NotImplementedError,
         RuntimeError,
+        lzma.LZMAError,
         zlib.error,
         json.JSONDecodeError,
     ) as error:

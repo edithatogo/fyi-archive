@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import lzma
 import urllib.error
 import zipfile
 from pathlib import Path
@@ -121,6 +122,20 @@ def test_catalog_archive_wraps_malformed_zip_seek_errors(monkeypatch) -> None:
 
     monkeypatch.setattr(zipfile.ZipFile, "open", fail_open)
     with pytest.raises(catalog_fallback.CatalogArtifactError, match="negative seek value"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
+
+
+def test_catalog_archive_wraps_lzma_decompression_errors(monkeypatch) -> None:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+
+    def fail_open(*_args, **_kwargs):
+        raise lzma.LZMAError("invalid compression options")
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", fail_open)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="compression options"):
         catalog_fallback.parse_catalog_archive(archive.getvalue())
 
 
