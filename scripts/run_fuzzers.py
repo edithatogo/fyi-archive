@@ -67,6 +67,9 @@ def main() -> int:
     args.artifact_root.mkdir(parents=True, exist_ok=True)
     environment = dict(os.environ)
     environment.setdefault("PYTHONHASHSEED", "0")
+    environment["PYTHONPATH"] = os.pathsep.join(
+        part for part in (str(ROOT), environment.get("PYTHONPATH")) if part
+    )
     for target in TARGETS:
         stem = Path(target).stem
         artifacts = args.artifact_root / stem

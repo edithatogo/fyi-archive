@@ -172,7 +172,9 @@ def test_github_json_and_artifact_schema_failures(monkeypatch, tmp_path: Path) -
         "urlopen",
         lambda *args, **kwargs: Response(b'{"ok": true}'),
     )
-    assert catalog_fallback._github_json("https://api.example", "token")["ok"] is True
+    response = catalog_fallback._github_json("https://api.example", "token")
+    assert isinstance(response, dict)
+    assert response == {"ok": True}
     monkeypatch.setattr(
         catalog_fallback.urllib.request,
         "urlopen",
@@ -354,9 +356,39 @@ def test_catalog_archive_rejects_duplicate_and_oversized_members(monkeypatch) ->
         catalog_fallback.parse_catalog_archive(oversized.getvalue())
 
 
+def test_catalog_archive_rejects_container_bounds_and_ambiguous_members(monkeypatch) -> None:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("a/discovered_bodies.json", "{}")
+        bundle.writestr("b/discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+
+    monkeypatch.setattr(catalog_fallback, "MAX_CATALOG_ARCHIVE_BYTES", 1)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="compressed size"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
+
+    monkeypatch.setattr(catalog_fallback, "MAX_CATALOG_ARCHIVE_BYTES", 1024 * 1024)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="exactly one"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
+
+    monkeypatch.setattr(catalog_fallback, "MAX_CATALOG_ARCHIVE_ENTRIES", 2)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="too many entries"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
+
+
+def test_catalog_archive_rejects_total_uncompressed_size(monkeypatch) -> None:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
+        bundle.writestr("discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+    monkeypatch.setattr(catalog_fallback, "MAX_CATALOG_UNCOMPRESSED_BYTES", 3)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="uncompressed size"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
+
+
 def test_bounded_reader_rejects_oversized_response() -> None:
     class Response:
-        def read(self, size: int) -> bytes:
+        def read(self, size: int = -1, /) -> bytes:
             return b"x" * size
 
     with pytest.raises(catalog_fallback.CatalogArtifactError, match="exceeds"):

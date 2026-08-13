@@ -29,7 +29,7 @@ MAX_CATALOG_UNCOMPRESSED_BYTES = 16 * 1024 * 1024
 class ReadableResponse(Protocol):
     """Minimal response interface needed for bounded reads."""
 
-    def read(self, amount: int = -1) -> bytes:
+    def read(self, amount: int = -1, /) -> bytes:
         """Read at most ``amount`` bytes."""
         ...
 

@@ -45,6 +45,8 @@ def test_runner_declares_all_high_risk_targets_and_caps() -> None:
     assert "MAX_RSS_MB = 1024" in source
     assert "MAX_INPUT_BYTES = 64 * 1024" in source
     assert "timeout=args.seconds_per_target + 30" in source
+    assert 'environment["PYTHONPATH"]' in source
+    assert "str(ROOT)" in source
 
 
 def test_harnesses_instrument_production_modules() -> None:
