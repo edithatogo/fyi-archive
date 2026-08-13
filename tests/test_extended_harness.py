@@ -71,9 +71,11 @@ from fyi_archive.sync import (
 def test_backfill_state_codec_round_trip_and_plain_json() -> None:
     state = {"next_id": 42, "batches": [{"label": "1-10", "status": "merged"}]}
     encoded = encode_state(state)
+    body = state_body_from_state(state)
     assert decode_state(json.dumps(encoded)) == state
     assert decode_state(json.dumps(state)) == state
-    assert json.loads(state_body_from_state(state)) == encoded
+    assert json.loads(body) == encoded
+    assert body == json.dumps(encoded, separators=(",", ":")) + "\n"
 
 
 @pytest.mark.edge

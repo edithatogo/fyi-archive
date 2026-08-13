@@ -78,22 +78,32 @@ def test_run_seed_stops_at_max_requests(tmp_path: Path) -> None:
     assert summary["stop_reason"] == "max_requests"
 
 
-def test_requests_from_jsonl_loads_discovered_rows(tmp_path: Path) -> None:
+def test_requests_from_jsonl_streams_discovered_rows_in_source_order(
+    tmp_path: Path, monkeypatch
+) -> None:
     requests_path = tmp_path / "requests.jsonl"
     requests_path.write_text(
         "\n".join(
             [
                 "",
                 '{"request_id": 20000, "url_title": "request-20000", "title": "Title", "authority": "agency"}',
+                '{"request_id": "slug", "url_title": "slug"}',
             ],
-        )
-        + "\n",
+        ),
         encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        Path,
+        "read_text",
+        lambda *_args, **_kwargs: pytest.fail("queue reader must not buffer the whole file"),
     )
 
     rows = requests_from_jsonl(requests_path)
 
-    assert rows == [SeedRequest(20000, "request-20000", "Title", "agency")]
+    assert rows == [
+        SeedRequest(20000, "request-20000", "Title", "agency"),
+        SeedRequest("slug", "slug"),
+    ]
 
 
 def test_requests_from_jsonl_preserves_slug_request_reference(tmp_path: Path) -> None:
