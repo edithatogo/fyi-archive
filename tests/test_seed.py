@@ -12,6 +12,7 @@ from typer.testing import CliRunner
 
 from fyi_archive.cli import app
 from fyi_archive.seed import (
+    MAX_QUEUE_LINE_BYTES,
     CaptureError,
     SeedCaps,
     SeedRequest,
@@ -86,23 +87,42 @@ def test_requests_from_jsonl_streams_discovered_rows_in_source_order(
         "\n".join(
             [
                 "",
-                '{"request_id": 20000, "url_title": "request-20000", "title": "Title", "authority": "agency"}',
-                '{"request_id": "slug", "url_title": "slug"}',
+                '{"request_id": "z-last", "url_title": "z-last", "title": "Title", "authority": "agency"}',
+                '{"request_id": 2, "url_title": "request-2"}',
+                '{"request_id": "a-first", "url_title": "a-first"}',
             ],
         ),
         encoding="utf-8",
     )
+    source_lines = requests_path.read_text(encoding="utf-8").splitlines(True)
+
+    class IteratorOnlyHandle:
+        def __init__(self, lines: list[str]) -> None:
+            self._lines = iter(lines)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def readline(self, limit: int = -1) -> str:
+            line = next(self._lines, "")
+            assert 0 < limit <= 1_048_577
+            return line[:limit]
+
     monkeypatch.setattr(
         Path,
-        "read_text",
-        lambda *_args, **_kwargs: pytest.fail("queue reader must not buffer the whole file"),
+        "open",
+        lambda *_args, **_kwargs: IteratorOnlyHandle(source_lines),
     )
 
-    rows = requests_from_jsonl(requests_path)
+    rows = list(requests_from_jsonl(requests_path))
 
     assert rows == [
-        SeedRequest(20000, "request-20000", "Title", "agency"),
-        SeedRequest("slug", "slug"),
+        SeedRequest("z-last", "z-last", "Title", "agency"),
+        SeedRequest(2, "request-2"),
+        SeedRequest("a-first", "a-first"),
     ]
 
 
@@ -113,7 +133,63 @@ def test_requests_from_jsonl_preserves_slug_request_reference(tmp_path: Path) ->
         json.dumps({"request_id": slug, "url_title": slug}) + "\n",
         encoding="utf-8",
     )
-    assert requests_from_jsonl(requests_path) == [SeedRequest(slug, slug)]
+    assert list(requests_from_jsonl(requests_path)) == [SeedRequest(slug, slug)]
+
+
+def test_requests_from_jsonl_is_demand_driven(tmp_path: Path) -> None:
+    requests_path = tmp_path / "requests.jsonl"
+    requests_path.write_text(
+        '{"request_id": 1}\n{"request_id": 2}\nnot-json\n',
+        encoding="utf-8",
+    )
+
+    requests = requests_from_jsonl(requests_path)
+
+    assert next(requests) == SeedRequest(1, "request-1")
+    assert next(requests) == SeedRequest(2, "request-2")
+
+
+def test_requests_from_jsonl_rejects_oversized_records(tmp_path: Path) -> None:
+    requests_path = tmp_path / "requests.jsonl"
+    requests_path.write_text("x" * (MAX_QUEUE_LINE_BYTES + 1), encoding="utf-8")
+
+    with pytest.raises(ValueError, match=r"line 1 exceeds 1048576 bytes"):
+        next(requests_from_jsonl(requests_path))
+
+
+def test_run_seed_stops_queue_consumption_at_request_cap(tmp_path: Path) -> None:
+    requests_path = tmp_path / "requests.jsonl"
+    requests_path.write_text(
+        '{"request_id": 1}\n{"request_id": 2}\nnot-json\n',
+        encoding="utf-8",
+    )
+
+    summary = run_seed(
+        requests=requests_from_jsonl(requests_path),
+        ledger_path=tmp_path / "ledger.jsonl",
+        data_dir=tmp_path / "data",
+        derived_dir=tmp_path / "derived",
+        caps=SeedCaps(max_requests=2),
+        dry_run=True,
+    )
+
+    assert summary["processed"] == 2
+    assert summary["stop_reason"] == "max_requests"
+
+
+@pytest.mark.parametrize("request_id", ["../escape", "sub/path", ".", ".."])
+def test_dry_run_capture_rejects_unsafe_request_id(tmp_path: Path, request_id: str) -> None:
+    with pytest.raises(ValueError, match="filename-safe"):
+        run_seed(
+            requests=[SeedRequest(request_id, request_id)],
+            ledger_path=tmp_path / "ledger.jsonl",
+            data_dir=tmp_path / "data",
+            derived_dir=tmp_path / "derived",
+            caps=SeedCaps(max_requests=1),
+            dry_run=True,
+        )
+
+    assert not (tmp_path / "escape.json").exists()
 
 
 def test_requests_from_id_range_builds_fallback_queue() -> None:

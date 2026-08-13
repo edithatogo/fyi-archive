@@ -83,7 +83,7 @@ def _live_huggingface_count() -> dict[str, Any]:
     token = os.environ.get("HF_TOKEN", "").strip() or None
     if not repo_id or not token:
         return {
-            "count": int(os.environ.get("HF_RECORD_COUNT", "0") or 0),
+            "count": _env_int("HF_RECORD_COUNT") or 0,
             "last_updated": None,
             "source": "env" if os.environ.get("HF_RECORD_COUNT") else "unavailable",
         }
@@ -113,7 +113,7 @@ def _live_zenodo_count() -> dict[str, Any]:
     raw_id = os.environ.get("ZENODO_DEPOSITION_ID", "").strip()
     if not token or not raw_id:
         return {
-            "count": int(os.environ.get("ZENODO_RECORD_COUNT", "0") or 0),
+            "count": _env_int("ZENODO_RECORD_COUNT") or 0,
             "last_updated": None,
             "source": "env" if os.environ.get("ZENODO_RECORD_COUNT") else "unavailable",
         }
@@ -148,7 +148,7 @@ def _live_osf_count() -> dict[str, Any]:
     )
     if not token or not node_id:
         return {
-            "count": int(os.environ.get("OSF_RECORD_COUNT", "0") or 0),
+            "count": _env_int("OSF_RECORD_COUNT") or 0,
             "last_updated": None,
             "source": "env" if os.environ.get("OSF_RECORD_COUNT") else "unavailable",
         }

@@ -268,7 +268,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
     if state.get("selection_sha256") != _sha256_text(selection_path):
         raise RuntimeError("remote AU-NSW selection checksum does not match resumed control state")
-    selected = requests_from_jsonl(selection_path)
+    selected = list(requests_from_jsonl(selection_path))
     if len(selected) != request_total:
         raise RuntimeError("resumed AU-NSW selection is not the approved 179-record frame")
 
