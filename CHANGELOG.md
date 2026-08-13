@@ -5,6 +5,51 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.20.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.19.0...fyi_archive-v0.20.0) (2026-08-13)
+
+
+### Features
+
+* **au:** authorize full restricted NSW capture ([#358](https://github.com/edithatogo/fyi-archive/issues/358)) ([76172af](https://github.com/edithatogo/fyi-archive/commit/76172af7872ae394745e2a2804451f00d7c9d08b))
+* **au:** retain full NSW capture in private HF tranches ([#362](https://github.com/edithatogo/fyi-archive/issues/362)) ([6fc292a](https://github.com/edithatogo/fyi-archive/commit/6fc292ad3eb704f6c56e3d0d4198b2fa07f635d6))
+* build immutable per-instance archive packages ([#389](https://github.com/edithatogo/fyi-archive/issues/389)) ([31d21c9](https://github.com/edithatogo/fyi-archive/commit/31d21c95f7ad473b04967b8a99c1cebca1d37108))
+* define registry automation policies ([#382](https://github.com/edithatogo/fyi-archive/issues/382)) ([38e3ecc](https://github.com/edithatogo/fyi-archive/commit/38e3ecc9c1f34530df83e237c645bc5a5ddbb201))
+* index projected cases to canonical archive sources ([#353](https://github.com/edithatogo/fyi-archive/issues/353)) ([ee034f9](https://github.com/edithatogo/fyi-archive/commit/ee034f9b1c10eaa95202f2edc5a674cf28311961))
+* load instances from validated registry ([#374](https://github.com/edithatogo/fyi-archive/issues/374)) ([a067495](https://github.com/edithatogo/fyi-archive/commit/a067495ed9ee62955ac6a37f6954c64c85e08a5a))
+* **workflow:** expose bounded archive partition inputs ([59bca17](https://github.com/edithatogo/fyi-archive/commit/59bca17b0daf9b2807df58437f00d6362f5c8f15))
+
+
+### Bug Fixes
+
+* bound seed queues and reject unsafe output paths ([#393](https://github.com/edithatogo/fyi-archive/issues/393)) ([cf80a94](https://github.com/edithatogo/fyi-archive/commit/cf80a9434c17984d6a4e12b4570edc582b0f76bc))
+* enforce registry parity at static expansion ([#387](https://github.com/edithatogo/fyi-archive/issues/387)) ([516b613](https://github.com/edithatogo/fyi-archive/commit/516b613b00db0a03b538c85ac21f5862d0f816ac))
+* expand registry as instance array ([#386](https://github.com/edithatogo/fyi-archive/issues/386)) ([48b797b](https://github.com/edithatogo/fyi-archive/commit/48b797b16781d8ef4ef46f94da53c2c0699384ca))
+* guard NZ backfill continuation parity ([#354](https://github.com/edithatogo/fyi-archive/issues/354)) ([6d33181](https://github.com/edithatogo/fyi-archive/commit/6d33181858dae7ffb72b1d13bc75c1ab1774c168))
+* isolate Hugging Face sync by instance ([#373](https://github.com/edithatogo/fyi-archive/issues/373)) ([4cfcdc7](https://github.com/edithatogo/fyi-archive/commit/4cfcdc7e081749cc362097fa6b942c12ab236248))
+* make HF dry runs non-mutating ([#379](https://github.com/edithatogo/fyi-archive/issues/379)) ([575fdc8](https://github.com/edithatogo/fyi-archive/commit/575fdc88614850377cf7e651c1aaea44e854b0cf))
+* make NZ preflight pipefail-safe ([#357](https://github.com/edithatogo/fyi-archive/issues/357)) ([ac517a8](https://github.com/edithatogo/fyi-archive/commit/ac517a88d61b89c3379b16f6e5db3e686f3dfd28))
+* normalize reusable workflow inputs ([#388](https://github.com/edithatogo/fyi-archive/issues/388)) ([5cdb97a](https://github.com/edithatogo/fyi-archive/commit/5cdb97a6bf52ecd2f70485aa8fd8270d7de5bb7c))
+* preserve numeric reusable workflow inputs ([#384](https://github.com/edithatogo/fyi-archive/issues/384)) ([29b51b3](https://github.com/edithatogo/fyi-archive/commit/29b51b3c088cc0f072ad1bcaded48b351fe47302))
+* reconcile NZ backfill queue to canonical manifest ([#356](https://github.com/edithatogo/fyi-archive/issues/356)) ([abc20f0](https://github.com/edithatogo/fyi-archive/commit/abc20f01725df01db022bf6a87e1f9bf75ddbe68))
+* resolve automation policy inside worker ([#385](https://github.com/edithatogo/fyi-archive/issues/385)) ([d48232b](https://github.com/edithatogo/fyi-archive/commit/d48232ba2bea2b5612b83f5cc9a2c110a376f1eb))
+* separate prospective and remote verification ([#380](https://github.com/edithatogo/fyi-archive/issues/380)) ([255d46b](https://github.com/edithatogo/fyi-archive/commit/255d46b414e3d39a4a47e87e7bf0eb9082885625))
+
+
+### Performance Improvements
+
+* stream seed queues and preserve controller contracts ([#392](https://github.com/edithatogo/fyi-archive/issues/392)) ([7e9a1f3](https://github.com/edithatogo/fyi-archive/commit/7e9a1f3a06c04672cf8dcebac274ea3a37337b01))
+
+
+### Documentation
+
+* **conductor:** reconcile completed cursor trial ([fbbf99d](https://github.com/edithatogo/fyi-archive/commit/fbbf99d33f7712872193f1fc5cea6fd4ec16544b))
+* **conductor:** reconcile partition trial failure ([566cc14](https://github.com/edithatogo/fyi-archive/commit/566cc1430bf4bb4c7df40345408b7f4e432b1e90))
+* **conductor:** record local partition validation ([14bbeda](https://github.com/edithatogo/fyi-archive/commit/14bbedafc7ca249d88a72bc368cb5a7b43061d5f))
+* plan generic instance controller ([#371](https://github.com/edithatogo/fyi-archive/issues/371)) ([41352cf](https://github.com/edithatogo/fyi-archive/commit/41352cf9d610483100f4fa31a80319feb683a94a))
+* reconcile dependency security evidence ([f94ee6a](https://github.com/edithatogo/fyi-archive/commit/f94ee6a4751696e7314319f6304d9f264c772615))
+* reconcile NZ continuation failure evidence ([41de9fe](https://github.com/edithatogo/fyi-archive/commit/41de9fe63179f8ea07dd19bfddd069f9174054cd))
+* record NZ preflight failure evidence ([3409fcc](https://github.com/edithatogo/fyi-archive/commit/3409fcca69b6a294a63e2bd499b02d46c052c156))
+
 ## [0.19.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.18.0...fyi_archive-v0.19.0) (2026-08-02)
 
 
