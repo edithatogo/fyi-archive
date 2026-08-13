@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import hashlib
+from pathlib import Path
 from typing import Any
 
+import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from fyi_archive.health import parity_report
+from scripts.build_historical_archive_manifest import declared_artifact_path
 
 
 def canonical_hash_stable(data: dict[str, Any]) -> str:
@@ -62,3 +65,24 @@ def test_parity_report_health_tracks_tolerance(
 
     assert report["healthy"] is (abs(actual_skew) <= tolerance)
     assert report["mirrors"]["huggingface"]["within_tolerance"] is report["healthy"]
+
+
+@pytest.mark.hypothesis
+@pytest.mark.security
+@given(
+    parts=st.lists(
+        st.sampled_from(["..", ".", "safe", "nested", "payload.json"]),
+        min_size=1,
+        max_size=8,
+    )
+)
+@settings(max_examples=200, deadline=500, derandomize=True)
+def test_declared_artifact_paths_never_escape_root(parts: list[str]) -> None:
+    """Accepted manifest paths must remain descendants of their declared root."""
+    value = "/".join(parts)
+    root = Path("synthetic-fuzz-root")
+    try:
+        _, candidate = declared_artifact_path(root, value)
+    except ValueError:
+        return
+    candidate.resolve(strict=False).relative_to(root.resolve())

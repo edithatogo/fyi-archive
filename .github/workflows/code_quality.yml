@@ -70,6 +70,24 @@ jobs:
         with:
           shellcheck: false
 
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Install the locked environment
+        run: uv sync --extra dev --frozen
+      - name: Audit installed dependencies
+        run: |
+          uv export --frozen --extra dev --no-emit-project --no-emit-package fyi-cli \
+            --output-file requirements-audit.txt
+          uv run pip-audit --strict --requirement requirements-audit.txt
+
   zizmor-advisory:
     runs-on: ubuntu-latest
     steps:

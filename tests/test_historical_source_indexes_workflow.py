@@ -28,4 +28,7 @@ def test_all_instance_workflow_is_bounded_and_uses_registry_prefix_queries() -> 
     assert '--max-rows "${CDX_LIMIT_PER_INSTANCE}"' in workflow
     assert "${instance_id}.checkpoint.json" in workflow
     assert "${instance_id}.receipt.json" in workflow
+    assert "path.relative_to(artifact_root).as_posix()" in workflow
+    assert "--root .tmp" in workflow
+    assert '--status ".tmp/all-instance-core/${instance_id}.status.json"' in workflow
     assert "sha256" in workflow

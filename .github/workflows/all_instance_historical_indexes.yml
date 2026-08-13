@@ -160,6 +160,7 @@ jobs:
 
           instance_id, cdx, imported, filtered, core = sys.argv[1:]
           paths = [Path(item) for item in (cdx, imported, filtered, core)]
+          artifact_root = Path(".tmp")
           status = {
               "schema": "fyi-archive.historical-core-status.v1",
               "instance_id": instance_id,
@@ -167,7 +168,13 @@ jobs:
               "replay_limit_per_instance": 25,
               "replay_delay_seconds": 3,
               "replay_timeout_seconds": 15,
-              "artifacts": {path.name: {"byte_count": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()} for path in paths},
+              "artifacts": {
+                  path.relative_to(artifact_root).as_posix(): {
+                      "byte_count": path.stat().st_size,
+                      "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                  }
+                  for path in paths
+              },
           }
           Path(f".tmp/all-instance-core/{instance_id}.status.json").write_text(json.dumps(status, indent=2, sort_keys=True) + "\n", encoding="utf-8")
           PY
@@ -178,8 +185,9 @@ jobs:
           mkdir -p .tmp/all-instance-manifests
           while IFS=$'\t' read -r instance_id base_url status; do
             uv run python scripts/build_historical_archive_manifest.py \
-              --root .tmp/all-instance-core \
+              --root .tmp \
               --instance-id "$instance_id" \
+              --status ".tmp/all-instance-core/${instance_id}.status.json" \
               --output ".tmp/all-instance-manifests/${instance_id}.manifest.json"
           done < .tmp-instances.tsv
           python - <<'PY'

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import lzma
 import urllib.error
 import zipfile
 from pathlib import Path
@@ -12,6 +13,15 @@ from pathlib import Path
 import pytest
 
 from fyi_archive import catalog_fallback
+
+
+def _duplicate_catalog_archive() -> bytes:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+    return archive.getvalue()
 
 
 def test_restore_latest_verified_catalog_accepts_checksum_matched_artifact(
@@ -57,8 +67,8 @@ def test_restore_latest_verified_catalog_accepts_checksum_matched_artifact(
         def __exit__(self, *args):
             return None
 
-        def read(self):
-            return archive.getvalue()
+        def read(self, size: int = -1):
+            return archive.getvalue()[:size] if size >= 0 else archive.getvalue()
 
     monkeypatch.setattr(
         catalog_fallback.urllib.request, "urlopen", lambda *args, **kwargs: Response()
@@ -101,6 +111,34 @@ def test_catalog_helpers_fail_closed_and_write_digest(tmp_path: Path) -> None:
         })
 
 
+def test_catalog_archive_wraps_malformed_zip_seek_errors(monkeypatch) -> None:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+
+    def fail_open(*_args, **_kwargs):
+        raise ValueError("negative seek value -20")
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", fail_open)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="negative seek value"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
+
+
+def test_catalog_archive_wraps_lzma_decompression_errors(monkeypatch) -> None:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+
+    def fail_open(*_args, **_kwargs):
+        raise lzma.LZMAError("invalid compression options")
+
+    monkeypatch.setattr(zipfile.ZipFile, "open", fail_open)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="compression options"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
+
+
 def test_restore_requires_token_and_verified_files(monkeypatch, tmp_path: Path) -> None:
     with pytest.raises(catalog_fallback.CatalogArtifactError, match="GITHUB_TOKEN"):
         catalog_fallback.restore_latest_verified_catalog(
@@ -141,15 +179,17 @@ def test_github_json_and_artifact_schema_failures(monkeypatch, tmp_path: Path) -
         def __exit__(self, *args):
             return None
 
-        def read(self):
-            return self.payload
+        def read(self, size: int = -1):
+            return self.payload[:size] if size >= 0 else self.payload
 
     monkeypatch.setattr(
         catalog_fallback.urllib.request,
         "urlopen",
         lambda *args, **kwargs: Response(b'{"ok": true}'),
     )
-    assert catalog_fallback._github_json("https://api.example", "token")["ok"] is True
+    response = catalog_fallback._github_json("https://api.example", "token")
+    assert isinstance(response, dict)
+    assert response == {"ok": True}
     monkeypatch.setattr(
         catalog_fallback.urllib.request,
         "urlopen",
@@ -204,8 +244,8 @@ def test_restore_rejects_non_object_and_checksum_mismatch(monkeypatch, tmp_path:
         def __exit__(self, *args):
             return None
 
-        def read(self):
-            return self.payload
+        def read(self, size: int = -1):
+            return self.payload[:size] if size >= 0 else self.payload
 
     def api(url, token):
         if url.endswith("/runs?status=success&per_page=20"):
@@ -302,7 +342,7 @@ def test_restore_rejects_invalid_zip_and_skips_invalid_run(monkeypatch, tmp_path
             {
                 "__enter__": lambda self: self,
                 "__exit__": lambda self, *args: None,
-                "read": lambda self: b"not-a-zip",
+                "read": lambda self, size=-1: b"not-a-zip"[:size],
             },
         )(),
     )
@@ -314,3 +354,67 @@ def test_restore_rejects_invalid_zip_and_skips_invalid_run(monkeypatch, tmp_path
             workflow="rollout.yml",
             token="token",
         )
+
+
+def test_catalog_archive_rejects_duplicate_and_oversized_members(monkeypatch) -> None:
+    with pytest.warns(UserWarning, match="Duplicate name"):
+        duplicate = _duplicate_catalog_archive()
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="duplicate"):
+        catalog_fallback.parse_catalog_archive(duplicate)
+
+    oversized = io.BytesIO()
+    with zipfile.ZipFile(oversized, "w", zipfile.ZIP_DEFLATED) as bundle:
+        bundle.writestr("discovered_bodies.json", "x" * 128)
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+    monkeypatch.setattr(catalog_fallback, "MAX_CATALOG_MEMBER_BYTES", 64)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="member exceeds"):
+        catalog_fallback.parse_catalog_archive(oversized.getvalue())
+
+
+def test_catalog_archive_rejects_container_bounds_and_ambiguous_members(monkeypatch) -> None:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("a/discovered_bodies.json", "{}")
+        bundle.writestr("b/discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+
+    monkeypatch.setattr(catalog_fallback, "MAX_CATALOG_ARCHIVE_BYTES", 1)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="compressed size"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
+
+    monkeypatch.setattr(catalog_fallback, "MAX_CATALOG_ARCHIVE_BYTES", 1024 * 1024)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="exactly one"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
+
+    monkeypatch.setattr(catalog_fallback, "MAX_CATALOG_ARCHIVE_ENTRIES", 2)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="too many entries"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
+
+
+def test_catalog_archive_rejects_total_uncompressed_size(monkeypatch) -> None:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:
+        bundle.writestr("discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+    monkeypatch.setattr(catalog_fallback, "MAX_CATALOG_UNCOMPRESSED_BYTES", 3)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="uncompressed size"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
+
+
+def test_bounded_reader_rejects_oversized_response() -> None:
+    class Response:
+        def read(self, size: int = -1, /) -> bytes:
+            return b"x" * size
+
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="exceeds"):
+        catalog_fallback._read_bounded(Response(), limit=8, label="response")
+
+
+def test_catalog_member_read_is_bounded_even_when_zip_metadata_is_forged(monkeypatch) -> None:
+    archive = io.BytesIO()
+    with zipfile.ZipFile(archive, "w") as bundle:
+        bundle.writestr("discovered_bodies.json", "{}")
+        bundle.writestr("discovered_bodies.provenance.json", "{}")
+    monkeypatch.setattr(catalog_fallback, "MAX_CATALOG_MEMBER_BYTES", 1)
+    with pytest.raises(catalog_fallback.CatalogArtifactError, match="exceeds"):
+        catalog_fallback.parse_catalog_archive(archive.getvalue())
