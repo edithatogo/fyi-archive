@@ -220,7 +220,7 @@ def test_sync_dry_run_materializes_added_and_updated_records(tmp_path: Path) -> 
 def test_seed_queue_and_cap_boundaries(tmp_path: Path, monkeypatch) -> None:
     queue = tmp_path / "queue.jsonl"
     queue.write_text('\n{"request_id": 3, "title": "Three"}\n', encoding="utf-8")
-    assert requests_from_jsonl(queue)[0] == SeedRequest(3, "request-3", "Three", "")
+    assert next(requests_from_jsonl(queue)) == SeedRequest(3, "request-3", "Three", "")
     assert [item.request_id for item in synthetic_requests(None)] == [1]
     assert [item.request_id for item in requests_from_id_range(2, 3)] == [2, 3]
     with pytest.raises(ValueError, match="positive and ordered"):

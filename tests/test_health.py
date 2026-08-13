@@ -30,6 +30,33 @@ def test_env_int_accepts_integers_and_rejects_non_integer_values(monkeypatch) ->
     assert health._env_int("TEST_ENV_INT") is None
 
 
+def test_live_mirror_counts_tolerates_malformed_env_overrides(monkeypatch) -> None:
+    for name in (
+        "HF_RECORD_COUNT",
+        "ZENODO_RECORD_COUNT",
+        "OSF_RECORD_COUNT",
+    ):
+        monkeypatch.setenv(name, "not-an-integer")
+    for name in (
+        "HF_TOKEN",
+        "HF_REPO_ID",
+        "ZENODO_TOKEN",
+        "ZENODO_DEPOSITION_ID",
+        "OSF_TOKEN",
+        "OSF_NODE_ID",
+        "OSF_PARENT_ID",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+    counts = live_mirror_counts()
+
+    assert {name: info["count"] for name, info in counts.items()} == {
+        "huggingface": 0,
+        "zenodo": 0,
+        "osf": 0,
+    }
+
+
 def test_manifest_count_reads_meta_record_count(tmp_path: Path) -> None:
     manifest = tmp_path / "manifest.json"
     manifest.write_text(

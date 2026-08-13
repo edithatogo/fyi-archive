@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
 import sys
 import time
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -17,6 +18,8 @@ from typing import Any
 
 CAPTURE_RETRY_ATTEMPTS = 3
 CAPTURE_RETRY_BACKOFF_SECONDS = 15.0
+MAX_QUEUE_LINE_BYTES = 1_048_576
+SAFE_REQUEST_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,254}\Z")
 TRANSIENT_CAPTURE_ERROR_MARKERS = (
     "httpx.readtimeout",
     "readtimeout",
@@ -117,11 +120,15 @@ def tail_text(value: str, limit: int = 4000) -> str:
     return value[-limit:]
 
 
-def requests_from_jsonl(path: Path) -> list[SeedRequest]:
+def requests_from_jsonl(path: Path) -> Iterator[SeedRequest]:
     """Load request IDs and lightweight metadata from JSONL."""
-    requests: list[SeedRequest] = []
     with path.open(encoding="utf-8") as handle:
-        for line in handle:
+        line_number = 0
+        while line := handle.readline(MAX_QUEUE_LINE_BYTES + 1):
+            line_number += 1
+            if len(line.encode("utf-8")) > MAX_QUEUE_LINE_BYTES:
+                msg = f"JSONL line {line_number} exceeds {MAX_QUEUE_LINE_BYTES} bytes"
+                raise ValueError(msg)
             if not line.strip():
                 continue
             data = json.loads(line)
@@ -129,15 +136,12 @@ def requests_from_jsonl(path: Path) -> list[SeedRequest]:
             request_id = (
                 int(raw_request_id) if str(raw_request_id).isdigit() else str(raw_request_id)
             )
-            requests.append(
-                SeedRequest(
-                    request_id=request_id,
-                    url_title=str(data.get("url_title") or f"request-{request_id}"),
-                    title=str(data.get("title") or ""),
-                    authority=str(data.get("authority") or ""),
-                ),
+            yield SeedRequest(
+                request_id=request_id,
+                url_title=str(data.get("url_title") or f"request-{request_id}"),
+                title=str(data.get("title") or ""),
+                authority=str(data.get("authority") or ""),
             )
-    return requests
 
 
 def synthetic_requests(max_requests: int | None) -> list[SeedRequest]:
@@ -194,7 +198,11 @@ def cap_exceeded(
 def dry_run_capture(request: SeedRequest, derived_dir: Path) -> Path:
     """Write a deterministic derived record without network access."""
     derived_dir.mkdir(parents=True, exist_ok=True)
-    output_path = derived_dir / f"{request.request_id}.json"
+    request_id = str(request.request_id)
+    if request_id in {".", ".."} or SAFE_REQUEST_ID.fullmatch(request_id) is None:
+        msg = "request_id must be a filename-safe identifier"
+        raise ValueError(msg)
+    output_path = derived_dir / f"{request_id}.json"
     record = {
         "request_id": request.request_id,
         "url_title": request.url_title,
@@ -354,11 +362,8 @@ def run_seed(
     stop_reason: str | None = None
     last_capture_at: float | None = None
 
-    for request in requests:
-        if request.request_id in completed:
-            skipped += 1
-            continue
-
+    request_iterator = iter(requests)
+    while True:
         stop_reason = cap_exceeded(
             processed=processed + failed,
             bytes_written=bytes_written,
@@ -367,6 +372,14 @@ def run_seed(
         )
         if stop_reason is not None:
             break
+        try:
+            request = next(request_iterator)
+        except StopIteration:
+            break
+
+        if request.request_id in completed:
+            skipped += 1
+            continue
 
         if dry_run:
             output_path = dry_run_capture(request, derived_dir)
