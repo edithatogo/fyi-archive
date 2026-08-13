@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.20.2](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.20.1...fyi_archive-v0.20.2) (2026-08-13)
+
+
+### Bug Fixes
+
+* reject non-positive seed request caps ([#397](https://github.com/edithatogo/fyi-archive/issues/397)) ([91f8b84](https://github.com/edithatogo/fyi-archive/commit/91f8b844018e31428c916cea4c0643b45a41a975))
+
 ## [0.20.1](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.20.0...fyi_archive-v0.20.1) (2026-08-13)
 
 
