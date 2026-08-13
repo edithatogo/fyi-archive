@@ -120,20 +120,23 @@ def tail_text(value: str, limit: int = 4000) -> str:
 def requests_from_jsonl(path: Path) -> list[SeedRequest]:
     """Load request IDs and lightweight metadata from JSONL."""
     requests: list[SeedRequest] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if not line.strip():
-            continue
-        data = json.loads(line)
-        raw_request_id = data["request_id"]
-        request_id = int(raw_request_id) if str(raw_request_id).isdigit() else str(raw_request_id)
-        requests.append(
-            SeedRequest(
-                request_id=request_id,
-                url_title=str(data.get("url_title") or f"request-{request_id}"),
-                title=str(data.get("title") or ""),
-                authority=str(data.get("authority") or ""),
-            ),
-        )
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            if not line.strip():
+                continue
+            data = json.loads(line)
+            raw_request_id = data["request_id"]
+            request_id = (
+                int(raw_request_id) if str(raw_request_id).isdigit() else str(raw_request_id)
+            )
+            requests.append(
+                SeedRequest(
+                    request_id=request_id,
+                    url_title=str(data.get("url_title") or f"request-{request_id}"),
+                    title=str(data.get("title") or ""),
+                    authority=str(data.get("authority") or ""),
+                ),
+            )
     return requests
 
 

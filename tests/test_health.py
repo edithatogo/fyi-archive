@@ -8,9 +8,26 @@ from types import SimpleNamespace
 
 from typer.testing import CliRunner
 
+from fyi_archive import health
 from fyi_archive.cli import app
 from fyi_archive.commands.doctor import get_coverage_info
 from fyi_archive.health import live_mirror_counts, manifest_count, parity_report
+
+
+def test_env_int_accepts_integers_and_rejects_non_integer_values(monkeypatch) -> None:
+    for raw, expected in [
+        ("42", 42),
+        ("  42  ", 42),
+        ("", None),
+        ("   ", None),
+        ("not-an-integer", None),
+        ("12.3", None),
+    ]:
+        monkeypatch.setenv("TEST_ENV_INT", raw)
+        assert health._env_int("TEST_ENV_INT") == expected
+
+    monkeypatch.delenv("TEST_ENV_INT")
+    assert health._env_int("TEST_ENV_INT") is None
 
 
 def test_manifest_count_reads_meta_record_count(tmp_path: Path) -> None:
