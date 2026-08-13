@@ -146,7 +146,10 @@ def requests_from_jsonl(path: Path) -> Iterator[SeedRequest]:
 
 def synthetic_requests(max_requests: int | None) -> list[SeedRequest]:
     """Create deterministic dry-run request placeholders."""
-    count = max_requests or 1
+    if max_requests is not None and max_requests < 1:
+        msg = "max_requests must be positive when provided"
+        raise ValueError(msg)
+    count = max_requests if max_requests is not None else 1
     return [
         SeedRequest(request_id=request_id, url_title=f"dry-run-request-{request_id}")
         for request_id in range(1, count + 1)

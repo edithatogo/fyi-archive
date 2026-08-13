@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from click.utils import strip_ansi
 from typer.testing import CliRunner
 
 from fyi_archive.cli import app
@@ -22,6 +23,7 @@ from fyi_archive.seed import (
     requests_from_id_range,
     requests_from_jsonl,
     run_seed,
+    synthetic_requests,
 )
 
 
@@ -200,6 +202,22 @@ def test_requests_from_id_range_builds_fallback_queue() -> None:
         SeedRequest(20001, "request-20001"),
         SeedRequest(20002, "request-20002"),
     ]
+
+
+def test_synthetic_requests_requires_positive_explicit_count() -> None:
+    assert synthetic_requests(None) == [SeedRequest(1, "dry-run-request-1")]
+    assert [row.request_id for row in synthetic_requests(2)] == [1, 2]
+    for count in (0, -1):
+        with pytest.raises(ValueError, match="must be positive"):
+            synthetic_requests(count)
+
+
+@pytest.mark.parametrize("count", ["0", "-1"])
+def test_seed_cli_rejects_non_positive_max_requests(count: str) -> None:
+    result = CliRunner().invoke(app, ["seed", "run", "--dry-run", "--max-requests", count])
+
+    assert result.exit_code != 0
+    assert "must be positive" in strip_ansi(result.output)
 
 
 def test_capture_with_fyi_cli_builds_current_capture_command(tmp_path: Path, monkeypatch) -> None:
