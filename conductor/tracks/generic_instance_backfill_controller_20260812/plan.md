@@ -19,6 +19,8 @@
 
 - [ ] Add or extend versioned `fyi-cli` adapters for live discovery/capture and
   Internet Archive CDX/replay discovery.
+- [x] Migrate the reusable all-instance CDX inventory workflow to the pinned
+  `fyi-cli` CDX adapter while retaining adapter checkpoints and receipts.
 - [ ] Replace direct `fyi-archive` source-network calls only after fixture and
   hosted shadow parity is green.
 - [ ] Enforce the network ownership boundary in CI.

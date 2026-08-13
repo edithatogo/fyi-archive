@@ -24,6 +24,7 @@ jobs:
     timeout-minutes: 45
     env:
       CDX_LIMIT_PER_INSTANCE: ${{ inputs.cdx_limit_per_instance || '5000' }}
+      FYI_CLI_COMMIT: e2364d5221c67b69c2c4aca0a959d713eff4ec01
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
@@ -34,6 +35,8 @@ jobs:
           python-version: "3.12"
       - name: Install locked runtime
         run: uv sync --extra dev --frozen
+      - name: Install pinned fyi-cli source adapter
+        run: uv tool install "git+https://github.com/edithatogo/fyi-cli.git@${FYI_CLI_COMMIT}"
       - name: Enumerate configured instances
         run: |
           set -euo pipefail
@@ -55,25 +58,32 @@ jobs:
             echo 'CDX_LIMIT_PER_INSTANCE must be between 1 and 100000' >&2
             exit 1
           fi
+          cdx_page_size="$CDX_LIMIT_PER_INSTANCE"
+          if [ "$cdx_page_size" -gt 10000 ]; then
+            cdx_page_size=10000
+          fi
           while IFS=$'\t' read -r instance_id base_url status; do
             host="${base_url#https://}"
             host="${host#http://}"
             host="${host%%/*}"
             output=".tmp/all-instance-cdx/${instance_id}.json"
+            checkpoint=".tmp/all-instance-cdx/${instance_id}.checkpoint.json"
+            receipt=".tmp/all-instance-cdx/${instance_id}.receipt.json"
             source_status=".tmp/all-instance-cdx/${instance_id}.status.json"
-            query_url="https://web.archive.org/cdx/search/cdx?url=${host}/request&matchType=prefix&output=json&filter=statuscode:200&fl=original,timestamp,digest,statuscode,length&collapse=urlkey&limit=${CDX_LIMIT_PER_INSTANCE}"
-            if curl --fail-with-body --location --silent --show-error \
-              --retry 1 --retry-delay 30 --max-time 300 \
-              -A "fyi-archive-all-instance-index/1.0 (+https://github.com/${GITHUB_REPOSITORY})" \
-              --get "https://web.archive.org/cdx/search/cdx" \
-              --data-urlencode "url=${host}/request" \
-              --data-urlencode "matchType=prefix" \
-              --data-urlencode "output=json" \
-              --data-urlencode "filter=statuscode:200" \
-              --data-urlencode "fl=original,timestamp,digest,statuscode,length" \
-              --data-urlencode "collapse=urlkey" \
-              --data-urlencode "limit=${CDX_LIMIT_PER_INSTANCE}" \
-              --output "$output"; then
+            query_url="https://web.archive.org/cdx/search/cdx?url=${host}/request/*&output=json&filter=statuscode:200&fl=original,timestamp,digest,statuscode,length&collapse=urlkey&limit=${cdx_page_size}&showResumeKey=true"
+            if fyi internet-archive-cdx \
+              --url-pattern "${host}/request/*" \
+              --allowed-host "$host" \
+              --pagination-mode resume_key \
+              --capture-mode url_index \
+              --page-size "$cdx_page_size" \
+              --max-pages 100 \
+              --max-rows "${CDX_LIMIT_PER_INSTANCE}" \
+              --max-runtime-seconds 300 \
+              --max-stall-seconds 120 \
+              --output "$output" \
+              --checkpoint "$checkpoint" \
+              --receipt "$receipt"; then
               result="retrieved"
             else
               printf '[]\n' > "$output"
@@ -95,6 +105,11 @@ jobs:
               "instance_id": instance_id,
               "base_url": base_url,
               "registry_status": status,
+              "source_adapter": {
+                  "command": "internet-archive-cdx",
+                  "repository": "https://github.com/edithatogo/fyi-cli",
+                  "revision": __import__("os").environ["FYI_CLI_COMMIT"],
+              },
               "query_url": query_url,
               "retrieved_at": datetime.now(timezone.utc).isoformat(),
               "result": result,
