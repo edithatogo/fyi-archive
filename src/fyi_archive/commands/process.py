@@ -4,10 +4,16 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal, cast
 
 import typer
 
+from fyi_archive.archive_package import (
+    PackageInputs,
+    build_archive_package,
+    verify_archive_package,
+    verify_package_store,
+)
 from fyi_archive.au_corpus_readiness import load_sampling_frame
 from fyi_archive.derived_layer import validate_derived_manifest
 from fyi_archive.derived_publication import package_derived_layer, verify_derived_bundle
@@ -19,6 +25,76 @@ from fyi_archive.process_projection import (
 )
 
 app = typer.Typer(name="process", help="Build public-safe process-mining projections.")
+
+
+@app.command("package-archive")
+def package_archive(
+    instance: Annotated[str, typer.Option(help="Registered archive instance id.")],
+    archive_revision: Annotated[int, typer.Option(help="Positive immutable revision number.")],
+    repository: Annotated[str, typer.Option(help="HTTPS durable archive repository URI.")],
+    repository_revision: Annotated[
+        str, typer.Option(help="Full immutable 40-character repository commit.")
+    ],
+    cases: Annotated[Path, typer.Option(help="Case NDJSON produced from captured records.")],
+    events: Annotated[Path, typer.Option(help="Ordered fyi-cli process-event NDJSON.")],
+    attachments: Annotated[Path, typer.Option(help="Attachment metadata NDJSON.")],
+    takedown_inventory: Annotated[Path, typer.Option(help="Versioned takedown inventory NDJSON.")],
+    provenance: Annotated[Path, typer.Option(help="Source and transformation provenance JSON.")],
+    retention: Annotated[Path, typer.Option(help="Retention status JSON.")],
+    output_root: Annotated[Path, typer.Option()] = Path("dist/archive-packages"),
+    package_kind: Annotated[str, typer.Option(help="snapshot or delta")] = "snapshot",
+    base_archive_revision: Annotated[
+        int | None, typer.Option(help="Latest indexed revision required by a delta.")
+    ] = None,
+) -> None:
+    """Build an immutable local package and atomically update its indexes."""
+    if package_kind not in {"snapshot", "delta"}:
+        raise typer.BadParameter("--package-kind must be snapshot or delta")
+    try:
+        result = build_archive_package(
+            PackageInputs(
+                instance_id=instance,
+                archive_revision=archive_revision,
+                repository=repository,
+                repository_revision=repository_revision,
+                cases_path=cases,
+                events_path=events,
+                attachments_path=attachments,
+                takedown_inventory_path=takedown_inventory,
+                provenance_path=provenance,
+                retention_path=retention,
+                package_kind=cast("Literal['snapshot', 'delta']", package_kind),
+                base_archive_revision=base_archive_revision,
+            ),
+            output_root,
+        )
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(json.dumps(result, indent=2, sort_keys=True))
+
+
+@app.command("verify-archive-package")
+def verify_archive_package_command(
+    package_dir: Annotated[Path, typer.Option(help="Immutable package revision directory.")],
+) -> None:
+    """Verify one immutable package without network access."""
+    try:
+        result = verify_archive_package(package_dir)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(json.dumps(result, indent=2, sort_keys=True))
+
+
+@app.command("verify-archive-package-store")
+def verify_archive_package_store_command(
+    output_root: Annotated[Path, typer.Option()] = Path("dist/archive-packages"),
+) -> None:
+    """Verify every indexed package, latest pointer, and catalogue entry."""
+    try:
+        result = verify_package_store(output_root)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        raise typer.BadParameter(str(error)) from error
+    typer.echo(json.dumps(result, indent=2, sort_keys=True))
 
 
 @app.command("project")

@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/edithatogo/fyi-archive/schemas/archive-package.schema.json",
+  "title": "Immutable fyi-archive package",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "package_id",
+    "instance_id",
+    "archive_revision",
+    "takedown_revision",
+    "source",
+    "ordering",
+    "counts",
+    "files"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "package_id": { "$ref": "#/$defs/sha256" },
+    "instance_id": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "archive_revision": { "type": "integer", "minimum": 1 },
+    "takedown_revision": { "$ref": "#/$defs/sha256" },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository", "revision"],
+      "properties": {
+        "repository": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "revision": { "type": "string", "pattern": "^[0-9a-f]{40}$" }
+      }
+    },
+    "ordering": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_key", "first_source_sequence", "last_source_sequence"],
+      "properties": {
+        "event_key": { "const": "source_sequence_then_event_id" },
+        "first_source_sequence": { "type": ["integer", "null"], "minimum": 0 },
+        "last_source_sequence": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file_count", "case_count", "event_count", "attachment_count"],
+      "properties": {
+        "file_count": { "type": "integer", "minimum": 1 },
+        "case_count": { "type": "integer", "minimum": 0 },
+        "event_count": { "type": "integer", "minimum": 0 },
+        "attachment_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["order", "path", "role", "media_type", "sha256", "byte_count", "row_count"],
+        "properties": {
+          "order": { "type": "integer", "minimum": 1 },
+          "path": { "type": "string", "minLength": 1 },
+          "role": { "enum": ["cases", "events", "attachments", "other"] },
+          "media_type": { "type": "string", "minLength": 1 },
+          "sha256": { "$ref": "#/$defs/sha256" },
+          "byte_count": { "type": "integer", "minimum": 0 },
+          "row_count": { "type": ["integer", "null"], "minimum": 0 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}
