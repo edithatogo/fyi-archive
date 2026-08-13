@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.20.1](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.20.0...fyi_archive-v0.20.1) (2026-08-13)
+
+
+### Documentation
+
+* reconcile generic controller track state ([#394](https://github.com/edithatogo/fyi-archive/issues/394)) ([554f13f](https://github.com/edithatogo/fyi-archive/commit/554f13f4eb5fa914e6126674c93dee2d0d1a65f8))
+
 ## [0.20.0](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.19.0...fyi_archive-v0.20.0) (2026-08-13)
 
 
