@@ -1,6 +1,6 @@
 # Project Tracks
 
-## [ ] Track: Generic instance acquisition and continuation controller
+## [~] Track: Generic instance acquisition and continuation controller
 Track ID: `generic_instance_backfill_controller_20260812`
 Goal: Replace country-specific orchestration with an instance-keyed controller
 while preserving the active NZ backfill until shadow parity is proven.
