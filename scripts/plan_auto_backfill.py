@@ -45,11 +45,13 @@ def plan_dispatches(
         if current > id_to:
             break
         batch_end = min(current + batch_span - 1, id_to)
-        batches.append({
-            "id_from": str(current),
-            "id_to": str(batch_end),
-            "label": f"{current}-{batch_end}",
-        })
+        batches.append(
+            {
+                "id_from": str(current),
+                "id_to": str(batch_end),
+                "label": f"{current}-{batch_end}",
+            }
+        )
         current = batch_end + 1
 
     return {

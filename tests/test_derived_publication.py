@@ -172,17 +172,19 @@ def test_bundle_verifier_rejects_artifact_paths_outside_bundle(tmp_path: Path) -
     output = tmp_path / "bundle"
     output.mkdir()
     (output / "bundle-manifest.json").write_text(
-        json.dumps({
-            "schema": BUNDLE_SCHEMA,
-            "publication_status": "not_published",
-            "artifacts": [
-                {
-                    "path": "../outside.ndjson",
-                    "sha256": "0" * 64,
-                    "bytes": 0,
-                }
-            ],
-        }),
+        json.dumps(
+            {
+                "schema": BUNDLE_SCHEMA,
+                "publication_status": "not_published",
+                "artifacts": [
+                    {
+                        "path": "../outside.ndjson",
+                        "sha256": "0" * 64,
+                        "bytes": 0,
+                    }
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="expected local files"):

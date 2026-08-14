@@ -32,22 +32,24 @@ def test_gh_json_parses_stdout(monkeypatch) -> None:
 
 
 def test_load_controller_state_falls_back_to_all_issues(monkeypatch) -> None:
-    calls = iter([
-        [],
+    calls = iter(
         [
+            [],
+            [
+                {
+                    "number": 9,
+                    "url": "https://github.com/example/repo/issues/9",
+                    "title": "FYI historical backfill state (fyi-backfill-state)",
+                }
+            ],
             {
+                "body": json.dumps({"next_id": 4, "batches": [], "dispatched": []}),
                 "number": 9,
-                "url": "https://github.com/example/repo/issues/9",
                 "title": "FYI historical backfill state (fyi-backfill-state)",
-            }
-        ],
-        {
-            "body": json.dumps({"next_id": 4, "batches": [], "dispatched": []}),
-            "number": 9,
-            "title": "FYI historical backfill state (fyi-backfill-state)",
-            "url": "https://github.com/example/repo/issues/9",
-        },
-    ])
+                "url": "https://github.com/example/repo/issues/9",
+            },
+        ]
+    )
     monkeypatch.setattr(backfill_verification, "gh_json", lambda args: next(calls))
 
     state_info = backfill_verification.load_controller_state(
@@ -88,13 +90,15 @@ def test_load_controller_state_prefers_local_snapshot(tmp_path: Path, monkeypatc
     snapshot = tmp_path / "versions" / "latest_backfill_controller_state.json"
     snapshot.parent.mkdir(parents=True)
     snapshot.write_text(
-        json.dumps({
-            "issue_number": 9,
-            "issue_url": "https://github.com/example/repo/issues/9",
-            "issue_title": "FYI historical backfill state (fyi-backfill-state)",
-            "state_label": "fyi-backfill-state",
-            "state": {"next_id": 4, "batches": [], "dispatched": []},
-        }),
+        json.dumps(
+            {
+                "issue_number": 9,
+                "issue_url": "https://github.com/example/repo/issues/9",
+                "issue_title": "FYI historical backfill state (fyi-backfill-state)",
+                "state_label": "fyi-backfill-state",
+                "state": {"next_id": 4, "batches": [], "dispatched": []},
+            }
+        ),
         encoding="utf-8",
     )
     monkeypatch.chdir(tmp_path)
@@ -444,15 +448,17 @@ def test_load_controller_state_rejects_missing_issue_after_open_and_all_searches
 
 
 def test_controller_summary_prefers_captured_record_summary() -> None:
-    result = backfill_verification.controller_summary({
-        "issue_number": 1,
-        "issue_url": "",
-        "issue_title": "",
-        "state": {
-            "summary": {"captured_records": 9},
-            "batches": [{"status": "merged", "record_count": 3}],
-        },
-    })
+    result = backfill_verification.controller_summary(
+        {
+            "issue_number": 1,
+            "issue_url": "",
+            "issue_title": "",
+            "state": {
+                "summary": {"captured_records": 9},
+                "batches": [{"status": "merged", "record_count": 3}],
+            },
+        }
+    )
     assert result["captured_records"] == 9
 
 
