@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -154,8 +155,7 @@ def test_archive_replay_url_handles_empty_inputs() -> None:
 
 def test_archive_replay_url_raises_type_error_on_none() -> None:
     with pytest.raises(TypeError):
-        # type: ignore is needed since we're intentionally passing an invalid type
-        archive_replay_url(None, "20240101")  # type: ignore[arg-type]
+        archive_replay_url(cast(Any, None), "20240101")
 
 
 def test_extract_date_handles_missing_tags() -> None:
