@@ -92,11 +92,13 @@ def test_all_captures_mode_preserves_versions_without_url_collapse() -> None:
         requests.append(request.full_url)
         if "showNumPages" in request.full_url:
             return _Response([["blocks"], ["1"]])
-        return _Response([
-            ["original", "timestamp"],
-            ["https://example.test/request/1", "20200101000000"],
-            ["https://example.test/request/1", "20210101000000"],
-        ])
+        return _Response(
+            [
+                ["original", "timestamp"],
+                ["https://example.test/request/1", "20200101000000"],
+                ["https://example.test/request/1", "20210101000000"],
+            ]
+        )
 
     rows = fetch_complete_cdx(
         "example.test/request/*",
@@ -356,12 +358,14 @@ def test_resume_key_paginator_follows_cursor_and_reports_chunks() -> None:
     def opener(request: Request, timeout: int) -> _Response:
         requests.append(request.full_url)
         if "resumeKey" not in request.full_url:
-            return _Response([
-                ["original"],
-                ["https://example.test/request/1"],
-                [],
-                ["next%21"],
-            ])
+            return _Response(
+                [
+                    ["original"],
+                    ["https://example.test/request/1"],
+                    [],
+                    ["next%21"],
+                ]
+            )
         return _Response([["original"], ["https://example.test/request/2"]])
 
     rows = fetch_complete_cdx_with_resume_key(

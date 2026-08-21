@@ -156,15 +156,17 @@ def verify_site_artifact(root: Path, *, default_page_size: int = 1000) -> dict[s
             resumable_artifacts += int(resumable)
         total_records += record_count
         total_pages += completed_pages
-        retrievals.append({
-            "index": index,
-            "complete": retrieval_complete,
-            "resumable": resumable,
-            "record_count": record_count,
-            "completed_pages": completed_pages,
-            "config_sha256": config_sha256,
-            "next_resume_key_sha256": next_resume_key_sha256,
-        })
+        retrievals.append(
+            {
+                "index": index,
+                "complete": retrieval_complete,
+                "resumable": resumable,
+                "record_count": record_count,
+                "completed_pages": completed_pages,
+                "config_sha256": config_sha256,
+                "next_resume_key_sha256": next_resume_key_sha256,
+            }
+        )
 
     manifest_complete = manifest.get("complete") is True
     if manifest_complete != (complete_artifacts == len(artifacts)):

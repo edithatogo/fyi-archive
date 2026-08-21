@@ -126,17 +126,19 @@ def test_duplicate_site_ids_fail_closed(tmp_path: Path) -> None:
     known_id = list_instances()[0].id
     path = tmp_path / "sites.json"
     path.write_text(
-        json.dumps({
-            "schema": "fyi-archive.additional-foi-sites.v1",
-            "sites": [
-                {
-                    "id": known_id,
-                    "kind": "non_alaveteli",
-                    "country": "X",
-                    "url_patterns": ["example.test/*"],
-                }
-            ],
-        }),
+        json.dumps(
+            {
+                "schema": "fyi-archive.additional-foi-sites.v1",
+                "sites": [
+                    {
+                        "id": known_id,
+                        "kind": "non_alaveteli",
+                        "country": "X",
+                        "url_patterns": ["example.test/*"],
+                    }
+                ],
+            }
+        ),
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="unique"):

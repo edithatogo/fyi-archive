@@ -144,13 +144,15 @@ def record_from_raw(
         record["media_kind"] = "html"
         record["authority_tags"] = []
         record["parser_version"] = PARSER_VERSION
-    record.update({
-        "status": "captured",
-        "byte_count": len(raw),
-        "raw_sha256": sha256_bytes(raw),
-        "content_type": content_type,
-        "selection_reason": selected["selection_reason"],
-    })
+    record.update(
+        {
+            "status": "captured",
+            "byte_count": len(raw),
+            "raw_sha256": sha256_bytes(raw),
+            "content_type": content_type,
+            "selection_reason": selected["selection_reason"],
+        }
+    )
     return record
 
 

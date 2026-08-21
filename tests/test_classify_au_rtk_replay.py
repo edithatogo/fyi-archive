@@ -55,13 +55,15 @@ def test_complete_replay_validation_fails_closed_on_partial_membership(
 ) -> None:
     selection = tmp_path / "selection.json"
     selection.write_text(
-        json.dumps({
-            "record_count": 2,
-            "records": [
-                {"canonical_slug": "one"},
-                {"canonical_slug": "two"},
-            ],
-        })
+        json.dumps(
+            {
+                "record_count": 2,
+                "records": [
+                    {"canonical_slug": "one"},
+                    {"canonical_slug": "two"},
+                ],
+            }
+        )
     )
     records = tmp_path / "records"
     records.mkdir()
@@ -91,12 +93,14 @@ def test_complete_replay_validation_binds_selection_provenance(tmp_path, monkeyp
     raw.mkdir()
     (raw / "one.json").write_bytes(b"raw")
     (records / "one.json").write_text(
-        json.dumps({
-            **selected,
-            "status": "captured",
-            "parser_version": classifier.PARSER_VERSION,
-            "archive_digest": "WRONG",
-        })
+        json.dumps(
+            {
+                **selected,
+                "status": "captured",
+                "parser_version": classifier.PARSER_VERSION,
+                "archive_digest": "WRONG",
+            }
+        )
     )
     monkeypatch.setattr(classifier, "sha256_file", lambda _path: classifier.SELECTION_SHA256)
     monkeypatch.setattr(classifier, "EXPECTED_SLUGS", 1)
@@ -123,13 +127,15 @@ def test_complete_replay_and_index_bind_raw_and_record_hashes(tmp_path, monkeypa
     records_dir.mkdir()
     record_path = records_dir / "one.json"
     record_path.write_text(
-        json.dumps({
-            **selected,
-            "status": "captured",
-            "parser_version": classifier.PARSER_VERSION,
-            "raw_sha256": sha256(raw_bytes).hexdigest(),
-            "byte_count": len(raw_bytes),
-        })
+        json.dumps(
+            {
+                **selected,
+                "status": "captured",
+                "parser_version": classifier.PARSER_VERSION,
+                "raw_sha256": sha256(raw_bytes).hexdigest(),
+                "byte_count": len(raw_bytes),
+            }
+        )
     )
     monkeypatch.setattr(classifier, "sha256_file", classifier.sha256_file)
     monkeypatch.setattr(classifier, "SELECTION_SHA256", classifier.sha256_file(selection))

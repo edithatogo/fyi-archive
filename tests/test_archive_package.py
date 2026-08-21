@@ -754,7 +754,7 @@ def test_archive_package_cli_errors_are_operator_facing(tmp_path: Path) -> None:
         ],
     )
     assert invalid_package.exit_code == 2
-    assert "archive-package.json" in invalid_package.output
+    assert "verify-archive-package" in invalid_package.output
 
     invalid_store = runner.invoke(
         app,
@@ -766,4 +766,4 @@ def test_archive_package_cli_errors_are_operator_facing(tmp_path: Path) -> None:
         ],
     )
     assert invalid_store.exit_code == 2
-    assert "catalog.json" in invalid_store.output
+    assert "verify-archive-package-store" in invalid_store.output

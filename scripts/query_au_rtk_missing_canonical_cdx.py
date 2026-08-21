@@ -99,11 +99,13 @@ def build_queries(cdx_rows: list[Any]) -> dict[str, Any]:
     queries = []
     for slug in missing:
         for media_kind, suffix in (("json", ".json"), ("html", "")):
-            queries.append({
-                "canonical_slug": slug,
-                "media_kind": media_kind,
-                "exact_url": f"https://www.righttoknow.org.au/request/{slug}{suffix}",
-            })
+            queries.append(
+                {
+                    "canonical_slug": slug,
+                    "media_kind": media_kind,
+                    "exact_url": f"https://www.righttoknow.org.au/request/{slug}{suffix}",
+                }
+            )
     if len(queries) != EXPECTED_QUERY_COUNT:
         raise ValueError("completion query count mismatch")
     return {
@@ -243,14 +245,16 @@ def build_completion_replay_selection(
         if record is None:
             missing.append(slug)
             continue
-        selected.append({
-            **record,
-            "selection_reason": (
-                "latest_successful_canonical_json"
-                if record["media_kind"] == "json"
-                else "latest_successful_canonical_html_fallback"
-            ),
-        })
+        selected.append(
+            {
+                **record,
+                "selection_reason": (
+                    "latest_successful_canonical_json"
+                    if record["media_kind"] == "json"
+                    else "latest_successful_canonical_html_fallback"
+                ),
+            }
+        )
     return {
         "schema": "fyi-archive.au-rtk-canonical-completion-replay-selection.v1",
         "status": "candidate_pending_replay_approval",
@@ -476,11 +480,13 @@ def run(
         validate_completion_replay_selection(selection)
         selection_path = output_root / "completion-replay-selection.candidate.json"
         selection_path.write_text(json.dumps(selection, indent=2, sort_keys=True) + "\n")
-        summary.update({
-            "completion_replay_selection_sha256": sha256_file(selection_path),
-            "completion_replay_selected_slug_count": selection["selected_slug_count"],
-            "completion_replay_authorized": False,
-        })
+        summary.update(
+            {
+                "completion_replay_selection_sha256": sha256_file(selection_path),
+                "completion_replay_selected_slug_count": selection["selected_slug_count"],
+                "completion_replay_authorized": False,
+            }
+        )
     return summary
 
 

@@ -80,14 +80,16 @@ def build_selection(rows: list[Any], *, cdx_sha256: str) -> dict[str, Any]:
         record = choices.get("json") or choices.get("html")
         if record is None:
             raise ValueError(f"no replay candidate for {slug}")
-        selected.append({
-            **record,
-            "selection_reason": (
-                "latest_successful_json"
-                if record["media_kind"] == "json"
-                else "latest_successful_primary_html_fallback"
-            ),
-        })
+        selected.append(
+            {
+                **record,
+                "selection_reason": (
+                    "latest_successful_json"
+                    if record["media_kind"] == "json"
+                    else "latest_successful_primary_html_fallback"
+                ),
+            }
+        )
     json_count = sum(record["media_kind"] == "json" for record in selected)
     html_count = len(selected) - json_count
     return {

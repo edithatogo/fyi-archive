@@ -31,11 +31,13 @@ def test_unknown_body_tag_falls_back_to_other() -> None:
 
 
 def test_au_authority_manifest_preserves_specific_classification() -> None:
-    manifest = authority_manifest_for_au([
-        {"authority": "Service NSW", "body_tag": "nsw"},
-        {"authority": "Service NSW", "body_tag": "not-yet-classified"},
-        {"authority": "Unknown agency", "body_tag": "unknown"},
-    ])
+    manifest = authority_manifest_for_au(
+        [
+            {"authority": "Service NSW", "body_tag": "nsw"},
+            {"authority": "Service NSW", "body_tag": "not-yet-classified"},
+            {"authority": "Unknown agency", "body_tag": "unknown"},
+        ]
+    )
 
     assert manifest == {
         "instance_id": "au-rtk",

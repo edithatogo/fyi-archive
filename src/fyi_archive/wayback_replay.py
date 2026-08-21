@@ -36,14 +36,16 @@ SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 RETRYABLE_STATUS = frozenset({429, 500, 502, 503, 504})
 TERMINAL_STATUS = frozenset({404, 410})
 RETRYABLE_TRANSPORT = frozenset({"timeout", "connection"})
-TERMINAL_CODES = frozenset({
-    "redirect_escape",
-    "payload_too_large",
-    "scope_violation",
-    "integrity_mismatch",
-    "unsupported_content_type",
-    "malformed_content",
-})
+TERMINAL_CODES = frozenset(
+    {
+        "redirect_escape",
+        "payload_too_large",
+        "scope_violation",
+        "integrity_mismatch",
+        "unsupported_content_type",
+        "malformed_content",
+    }
+)
 PACKAGE_SCHEMA_DIRECTORY = Path(__file__).parent / "schemas"
 SCHEMA_DIRECTORY = (
     PACKAGE_SCHEMA_DIRECTORY
@@ -604,8 +606,7 @@ def next_pacing(
     if opens:
         seconds = _number(policy["circuit_seconds"], "policy circuit_seconds")
         circuit_open_until = (
-            datetime
-            .fromtimestamp(now.timestamp() + seconds, tz=UTC)
+            datetime.fromtimestamp(now.timestamp() + seconds, tz=UTC)
             .isoformat()
             .replace("+00:00", "Z")
         )

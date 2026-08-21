@@ -88,12 +88,14 @@ def classify(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
         else:
             jurisdiction = "UNRESOLVED"
             basis = "insufficient_or_conflicting_authority_evidence"
-        output.append({
-            **record,
-            "jurisdiction": jurisdiction,
-            "jurisdiction_basis": basis,
-            "jurisdiction_evidence": evidence,
-        })
+        output.append(
+            {
+                **record,
+                "jurisdiction": jurisdiction,
+                "jurisdiction_basis": basis,
+                "jurisdiction_evidence": evidence,
+            }
+        )
     return output
 
 
@@ -145,13 +147,15 @@ def load_complete_replay(
             or record.get("byte_count") != raw_path.stat().st_size
         ):
             raise ValueError(f"replay raw integrity mismatch: {raw_path.name}")
-        records.append({
-            "canonical_slug": path.stem,
-            **record,
-            "_record_sha256": sha256_file(path),
-            "_record_byte_count": path.stat().st_size,
-            "_raw_filename": raw_path.name,
-        })
+        records.append(
+            {
+                "canonical_slug": path.stem,
+                **record,
+                "_record_sha256": sha256_file(path),
+                "_record_byte_count": path.stat().st_size,
+                "_raw_filename": raw_path.name,
+            }
+        )
     expected_raw_names = {record["_raw_filename"] for record in records}
     actual_raw_names = {path.name for path in raw_dir.iterdir() if path.is_file()}
     if actual_raw_names != expected_raw_names:
@@ -165,19 +169,21 @@ def write_replay_index(records: list[dict[str, Any]], output_path: Path) -> dict
     """Write a deterministic integrity index for the non-final replay candidate."""
     entries = []
     for record in records:
-        entries.append({
-            "canonical_slug": record["canonical_slug"],
-            "media_kind": record["media_kind"],
-            "source_url": record["source_url"],
-            "archive_timestamp": record["archive_timestamp"],
-            "archive_digest": record["archive_digest"],
-            "raw_filename": record["_raw_filename"],
-            "raw_byte_count": record["byte_count"],
-            "raw_sha256": record["raw_sha256"],
-            "record_filename": f"{record['canonical_slug']}.json",
-            "record_byte_count": record["_record_byte_count"],
-            "record_sha256": record["_record_sha256"],
-        })
+        entries.append(
+            {
+                "canonical_slug": record["canonical_slug"],
+                "media_kind": record["media_kind"],
+                "source_url": record["source_url"],
+                "archive_timestamp": record["archive_timestamp"],
+                "archive_digest": record["archive_digest"],
+                "raw_filename": record["_raw_filename"],
+                "raw_byte_count": record["byte_count"],
+                "raw_sha256": record["raw_sha256"],
+                "record_filename": f"{record['canonical_slug']}.json",
+                "record_byte_count": record["_record_byte_count"],
+                "record_sha256": record["_record_sha256"],
+            }
+        )
     output_path.write_text(
         "".join(json.dumps(entry, sort_keys=True) + "\n" for entry in entries),
         encoding="utf-8",
