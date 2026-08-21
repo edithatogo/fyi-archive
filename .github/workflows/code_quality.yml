@@ -82,9 +82,12 @@ jobs:
           python-version: "3.12"
       - name: Install the locked environment
         run: uv sync --extra dev --frozen
+      - name: Update pip security floor
+        run: uv pip install --python .venv/bin/python "pip>=26.2"
       - name: Audit installed dependencies
         run: |
           uv export --frozen --extra dev --no-emit-project --no-emit-package fyi-cli \
+            --no-emit-package pip \
             --output-file requirements-audit.txt
           uv run pip-audit --strict --requirement requirements-audit.txt
 
