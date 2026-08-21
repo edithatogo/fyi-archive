@@ -45,13 +45,11 @@ def main() -> int:
                 str(raw["to_timestamp"]) if raw.get("to_timestamp") is not None else None
             ),
         )
-        partitions.append(
-            (
-                partition,
-                _plan_path(args.root, raw["output"]),
-                _plan_path(args.root, raw["evidence"]),
-            )
-        )
+        partitions.append((
+            partition,
+            _plan_path(args.root, raw["output"]),
+            _plan_path(args.root, raw["evidence"]),
+        ))
     merge_complete_partition_exports(
         partitions,
         output=args.output,

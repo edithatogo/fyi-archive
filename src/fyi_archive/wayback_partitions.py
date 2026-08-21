@@ -118,13 +118,11 @@ def merge_complete_partition_exports(
                 existing,
             ):
                 rows_by_urlkey[urlkey] = row
-        partition_evidence.append(
-            {
-                **asdict(partition),
-                "record_count": int(retrieval["record_count"]),
-                "response_sha256": export_sha256,
-            }
-        )
+        partition_evidence.append({
+            **asdict(partition),
+            "record_count": int(retrieval["record_count"]),
+            "response_sha256": export_sha256,
+        })
 
     if header is None:
         raise RuntimeError("partition merge produced no header")

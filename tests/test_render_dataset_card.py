@@ -21,14 +21,12 @@ def test_render_inserts_verified_metadata_without_rewriting_card() -> None:
 
 
 def test_render_replaces_existing_generated_block() -> None:
-    card = "# Card\n\n" + "\n".join(
-        [
-            "<!-- fyi-archive:generated-metadata:start -->",
-            "old",
-            "<!-- fyi-archive:generated-metadata:end -->",
-            "\nStable explanation.",
-        ]
-    )
+    card = "# Card\n\n" + "\n".join([
+        "<!-- fyi-archive:generated-metadata:start -->",
+        "old",
+        "<!-- fyi-archive:generated-metadata:end -->",
+        "\nStable explanation.",
+    ])
     rendered = render(card, snapshot_summary())
     assert "old" not in rendered
     assert rendered.count("Stable explanation.") == 1

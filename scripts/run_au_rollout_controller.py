@@ -73,12 +73,10 @@ def main() -> int:
     }
     write_rollout_state(args.state, state)
     print(
-        json.dumps(
-            {
-                "jurisdictions": config["jurisdictions"],
-                "record_count": national["meta"]["record_count"],
-            }
-        )
+        json.dumps({
+            "jurisdictions": config["jurisdictions"],
+            "record_count": national["meta"]["record_count"],
+        })
     )
     return 0
 

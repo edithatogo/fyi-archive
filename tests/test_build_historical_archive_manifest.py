@@ -13,14 +13,12 @@ def test_manifest_hashes_declared_artifacts(tmp_path: Path) -> None:
 
     digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
     (tmp_path / "au.status.json").write_text(
-        json.dumps(
-            {
-                "artifacts": {"au.json": {"byte_count": artifact.stat().st_size, "sha256": digest}},
-                "replay_limit_per_instance": 25,
-                "replay_delay_seconds": 3,
-                "replay_timeout_seconds": 15,
-            }
-        ),
+        json.dumps({
+            "artifacts": {"au.json": {"byte_count": artifact.stat().st_size, "sha256": digest}},
+            "replay_limit_per_instance": 25,
+            "replay_delay_seconds": 3,
+            "replay_timeout_seconds": 15,
+        }),
         encoding="utf-8",
     )
     manifest = build_manifest(tmp_path, instance_id="au")
@@ -67,20 +65,18 @@ def test_manifest_hashes_artifacts_across_safe_subdirectories(tmp_path: Path) ->
     core.write_bytes(b"core\n")
     status_path = tmp_path / "core" / "au.status.json"
     status_path.write_text(
-        json.dumps(
-            {
-                "artifacts": {
-                    path.relative_to(tmp_path).as_posix(): {
-                        "byte_count": path.stat().st_size,
-                        "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                    }
-                    for path in (cdx, core)
-                },
-                "replay_limit_per_instance": 25,
-                "replay_delay_seconds": 3,
-                "replay_timeout_seconds": 15,
-            }
-        ),
+        json.dumps({
+            "artifacts": {
+                path.relative_to(tmp_path).as_posix(): {
+                    "byte_count": path.stat().st_size,
+                    "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+                }
+                for path in (cdx, core)
+            },
+            "replay_limit_per_instance": 25,
+            "replay_delay_seconds": 3,
+            "replay_timeout_seconds": 15,
+        }),
         encoding="utf-8",
     )
 

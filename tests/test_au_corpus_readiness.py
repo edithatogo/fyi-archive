@@ -48,32 +48,30 @@ def test_sampling_frame_requires_complete_capture_authorization() -> None:
 
 
 def test_sampling_frame_reports_structural_and_rights_errors(tmp_path: Path) -> None:
-    result = validate_sampling_frame(
-        {
-            "schema": "wrong",
-            "capture_authorized": False,
-            "publication_authorized": True,
-            "strata": [
-                "not-an-object",
-                {
-                    "jurisdiction": "MARS",
-                    "outcomes": [],
-                    "request_cap": 0,
-                },
-                {
-                    "jurisdiction": "NSW",
-                    "outcomes": ["unknown"],
-                    "request_cap": 1,
-                },
-                {
-                    "jurisdiction": "NSW",
-                    "outcomes": ["unknown"],
-                    "request_cap": 1,
-                },
-            ],
-            "rights_gates": {},
-        }
-    )
+    result = validate_sampling_frame({
+        "schema": "wrong",
+        "capture_authorized": False,
+        "publication_authorized": True,
+        "strata": [
+            "not-an-object",
+            {
+                "jurisdiction": "MARS",
+                "outcomes": [],
+                "request_cap": 0,
+            },
+            {
+                "jurisdiction": "NSW",
+                "outcomes": ["unknown"],
+                "request_cap": 1,
+            },
+            {
+                "jurisdiction": "NSW",
+                "outcomes": ["unknown"],
+                "request_cap": 1,
+            },
+        ],
+        "rights_gates": {},
+    })
     errors = " ".join(result["errors"])
     assert result["ok"] is False
     assert "unsupported" in errors
@@ -93,15 +91,13 @@ def test_sampling_frame_reports_structural_and_rights_errors(tmp_path: Path) -> 
 
 
 def test_sampling_frame_requires_strata_and_rights_object() -> None:
-    result = validate_sampling_frame(
-        {
-            "schema": "fyi-archive.au-sampling-frame.v1",
-            "capture_authorized": False,
-            "publication_authorized": False,
-            "strata": None,
-            "rights_gates": None,
-        }
-    )
+    result = validate_sampling_frame({
+        "schema": "fyi-archive.au-sampling-frame.v1",
+        "capture_authorized": False,
+        "publication_authorized": False,
+        "strata": None,
+        "rights_gates": None,
+    })
     assert result["ok"] is False
     assert "strata must" in " ".join(result["errors"])
     assert "rights_gates must" in " ".join(result["errors"])

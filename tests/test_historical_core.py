@@ -161,7 +161,7 @@ def test_archive_replay_url_raises_type_error_on_none() -> None:
 def test_extract_date_handles_missing_tags() -> None:
     from bs4 import BeautifulSoup
 
-    from fyi_archive.historical_core import _extract_date
+    from fyi_archive.historical_core import _extract_date  # noqa: PLC2701
 
     soup = BeautifulSoup("<html></html>", "html.parser")
     assert _extract_date(soup, ("datePublished",)) is None
@@ -170,7 +170,7 @@ def test_extract_date_handles_missing_tags() -> None:
 def test_first_text_handles_missing_tags() -> None:
     from bs4 import BeautifulSoup
 
-    from fyi_archive.historical_core import _first_text
+    from fyi_archive.historical_core import _first_text  # noqa: PLC2701
 
     soup = BeautifulSoup("<html></html>", "html.parser")
     assert _first_text(soup, ("h1",)) == ""
@@ -179,7 +179,7 @@ def test_first_text_handles_missing_tags() -> None:
 def test_first_text_handles_empty_text() -> None:
     from bs4 import BeautifulSoup
 
-    from fyi_archive.historical_core import _first_text
+    from fyi_archive.historical_core import _first_text  # noqa: PLC2701
 
     soup = BeautifulSoup("<h1>  </h1>", "html.parser")
     assert _first_text(soup, ("h1",)) == ""

@@ -195,12 +195,10 @@ def main() -> int:
             },
         )
         print(
-            json.dumps(
-                {
-                    "event": "cdx-complete-checkpoint-reused",
-                    "record_count": len(existing_rows),
-                }
-            )
+            json.dumps({
+                "event": "cdx-complete-checkpoint-reused",
+                "record_count": len(existing_rows),
+            })
         )
         return 0
 

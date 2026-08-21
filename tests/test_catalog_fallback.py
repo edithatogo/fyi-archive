@@ -105,12 +105,10 @@ def test_catalog_helpers_fail_closed_and_write_digest(tmp_path: Path) -> None:
     else:
         raise AssertionError("missing provenance checksum must fail closed")
     with pytest.raises(catalog_fallback.CatalogArtifactError, match="list of objects"):
-        catalog_fallback.validate_catalog_payload(
-            {
-                "bodies": ["not-an-object"],
-                "provenance": {"payload_sha256": "abc"},
-            }
-        )
+        catalog_fallback.validate_catalog_payload({
+            "bodies": ["not-an-object"],
+            "provenance": {"payload_sha256": "abc"},
+        })
 
 
 def test_catalog_archive_wraps_malformed_zip_seek_errors(monkeypatch) -> None:

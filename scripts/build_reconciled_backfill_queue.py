@@ -68,13 +68,11 @@ def _canonical_manifest_queue(
         request_ids.add(request_id)
         titles.add(title)
         archive_rows = candidates.get(title, [])
-        archive_urls = sorted(
-            {
-                str(row["source_url"])
-                for row in archive_rows
-                if isinstance(row.get("source_url"), str) and row["source_url"]
-            }
-        )
+        archive_urls = sorted({
+            str(row["source_url"])
+            for row in archive_rows
+            if isinstance(row.get("source_url"), str) and row["source_url"]
+        })
         archive_digest_values: set[str] = set()
         for archive_row in archive_rows:
             values = archive_row.get("internet_archive_digests")
@@ -83,15 +81,13 @@ def _canonical_manifest_queue(
             archive_digest_values.update(
                 str(digest) for digest in values if isinstance(digest, str) and digest
             )
-        queue.append(
-            {
-                "request_id": request_id,
-                "url_title": title,
-                "source_url": f"{source.rstrip('/')}/request/{title}",
-                "archive_source_urls": archive_urls,
-                "archive_digests": sorted(archive_digest_values),
-            }
-        )
+        queue.append({
+            "request_id": request_id,
+            "url_title": title,
+            "source_url": f"{source.rstrip('/')}/request/{title}",
+            "archive_source_urls": archive_urls,
+            "archive_digests": sorted(archive_digest_values),
+        })
     if not queue:
         raise ValueError("captured manifest has no non-dry-run requests")
     return sorted(

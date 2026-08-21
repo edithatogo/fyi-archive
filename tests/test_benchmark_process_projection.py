@@ -12,15 +12,13 @@ from pathlib import Path
 def test_benchmark_process_projection_verifies_fixture_output(tmp_path: Path) -> None:
     events = tmp_path / "events.jsonl"
     events.write_text(
-        json.dumps(
-            {
-                "event_id": "event-1",
-                "case_id": "case-1",
-                "activity": "RequestReceived",
-                "source_index": 1,
-                "contract_version": "1.0.0",
-            }
-        )
+        json.dumps({
+            "event_id": "event-1",
+            "case_id": "case-1",
+            "activity": "RequestReceived",
+            "source_index": 1,
+            "contract_version": "1.0.0",
+        })
         + "\n",
         encoding="utf-8",
     )

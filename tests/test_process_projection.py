@@ -212,21 +212,19 @@ def test_projection_writes_canonical_source_records_without_copying_raw_bytes(
         ],
     )
     manifest.write_text(
-        json.dumps(
-            {
-                "meta": {"record_count": 1, "source": "https://fyi.org.nz/"},
-                "requests": [
-                    {
-                        "request_id": 7,
-                        "url_title": "example-request",
-                        "content_sha256": "digest",
-                        "warc_record_ids": ["<urn:uuid:warc>"],
-                        "attachments": [{"sha256": "attachment-digest"}],
-                        "license": "source-declared",
-                    }
-                ],
-            }
-        ),
+        json.dumps({
+            "meta": {"record_count": 1, "source": "https://fyi.org.nz/"},
+            "requests": [
+                {
+                    "request_id": 7,
+                    "url_title": "example-request",
+                    "content_sha256": "digest",
+                    "warc_record_ids": ["<urn:uuid:warc>"],
+                    "attachments": [{"sha256": "attachment-digest"}],
+                    "license": "source-declared",
+                }
+            ],
+        }),
         encoding="utf-8",
     )
     output = tmp_path / "out"
@@ -301,19 +299,17 @@ def test_source_records_use_stable_case_fallbacks_and_exclude_unresolved_or_take
         ],
     )
     manifest.write_text(
-        json.dumps(
-            {
-                "meta": {"record_count": 3, "source": "https://fyi.org.nz/"},
-                "requests": [
-                    {
-                        "request_id": 8,
-                        "canonical_url": "https://archive.example/request/8",
-                        "content_sha256": "digest-8",
-                    },
-                    {"request_id": 9},
-                ],
-            }
-        ),
+        json.dumps({
+            "meta": {"record_count": 3, "source": "https://fyi.org.nz/"},
+            "requests": [
+                {
+                    "request_id": 8,
+                    "canonical_url": "https://archive.example/request/8",
+                    "content_sha256": "digest-8",
+                },
+                {"request_id": 9},
+            ],
+        }),
         encoding="utf-8",
     )
     _write_jsonl(takedown, [{"case_id": "urn:fyi:nz-fyi:request:7"}])
@@ -358,13 +354,11 @@ def test_projection_includes_historical_source_reconciliation(tmp_path: Path) ->
     reconciliation = tmp_path / "reconciliation.json"
     _write_jsonl(events, [{"event_id": "e1", "case_id": "c1", "activity": "opened"}])
     reconciliation.write_text(
-        json.dumps(
-            {
-                "schema": "historical-source-reconciliation-v1",
-                "candidate_count": 4,
-                "counts": {"archive_only_candidate": 3, "live_captured": 1},
-            }
-        ),
+        json.dumps({
+            "schema": "historical-source-reconciliation-v1",
+            "candidate_count": 4,
+            "counts": {"archive_only_candidate": 3, "live_captured": 1},
+        }),
         encoding="utf-8",
     )
     coverage = build_process_projection(

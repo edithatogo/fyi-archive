@@ -24,16 +24,14 @@ def _partition_files(
     raw = json.dumps(payload, indent=2) + "\n"
     export.write_bytes(raw.encode())
     retrieval.write_text(
-        json.dumps(
-            {
-                "retrieval_status": "complete" if complete else "failed",
-                "pagination_complete": complete,
-                "from_timestamp": partition.from_timestamp,
-                "to_timestamp": partition.to_timestamp,
-                "record_count": len(rows),
-                "response_sha256": hashlib.sha256(raw.encode()).hexdigest() if complete else None,
-            }
-        ),
+        json.dumps({
+            "retrieval_status": "complete" if complete else "failed",
+            "pagination_complete": complete,
+            "from_timestamp": partition.from_timestamp,
+            "to_timestamp": partition.to_timestamp,
+            "record_count": len(rows),
+            "response_sha256": hashlib.sha256(raw.encode()).hexdigest() if complete else None,
+        }),
         encoding="utf-8",
     )
     return partition, export, retrieval
