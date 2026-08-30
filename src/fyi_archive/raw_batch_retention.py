@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import json
 from pathlib import Path
+from tempfile import SpooledTemporaryFile
 from typing import Any, BinaryIO
 
 from warcio.archiveiterator import ArchiveIterator
@@ -35,17 +37,27 @@ def _safe_file(root: Path, path: Path) -> Path:
 def _warc_resources(root: Path) -> dict[str, tuple[str, int]]:
     result: dict[str, tuple[str, int]] = {}
     total = 0
+    expanded_total = 0
     for path in sorted((root / "data/warc").glob("*.warc.gz")):
-        with _safe_file(root, path).open("rb") as stream:
+        # fyi-cli uses a single gzip member for multiple records. Expand only
+        # the outer container with a shared byte budget; preserve original bytes.
+        with (
+            gzip.open(_safe_file(root, path), "rb") as compressed,
+            SpooledTemporaryFile(max_size=8 * 1024**2) as stream,
+        ):
+            for chunk in iter(lambda: compressed.read(1024 * 1024), b""):
+                expanded_total += len(chunk)
+                if expanded_total > MAX_RAW_BYTES:
+                    raise ValueError("expanded WARC container exceeds retention budget")
+                stream.write(chunk)
+            stream.seek(0)
             for record in ArchiveIterator(stream):
                 if record.rec_type != "response":
                     continue
                 identity = record.rec_headers.get_header("WARC-Record-ID")
                 if not identity or identity in result:
                     raise ValueError("missing or duplicate WARC record identity")
-                # Hash the payload bytes as stored. fyi-cli already decodes HTTP
-                # content before writing; content_stream() may decode a gzip
-                # attachment a second time using retained source headers.
+                # HTTP content was already decoded by the capture adapter.
                 digest, size = _digest_stream(record.raw_stream)
                 total += size
                 if total > MAX_RAW_BYTES:

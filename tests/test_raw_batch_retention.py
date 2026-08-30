@@ -154,3 +154,31 @@ def test_hashes_stored_payload_without_second_http_content_decoding(tmp_path: Pa
     make_capture(tmp_path, encoded_attachment=True)
     inventory = build_raw_inventory(tmp_path, expected_requests=1)
     assert inventory["warc_resource_count"] == 3
+
+
+def test_single_gzip_member_with_multiple_warc_records(tmp_path: Path) -> None:
+    """The pinned capture adapter wraps the entire WARC in one gzip member."""
+    make_capture(tmp_path)
+    warc = tmp_path / "data/warc/capture.warc.gz"
+    warc.write_bytes(gzip.compress(gzip.decompress(warc.read_bytes())))
+    assert build_raw_inventory(tmp_path, expected_requests=1)["warc_resource_count"] == 3
+
+
+def test_expanded_warc_container_budget(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    make_capture(tmp_path)
+    warc = tmp_path / "data/warc/capture.warc.gz"
+    warc.write_bytes(gzip.compress(b"x" * 100_000))
+    monkeypatch.setattr("fyi_archive.raw_batch_retention.MAX_RAW_BYTES", 10_000)
+    with pytest.raises(ValueError, match=r"expanded WARC.*budget"):
+        build_raw_inventory(tmp_path, expected_requests=1)
+
+
+def test_post_capture_failures_have_retained_diagnostics_before_lease_release() -> None:
+    workflow = (
+        Path(__file__).parents[1] / ".github/workflows/nz_real_backfill_batch.yml"
+    ).read_text()
+    assert (
+        workflow.index("- name: Complete durable NZ range receipt")
+        < workflow.index("- name: Retain failed capture ledger for requeue")
+        < workflow.index("- name: Release failed lease with retained evidence")
+    )
