@@ -11,3 +11,7 @@ Checked the pinned download-artifact source: artifact-ID downloads require merge
 HF sync diagnosis run 33306106031 passed with one parseable dedicated summary, a rendered card and retained execution receipt. verified=null and record_count=0 describe its dry run; no public upload occurred. The previous concatenated-JSON failure was not reproduced in this hosted path. Live public readback remains pending.
 
 Local full test harness passed 917 tests, one skip, 93.39% coverage. Stable/preview Ruff, formatting, ty and changed-workflow actionlint passed. Hosted checks and a new original-byte restore are still required. These are additional findings inside the approved recovery/raw-preservation scope, not completed global rollout.
+
+## Stored-byte verification correction
+
+A compressed-attachment regression reproduced a false mismatch when the verifier applied HTTP content decoding to bytes that fyi-cli had already decoded before WARC creation. The verifier now hashes the stored WARC payload stream directly, leaving compression/container bytes intact. The new regression failed before the correction and passes afterward. Full donor tests: 918 passed, one skip, 93.39% coverage; stable Ruff, preview formatting and ty passed. This does not alter preserved WARC bytes or clear source/publication gates.
