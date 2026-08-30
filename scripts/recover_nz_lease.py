@@ -116,7 +116,8 @@ def apply(issue: int, proposal: Path, artifact_id: int, digest: str, output: Pat
             },
             indent=2,
         )
-        + "\n"
+        + "\n",
+        encoding="utf-8",
     )
 
 

@@ -94,7 +94,7 @@ def test_preparation_is_read_only_and_verified_apply_preserves_coverage(
     assert updated["completed"] == original["completed"]
     assert updated["leases"] == []
     assert len(updated["failures"]) == 1
-    assert json.loads(result.read_text())["completed_coverage_unchanged"] is True
+    assert json.loads(result.read_text(encoding="utf-8"))["completed_coverage_unchanged"] is True
 
 
 @pytest.mark.parametrize("failure", ["conflict", "expired", "running", "wrong_branch"])
@@ -114,8 +114,12 @@ def test_application_never_writes_after_a_failed_precondition(
 
 
 def test_recovery_serializes_with_capture_and_retains_evidence_before_apply():
-    workflow = yaml.safe_load(Path(".github/workflows/nz_real_backfill_recover.yml").read_text())
-    capture = yaml.safe_load(Path(".github/workflows/nz_real_backfill_batch.yml").read_text())
+    workflow = yaml.safe_load(
+        Path(".github/workflows/nz_real_backfill_recover.yml").read_text(encoding="utf-8")
+    )
+    capture = yaml.safe_load(
+        Path(".github/workflows/nz_real_backfill_batch.yml").read_text(encoding="utf-8")
+    )
     assert workflow["concurrency"] == capture["concurrency"]
     steps = workflow["jobs"]["recover"]["steps"]
     retained = next(i for i, step in enumerate(steps) if step.get("id") == "evidence")
