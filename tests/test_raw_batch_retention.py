@@ -1,5 +1,6 @@
 """Raw restoration must reject metadata-only or corrupted capture packages."""
 
+import gzip
 import hashlib
 import io
 import json
@@ -13,7 +14,7 @@ from warcio.warcwriter import WARCWriter
 from fyi_archive.raw_batch_retention import build_raw_inventory, verify_raw_inventory
 
 
-def make_capture(root: Path) -> None:
+def make_capture(root: Path, *, encoded_attachment: bool = False) -> None:
     request = root / "data/raw/requests/example/1"
     request.mkdir(parents=True)
     (request / "request.json").write_text('{"id":1}', encoding="utf-8")
@@ -21,7 +22,9 @@ def make_capture(root: Path) -> None:
     (request / "page.html").write_bytes(html)
     attachment = root / "data/attachments/object"
     attachment.parent.mkdir(parents=True)
-    attachment.write_bytes(b"fixture attachment")
+    attachment.write_bytes(
+        gzip.compress(b"fixture attachment") if encoded_attachment else b"fixture attachment"
+    )
     warc = root / "data/warc/capture.warc.gz"
     warc.parent.mkdir(parents=True)
     resources = []
@@ -36,7 +39,13 @@ def make_capture(root: Path) -> None:
                 "https://example.org/" + kind,
                 "response",
                 payload=io.BytesIO(payload),
-                http_headers=StatusAndHeaders("200 OK", [], protocol="HTTP/1.1"),
+                http_headers=StatusAndHeaders(
+                    "200 OK",
+                    [("Content-Encoding", "gzip")]
+                    if encoded_attachment and kind == "attachment"
+                    else [],
+                    protocol="HTTP/1.1",
+                ),
             )
             writer.write_record(record)
             resources.append({
@@ -138,3 +147,10 @@ def test_retention_file_budget_is_enforced(tmp_path: Path, monkeypatch: pytest.M
     monkeypatch.setattr("fyi_archive.raw_batch_retention.MAX_RAW_FILES", 1)
     with pytest.raises(ValueError, match="budget"):
         build_raw_inventory(tmp_path, expected_requests=1)
+
+
+def test_hashes_stored_payload_without_second_http_content_decoding(tmp_path: Path) -> None:
+    """Capture bytes are already HTTP-decoded; a gzip file must stay a gzip file."""
+    make_capture(tmp_path, encoded_attachment=True)
+    inventory = build_raw_inventory(tmp_path, expected_requests=1)
+    assert inventory["warc_resource_count"] == 3
