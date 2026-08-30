@@ -9,6 +9,7 @@ from pathlib import Path
 from tempfile import SpooledTemporaryFile
 from typing import Any, BinaryIO
 
+from fyi_system.fetch import extract_request_artifacts
 from warcio.archiveiterator import ArchiveIterator
 
 from fyi_archive.archive_package import sha256_file
@@ -97,6 +98,27 @@ def _check_request(root: Path, request: Path, warc: dict[str, tuple[str, int]]) 
     return identities
 
 
+def _attachment_census(root: Path, request: Path) -> dict[str, Any]:
+    metadata = json.loads(_safe_file(root, request.parent / "snapshot_meta.json").read_text())
+    resources = metadata["resources"]
+    base_url = next(row["url"] for row in resources if row["kind"] == "html")
+    document = json.loads(_safe_file(root, request).read_text())
+    html = _safe_file(root, request.parent / "page.html").read_bytes()
+    discovered = extract_request_artifacts(document, html=html, base_url=base_url)
+    expected = {row["url"] for row in discovered["attachments"]}
+    retained = {row["url"] for row in resources if row["kind"] == "attachment"}
+    missing = expected - retained
+    return {
+        "request_path": request.relative_to(root).as_posix(),
+        "scope": "pinned_adapter_discovery",
+        "expected_count": len(expected),
+        "retained_count": len(retained),
+        "missing_count": len(missing),
+        "missing_url_sha256": sorted(hashlib.sha256(url.encode()).hexdigest() for url in missing),
+        "http_status": None,
+    }
+
+
 def build_raw_inventory(root: Path, *, expected_requests: int) -> dict[str, Any]:
     """Require reconstructable original responses, not a manifest-only artifact."""
     requests = sorted((root / "data/raw/requests").glob("*/*/request.json"))
@@ -123,6 +145,7 @@ def build_raw_inventory(root: Path, *, expected_requests: int) -> dict[str, Any]
         "schema": "fyi-archive.raw-batch-inventory.v1",
         "request_count": len(requests),
         "warc_resource_count": len(required),
+        "attachment_census": [_attachment_census(root, request) for request in requests],
         "total_bytes": total,
         "public_publication_verified": False,
         "storage_scope": "temporary GitHub artifact; durable publication still required",
@@ -142,3 +165,5 @@ def verify_raw_inventory(root: Path, expected: dict[str, Any]) -> None:
     actual = build_raw_inventory(root, expected_requests=expected["request_count"])
     if actual != expected:
         raise ValueError("restored raw package differs from pre-upload inventory")
+    if any(row["missing_count"] for row in actual["attachment_census"]):
+        raise ValueError("retained attachment gaps prevent queue credit")

@@ -20,16 +20,22 @@ jobs:
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Record CI failure candidate
+        env:
+          CI_WORKFLOW_NAME: ${{ github.event.workflow_run.name }}
+          CI_RUN_ID: ${{ github.event.workflow_run.id }}
+          CI_RUN_URL: ${{ github.event.workflow_run.html_url }}
+          CI_ACTOR: ${{ github.event.workflow_run.actor.login }}
+          CI_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           python3 scripts/record_learning_candidate.py \
             --backlog conductor/improvement-backlog.md \
-            --snapshot conductor/.tmp/ci-learning-candidates-${{ github.event.workflow_run.id }}.md \
-            --message "CI failure summary candidate for `${{ github.event.workflow_run.name }}`" \
-            --evidence "workflow=${{ github.event.workflow_run.name }}" \
-            --evidence "run_id=${{ github.event.workflow_run.id }}" \
-            --evidence "run_url=${{ github.event.workflow_run.html_url }}" \
-            --evidence "actor=${{ github.event.workflow_run.actor.login }}" \
-            --evidence "head_sha=${{ github.event.workflow_run.head_sha }}"
+            --snapshot "conductor/.tmp/ci-learning-candidates-$CI_RUN_ID.md" \
+            --message "CI failure summary candidate for $CI_WORKFLOW_NAME" \
+            --evidence "workflow=$CI_WORKFLOW_NAME" \
+            --evidence "run_id=$CI_RUN_ID" \
+            --evidence "run_url=$CI_RUN_URL" \
+            --evidence "actor=$CI_ACTOR" \
+            --evidence "head_sha=$CI_HEAD_SHA"
 
       - name: Upload non-committing learning candidate artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

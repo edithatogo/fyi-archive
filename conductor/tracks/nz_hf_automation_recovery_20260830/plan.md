@@ -20,3 +20,5 @@
 - [x] Add failing missing/corrupt/WARC/path/restore tests and require original-byte inventory plus clean artifact restore before queue credit; validate locally.
 - [~] Verify hosted raw-retention repair and a bounded retained capture. Automatic dispatch remains disabled.
 - [ ] Reconcile historic raw gaps and durable storage before enabling sustained backfill; do not classify temporary artifacts as public HF preservation.
+
+- [~] Follow-up: attachment discovery census, no credit for gaps, and safe CI failure reporting. Local validation passed; hosted checks and merge pending. Receipt: attachment-gap-validation.json.
