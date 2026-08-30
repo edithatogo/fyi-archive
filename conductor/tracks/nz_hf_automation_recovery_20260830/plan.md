@@ -8,3 +8,7 @@
 - [~] Run complete tests, repository quality and workflow validation; record host-tool limitations separately.
 - [ ] Verify exact hosted CI, retained recovery artifact and real controlled lease recovery; observe subsequent progress without skipping work.
 - [ ] Verify public manifest/card consistency and close only the completed repair scope.
+
+## Review fixes
+
+- [x] Make recovery receipt and workflow-file encoding explicit for cross-platform CI. Commit `a0a4d45`; preview lint, ty and six recovery integration tests passed.
