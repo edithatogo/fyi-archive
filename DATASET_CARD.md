@@ -35,14 +35,15 @@ research evaluation. It is not a gold label set, a certified legal finding,
 legal advice, or a replacement for the immutable raw archive. Candidate
 publication requires a separately approved dataset identity and target.
 
-Dataset card for a faithful, read-only full-site archive of
+Dataset card for incremental, read-only preservation of
 **[fyi.org.nz](https://fyi.org.nz/)** — the New Zealand Official Information Act
 (OIA) request register, running on [Alaveteli](https://alaveteli.org/).
 
 The archive is being built incrementally. Early verified snapshots are published to
 Hugging Face and draft-first Zenodo deposits while the historical backfill continues.
-The manifest records the current snapshot size and should be treated as the source of
-truth for coverage at any point in time.
+The manifest records indexed requests. Its record count does not prove that every
+request page or attachment has been stored or can be restored from this repository.
+Raw coverage requires object inventories and verified restoration receipts.
 
 ## Source provenance
 

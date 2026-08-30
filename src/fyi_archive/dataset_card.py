@@ -12,14 +12,14 @@ def render(card: str, summary: dict[str, object]) -> str:
         START,
         "## Verified snapshot metadata",
         "",
-        f"- Publication status: **{'verified' if summary['verified'] else 'unverified'}**",
+        f"- Manifest verification: **{'verified' if summary['verified'] else 'unverified'}**",
         f"- Snapshot records: **{int(str(summary['record_count'])):,}**",
         f"- Generated at: `{summary['generated_at']}`",
         f"- Manifest SHA-256: `{summary['manifest_sha256']}`",
         "",
         (
-            "This metadata describes the current verified incremental snapshot; it does not "
-            "imply that historical coverage is complete."
+            "This metadata describes the manifest snapshot; it does not "
+            "verify raw HTML or attachment completeness. Manifest records are not a count of fully archived requests."
         ),
         END,
     ])

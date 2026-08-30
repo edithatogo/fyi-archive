@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import sys
+from contextlib import redirect_stdout
 from pathlib import Path
 from typing import Annotated
 
@@ -10,6 +12,7 @@ import typer
 
 from fyi_archive.instances import DEFAULT_INSTANCE_ID, resolve_instance
 from fyi_archive.sync import run_sync, write_sync_health
+from fyi_archive.sync_summary import validate_summary, write_summary
 
 app = typer.Typer(name="sync", help="Run prospective incremental sync.")
 
@@ -26,6 +29,7 @@ def run(
     hf_repo_id: Annotated[str | None, typer.Option()] = None,
     hf_token: Annotated[str | None, typer.Option(envvar="HF_TOKEN")] = None,
     health_path: Annotated[Path | None, typer.Option()] = None,
+    summary_path: Annotated[Path | None, typer.Option()] = None,
     dry_run: Annotated[bool, typer.Option()] = False,
     instance: Annotated[
         str,
@@ -44,6 +48,13 @@ def run(
     ] = None,
 ) -> None:
     """Run one prospective sync cycle."""
+    if summary_path is not None:
+        protected = [state_path, manifest_path, parquet_path, authorities_path, changes_path]
+        if health_path is not None:
+            protected.append(health_path)
+        if summary_path.resolve() in {path.resolve() for path in protected}:
+            raise typer.BadParameter("summary path must not overwrite another sync artifact")
+        summary_path.unlink(missing_ok=True)
     try:
         archive_instance = resolve_instance(instance_id=instance, base_url=base_url)
     except ValueError as error:
@@ -52,20 +63,24 @@ def run(
     # identity is applied when assembling the manifest. Capture of new IDs is
     # driven by seed/backfill with --base-url.
     _ = archive_instance.capture_base_url()
-    summary = run_sync(
-        state_path=state_path,
-        derived_dir=derived_dir,
-        manifest_path=manifest_path,
-        parquet_path=parquet_path,
-        authorities_path=authorities_path,
-        changes_path=changes_path,
-        fyi_cli_version=fyi_cli_version,
-        hf_repo_id=hf_repo_id,
-        hf_token=hf_token,
-        dry_run=dry_run,
-        instance_id=archive_instance.id,
-        jurisdiction=jurisdiction,
-    )
+    with redirect_stdout(sys.stderr):
+        summary = run_sync(
+            state_path=state_path,
+            derived_dir=derived_dir,
+            manifest_path=manifest_path,
+            parquet_path=parquet_path,
+            authorities_path=authorities_path,
+            changes_path=changes_path,
+            fyi_cli_version=fyi_cli_version,
+            hf_repo_id=hf_repo_id,
+            hf_token=hf_token,
+            dry_run=dry_run,
+            instance_id=archive_instance.id,
+            jurisdiction=jurisdiction,
+        )
+    validate_summary(summary, instance_id=archive_instance.id)
+    if summary_path is not None:
+        write_summary(summary_path, summary, instance_id=archive_instance.id)
     if health_path is not None:
         write_sync_health(health_path, summary)
     typer.echo(json.dumps(summary, indent=2, sort_keys=True))

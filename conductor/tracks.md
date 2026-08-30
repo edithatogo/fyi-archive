@@ -1,3 +1,8 @@
+## [~] Track: NZ lease and Hugging Face summary recovery
+Track ID: `nz_hf_automation_recovery_20260830`
+Issue: [receiver phase P1](https://github.com/edithatogo/archive-govt-nz/issues/235).
+Link: [./tracks/nz_hf_automation_recovery_20260830/](./tracks/nz_hf_automation_recovery_20260830/)
+
 # Project Tracks
 
 ## [~] Track: Generic instance acquisition and continuation controller

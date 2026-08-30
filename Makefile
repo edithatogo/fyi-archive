@@ -27,11 +27,11 @@ lint-preview: ## Advisory Ruff preview lint
 	uv run ruff check --preview src tests scripts
 
 format: ## Check formatting
-	uv run ruff format --check src tests scripts
+	uv run ruff format --preview --check src tests scripts
 
 format-fix: ## Apply formatting + lint fixes
 	uv run ruff check --fix src tests scripts
-	uv run ruff format src tests scripts
+	uv run ruff format --preview src tests scripts
 
 typecheck: ## ty type check
 	uv run ty check src

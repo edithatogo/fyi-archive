@@ -640,7 +640,7 @@ def test_cli_help_is_a_system_smoke() -> None:
 @pytest.mark.system
 def test_command_adapters_forward_instance_and_write_outputs(tmp_path: Path, monkeypatch) -> None:
     class Instance:
-        id = "test-instance"
+        id = "nz-fyi"
         rate_limit_name = "test-limit"
 
         def capture_base_url(self) -> str:
@@ -658,7 +658,13 @@ def test_command_adapters_forward_instance_and_write_outputs(tmp_path: Path, mon
     monkeypatch.setattr(
         sync_command,
         "run_sync",
-        lambda **kwargs: {"verified": True, "instance_id": kwargs["instance_id"]},
+        lambda **kwargs: {
+            "verified": True,
+            "instance_id": kwargs["instance_id"],
+            "generated_at": "2026-08-30T00:00:00+00:00",
+            "record_count": 0,
+            "manifest_sha256": "a" * 64,
+        },
     )
     health = tmp_path / "health.json"
     sync_command.run(health_path=health, instance="test-instance", dry_run=True)

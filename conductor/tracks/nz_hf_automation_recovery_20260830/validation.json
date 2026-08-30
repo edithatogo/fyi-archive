@@ -1,0 +1,53 @@
+{
+  "recorded_at": "2026-08-30T09:37:26.200884+00:00",
+  "base_revision": "cba7b0dec2734bdc9ff51c69610fc55cb1fc5aa1",
+  "tests": {
+    "command": [
+      "make",
+      "test-all"
+    ],
+    "exit_code": 0,
+    "passed": 907,
+    "skipped": 1,
+    "coverage_percent": 93.38,
+    "output_sha256": "9462b93964888188a4903b95081ef41c484660460fa55ade2f49a8b4fa582ecf"
+  },
+  "critical_module_coverage": {
+    "nz_lease_recovery": "100 percent line and branch",
+    "sync_summary": "100 percent line and branch"
+  },
+  "static": {
+    "ruff": "passed",
+    "ci_preview_format": "passed",
+    "ty": "passed",
+    "actionlint_changed_workflows": "passed",
+    "typos_1_47_2": "passed"
+  },
+  "quality_harness": {
+    "command": [
+      "make",
+      "quality"
+    ],
+    "status": "blocked_by_host_tool",
+    "stage": "toml-check",
+    "detail": "taplo executable not installed; no TOML changed. CI config installs Taplo separately."
+  },
+  "live_diagnosis": {
+    "command": [
+      "uv",
+      "run",
+      "--locked",
+      "python",
+      "scripts/recover_nz_lease.py",
+      "prepare",
+      "--proposal",
+      "/tmp/foi-nz-recovery-observation.json"
+    ],
+    "exit_code": 0,
+    "sha256": "944514c08f046073c22d1097fd2e6a88fa2aa2e3eb80ce973634081bfe0423f7",
+    "mutation": false
+  },
+  "hosted_ci": "pending",
+  "lease_released": false,
+  "new_publication": false
+}

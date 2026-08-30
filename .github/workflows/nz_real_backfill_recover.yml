@@ -1,0 +1,61 @@
+name: Recover failed NZ backfill lease
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Retain diagnosis without changing the controller
+        type: boolean
+        required: true
+        default: true
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+# All issue-state writers must retain this exact shared group until cutover.
+concurrency:
+  group: nz-real-backfill-global-range-lease
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Install locked dependencies
+        run: uv sync --extra dev --frozen
+      - name: Observe exact issue state and owner
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run python scripts/recover_nz_lease.py prepare
+      - name: Retain recovery diagnosis before mutation
+        id: evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: nz-lease-recovery-${{ github.run_id }}
+          path: recovery-observation.json
+          if-no-files-found: error
+      - name: Recheck and release the exact failed lease
+        if: ${{ inputs.dry_run == false }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.evidence.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.evidence.outputs.artifact-digest }}
+        run: |
+          uv run python scripts/recover_nz_lease.py apply \
+            --artifact-id "$ARTIFACT_ID" --artifact-digest "$ARTIFACT_DIGEST"
+      - name: Retain recovery result
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: nz-lease-recovery-result-${{ github.run_id }}
+          path: recovery-result.json
