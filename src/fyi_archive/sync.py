@@ -6,6 +6,7 @@ import hashlib
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -204,7 +205,7 @@ def run_fyi_cli_diff(
     if since is not None:
         command.extend(["--since", since])
     command.extend(extra_args)
-    subprocess.run(command, check=True)
+    subprocess.run(command, check=True, stdout=sys.stderr)
 
 
 def fyi_diff_content_sha256(data: dict[str, Any]) -> str:

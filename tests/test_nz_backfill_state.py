@@ -27,6 +27,12 @@ def test_matching_run_can_idempotently_reassert_lease() -> None:
     assert reserve_range(state, start_offset=0, batch_size=100, run_id=7) == state
 
 
+def test_disjoint_reservation_cannot_create_a_second_lease() -> None:
+    state = reserve_range(new_state(queue_count=1000), start_offset=0, batch_size=100, run_id=7)
+    with pytest.raises(ValueError, match="one active"):
+        reserve_range(state, start_offset=100, batch_size=100, run_id=8)
+
+
 def test_completion_requires_receipt_matching_lease() -> None:
     state = reserve_range(new_state(queue_count=1000), start_offset=100, batch_size=100, run_id=8)
     with pytest.raises(ValueError, match="batch_size"):

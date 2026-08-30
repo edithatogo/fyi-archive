@@ -14,7 +14,7 @@ from fyi_archive.backfill_state_codec import decode_state, state_body_from_state
 from fyi_archive.nz_backfill_state import (
     abandon_range,
     complete_range,
-    next_unclaimed_offset,
+    next_dispatch_offset,
     reserve_range,
 )
 
@@ -33,7 +33,7 @@ def main() -> None:
 
     state = decode_state(args.body.read_text(encoding="utf-8"))
     if args.action == "next":
-        print(next_unclaimed_offset(state))
+        print(next_dispatch_offset(state))
         return
     if args.output is None or args.run_id is None:
         parser.error("--output and --run-id are required for state updates")

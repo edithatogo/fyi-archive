@@ -59,8 +59,10 @@ def reserve_range(
             return updated
     _reject_cross_overlaps(updated["completed"], [requested])
     _reject_cross_overlaps(updated["leases"], [requested])
+    if updated["leases"]:
+        raise ValueError("only one active NZ backfill lease is allowed")
     updated["leases"].append(requested)
-    return updated
+    return validate_state(updated)
 
 
 def complete_range(
@@ -118,6 +120,17 @@ def next_unclaimed_offset(state: dict[str, Any]) -> int:
             return cursor
         cursor = max(cursor, item["end_offset"])
     return cursor
+
+
+def next_dispatch_offset(state: dict[str, Any]) -> int:
+    """Refuse dispatch while a lease exists, including an abandoned failed run."""
+    normalized = validate_state(state)
+    if normalized["leases"]:
+        run_id = normalized["leases"][0].get("run_id")
+        raise ValueError(
+            f"active NZ backfill lease held by run {run_id}; retain recovery evidence before retry"
+        )
+    return next_unclaimed_offset(normalized)
 
 
 def _requested_range(

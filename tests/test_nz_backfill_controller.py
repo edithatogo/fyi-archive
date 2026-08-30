@@ -5,7 +5,7 @@ import subprocess
 import sys
 
 from fyi_archive.backfill_state_codec import decode_state, state_body_from_state
-from fyi_archive.nz_backfill_state import new_state
+from fyi_archive.nz_backfill_state import new_state, reserve_range
 
 
 def test_controller_cli_reserves_completes_and_reports_next(tmp_path) -> None:
@@ -60,3 +60,18 @@ def test_controller_cli_reserves_completes_and_reports_next(tmp_path) -> None:
         text=True,
     )
     assert result.stdout.strip() == "100"
+
+
+def test_controller_next_refuses_to_redispatch_an_active_lease(tmp_path) -> None:
+    body = tmp_path / "leased.json"
+    state = reserve_range(new_state(queue_count=100), start_offset=0, batch_size=25, run_id=9)
+    body.write_text(state_body_from_state(state), encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, "scripts/nz_backfill_controller.py", "next", "--body", str(body)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert result.stdout == ""
+    assert "lease" in result.stderr

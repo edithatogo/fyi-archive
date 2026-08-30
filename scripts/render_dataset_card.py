@@ -9,6 +9,7 @@ from pathlib import Path
 from fyi_archive.archive_dataset_card import render_instance_card
 from fyi_archive.dataset_card import render
 from fyi_archive.instances import get_instance
+from fyi_archive.sync_summary import validate_summary
 
 
 def main() -> None:
@@ -23,6 +24,7 @@ def main() -> None:
     missing = required.difference(summary)
     if missing:
         raise SystemExit(f"sync summary missing required fields: {', '.join(sorted(missing))}")
+    validate_summary(summary, instance_id=args.instance or "nz-fyi")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if args.instance and args.instance != "nz-fyi":
         card = render_instance_card(get_instance(args.instance))

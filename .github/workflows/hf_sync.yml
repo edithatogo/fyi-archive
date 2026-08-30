@@ -68,11 +68,12 @@ jobs:
             --instance "$INSTANCE"
             --fyi-cli-version 1.2.0
             --health-path conductor/archive_health.json
+            --summary-path sync-summary.json
           )
           if [ "$DRY_RUN" = "true" ]; then
             args+=(--dry-run)
           fi
-          uv run fyi-archive sync run "${args[@]}" | tee sync-summary.json
+          uv run fyi-archive sync run "${args[@]}"
 
       - name: Summarize sync
         run: |
@@ -114,7 +115,33 @@ jobs:
           )
           PY
 
+      - name: Retain bounded execution status
+        if: ${{ always() }}
+        env:
+          SYNC_STATUS: ${{ job.status }}
+        run: |
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          summary = Path("sync-summary.json")
+          receipt = {
+              "schema": "fyi-archive.sync-execution.v1",
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "revision": os.environ["GITHUB_SHA"],
+              "job_status": os.environ["SYNC_STATUS"],
+              "summary_present": summary.is_file(),
+              "summary_sha256": hashlib.sha256(summary.read_bytes()).hexdigest() if summary.is_file() else None,
+          }
+          Path("sync-execution-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+          PY
+
       - name: Upload sync artifacts
+        if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: hf-sync
@@ -126,4 +153,5 @@ jobs:
             manifests/authorities.json
             conductor/archive_health.json
             sync-summary.json
+            sync-execution-receipt.json
             rendered-dataset-card.md
