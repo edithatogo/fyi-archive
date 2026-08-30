@@ -256,7 +256,7 @@ jobs:
           uv run fyi-archive manifest build \
             --instance nz-fyi \
             --derived-dir data/raw/requests \
-            --fyi-cli-version 1.2.0
+            --fyi-cli-version "$(uv run python -c 'from importlib.metadata import version; print(version("fyi-cli"))')"
           captured_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           mkdir -p dist/process-events
           uv run fyi export-process-events \
@@ -277,6 +277,9 @@ jobs:
             --snapshot-revision "nz-real-backfill-${START_OFFSET}" \
             --require-live-manifest
           uv run fyi-archive process verify --output-dir dist/process-events/projection
+      - name: Verify original capture inventory
+        run: |
+          uv run python scripts/verify_raw_batch.py build --expected-requests "$BATCH_SIZE"
       - name: Write batch evidence
         run: |
           set -euo pipefail
@@ -299,6 +302,7 @@ jobs:
               "publication": "none",
               "dry_run": False,
               "manifest_sha256": digest("manifests/latest_manifest.json"),
+              "raw_package_manifest_sha256": digest("raw-package-manifest.json"),
               "events_sha256": digest("dist/process-events/events.jsonl"),
               "attachments_sha256": digest("dist/process-events/attachments.jsonl"),
           }
@@ -307,17 +311,30 @@ jobs:
           )
           PY
       - name: Upload verified batch
+        id: raw_artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: nz-real-backfill-range-${{ inputs.start_offset }}-${{ env.END_OFFSET }}-${{ github.run_id }}
           retention-days: 90
           if-no-files-found: error
           path: |
-            data/_state/ledger.jsonl
+            data/
+            dist/site_snapshots/
+            raw-package-manifest.json
             manifests/latest_manifest.json
             manifests/latest_manifest.parquet
             dist/process-events/
             dist/nz-real-backfill-evidence.json
+      - name: Restore retained batch in a clean directory
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          artifact-ids: ${{ steps.raw_artifact.outputs.artifact-id }}
+          merge-multiple: true
+          path: .tmp/retained-raw-batch
+      - name: Verify retained original bytes before queue credit
+        run: |
+          uv run python scripts/verify_raw_batch.py verify \
+            --root .tmp/retained-raw-batch --manifest raw-package-manifest.json
       - name: Complete durable NZ range receipt
         env:
           GH_TOKEN: ${{ github.token }}

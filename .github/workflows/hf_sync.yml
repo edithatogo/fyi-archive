@@ -66,7 +66,7 @@ jobs:
           args=(
             --hf-repo-id "$HF_REPO_ID"
             --instance "$INSTANCE"
-            --fyi-cli-version 1.2.0
+            --fyi-cli-version "$(uv run python -c 'from importlib.metadata import version; print(version("fyi-cli"))')"
             --health-path conductor/archive_health.json
             --summary-path sync-summary.json
           )
