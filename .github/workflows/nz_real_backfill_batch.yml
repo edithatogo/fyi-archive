@@ -203,53 +203,6 @@ jobs:
             --continue-on-error
           test -s data/_state/ledger.jsonl
           ! grep -q '"status": "failed"' data/_state/ledger.jsonl
-      - name: Retain failed capture ledger for requeue
-        id: failure_artifact
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: nz-real-backfill-failures-${{ inputs.start_offset }}-${{ github.run_id }}
-          retention-days: 90
-          # Preserve the originating failure when a pre-capture guard trips before files exist.
-          if-no-files-found: warn
-          path: |
-            .tmp/batch_requests.jsonl
-            .tmp/source-health.json
-            data/_state/ledger.jsonl
-      - name: Release failed lease with retained evidence
-        if: >-
-          ${{ failure() && steps.reserve.outcome == 'success' &&
-              steps.failure_artifact.outcome == 'success' &&
-              steps.failure_artifact.outputs.artifact-id != '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
-          ARTIFACT_URL: ${{ steps.failure_artifact.outputs.artifact-url }}
-          ARTIFACT_DIGEST: ${{ steps.failure_artifact.outputs.artifact-digest }}
-        run: |
-          set -euo pipefail
-          issue_number="$(cat .tmp/nz-state-issue-number.txt)"
-          gh issue view "$issue_number" --repo "$REPO" --json body --jq .body > .tmp/nz-state-body.failed.json
-          jq -n \
-            --argjson start_offset "$START_OFFSET" \
-            --argjson batch_size "$BATCH_SIZE" \
-            --arg artifact_url "$ARTIFACT_URL" \
-            --arg artifact_digest "$ARTIFACT_DIGEST" \
-            '{
-              schema: "fyi-archive.nz-real-backfill-failure.v1",
-              start_offset: $start_offset,
-              batch_size: $batch_size,
-              workflow_conclusion: "failure",
-              artifact_url: $artifact_url,
-              artifact_digest: $artifact_digest
-            }' > .tmp/nz-failure-receipt.json
-          uv run python scripts/nz_backfill_controller.py abandon \
-            --body .tmp/nz-state-body.failed.json \
-            --output .tmp/nz-state-body.released.json \
-            --receipt .tmp/nz-failure-receipt.json \
-            --run-id "$RUN_ID"
-          gh issue edit "$issue_number" --repo "$REPO" --body-file .tmp/nz-state-body.released.json
       - name: Build live manifest and process sidecars
         run: |
           set -euo pipefail
@@ -350,6 +303,53 @@ jobs:
             --receipt dist/nz-real-backfill-evidence.json \
             --run-id "$RUN_ID"
           gh issue edit "$issue_number" --repo "$REPO" --body-file .tmp/nz-state-body.completed.json
+      - name: Retain failed capture ledger for requeue
+        id: failure_artifact
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: nz-real-backfill-failures-${{ inputs.start_offset }}-${{ github.run_id }}
+          retention-days: 90
+          # Preserve the originating failure when a pre-capture guard trips before files exist.
+          if-no-files-found: warn
+          path: |
+            .tmp/batch_requests.jsonl
+            .tmp/source-health.json
+            data/_state/ledger.jsonl
+      - name: Release failed lease with retained evidence
+        if: >-
+          ${{ failure() && steps.reserve.outcome == 'success' &&
+              steps.failure_artifact.outcome == 'success' &&
+              steps.failure_artifact.outputs.artifact-id != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          ARTIFACT_URL: ${{ steps.failure_artifact.outputs.artifact-url }}
+          ARTIFACT_DIGEST: ${{ steps.failure_artifact.outputs.artifact-digest }}
+        run: |
+          set -euo pipefail
+          issue_number="$(cat .tmp/nz-state-issue-number.txt)"
+          gh issue view "$issue_number" --repo "$REPO" --json body --jq .body > .tmp/nz-state-body.failed.json
+          jq -n \
+            --argjson start_offset "$START_OFFSET" \
+            --argjson batch_size "$BATCH_SIZE" \
+            --arg artifact_url "$ARTIFACT_URL" \
+            --arg artifact_digest "$ARTIFACT_DIGEST" \
+            '{
+              schema: "fyi-archive.nz-real-backfill-failure.v1",
+              start_offset: $start_offset,
+              batch_size: $batch_size,
+              workflow_conclusion: "failure",
+              artifact_url: $artifact_url,
+              artifact_digest: $artifact_digest
+            }' > .tmp/nz-failure-receipt.json
+          uv run python scripts/nz_backfill_controller.py abandon \
+            --body .tmp/nz-state-body.failed.json \
+            --output .tmp/nz-state-body.released.json \
+            --receipt .tmp/nz-failure-receipt.json \
+            --run-id "$RUN_ID"
+          gh issue edit "$issue_number" --repo "$REPO" --body-file .tmp/nz-state-body.released.json
       - name: Dispatch next verified batch
         if: ${{ success() && inputs.auto_continue == true && inputs.auto_batches_remaining != '0' }}
         env:

@@ -1,0 +1,27 @@
+{
+  "recorded_at": "2026-08-30T10:55:37.085660+00:00",
+  "failed_hosted_run": 33307488567,
+  "failed_revision": "676461907887ace3f3a42a270b0b05ad0ed29ec6",
+  "failure": "non-chunked gzip container rejected before credit; no artifact retained",
+  "failure_log_sha256": "f2234bbe1d8c37df85ed34f8b4b3ae556867f15ddd2b714bf413f6f3964e66b1",
+  "recovery_run": 33307589477,
+  "credited_next_offset": 17226,
+  "active_leases": 0,
+  "tests": {
+    "command": "make test-all",
+    "passed": 921,
+    "skipped": 1,
+    "coverage_percent": 93.4,
+    "log_sha256": "7bfca7c75eef65d7167438375abb1c043e19e34a6daa426a3d5ee101f2287c51"
+  },
+  "focused_tests": 14,
+  "checks": [
+    "stable Ruff src tests scripts",
+    "preview Ruff format src tests scripts",
+    "ty check src",
+    "actionlint changed workflow"
+  ],
+  "monitor": "disabled_manually",
+  "public_upload": false,
+  "hosted_raw_restore": "pending"
+}
