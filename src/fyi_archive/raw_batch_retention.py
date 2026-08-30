@@ -43,7 +43,10 @@ def _warc_resources(root: Path) -> dict[str, tuple[str, int]]:
                 identity = record.rec_headers.get_header("WARC-Record-ID")
                 if not identity or identity in result:
                     raise ValueError("missing or duplicate WARC record identity")
-                digest, size = _digest_stream(record.content_stream())
+                # Hash the payload bytes as stored. fyi-cli already decodes HTTP
+                # content before writing; content_stream() may decode a gzip
+                # attachment a second time using retained source headers.
+                digest, size = _digest_stream(record.raw_stream)
                 total += size
                 if total > MAX_RAW_BYTES:
                     raise ValueError("raw batch exceeds decompressed byte budget")
