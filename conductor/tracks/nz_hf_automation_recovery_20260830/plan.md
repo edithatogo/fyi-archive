@@ -12,3 +12,11 @@
 ## Review fixes
 
 - [x] Make recovery receipt and workflow-file encoding explicit for cross-platform CI. Commit `a0a4d45`; preview lint, ty and six recovery integration tests passed.
+
+## Raw-retention incident follow-up
+
+- [x] Inspect the actual bounded hosted artifact and distinguish credited capture from retained original bytes; preserve historical credit evidence.
+- [x] Pause NZ automatic dispatch after confirming raw directories were omitted.
+- [x] Add failing missing/corrupt/WARC/path/restore tests and require original-byte inventory plus clean artifact restore before queue credit; validate locally.
+- [~] Verify hosted raw-retention repair and a bounded retained capture. Automatic dispatch remains disabled.
+- [ ] Reconcile historic raw gaps and durable storage before enabling sustained backfill; do not classify temporary artifacts as public HF preservation.
