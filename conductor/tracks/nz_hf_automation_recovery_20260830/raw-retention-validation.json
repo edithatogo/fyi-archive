@@ -1,0 +1,24 @@
+{
+  "recorded_at": "2026-08-30T10:29:25.776605+00:00",
+  "revision": "f5c6363f75fc7b9b91c2bfe9d435f61e7d481f0b",
+  "tests": 917,
+  "skipped": 1,
+  "coverage_percent": 93.39,
+  "command": [
+    "make",
+    "test-all"
+  ],
+  "exit_code": 0,
+  "output_sha256": "153a4b222928227b66b3d677831b447a1d0259c18a601dd9a905b6cb86110ac0",
+  "static_checks": [
+    "ruff stable and preview",
+    "ruff format preview",
+    "ty src tests scripts",
+    "actionlint changed workflows"
+  ],
+  "hosted_restore": "pending",
+  "nz_monitor_state": "disabled_manually",
+  "reason": "Prevent metadata-only progress credit while original capture bytes are omitted from artifacts",
+  "raw_gap_evidence_run": 33305989413,
+  "public_hf_upload_performed": false
+}
