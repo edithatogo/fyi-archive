@@ -5,6 +5,16 @@ All notable changes to this project are documented here.
 This file is managed by `release-please` from Conventional Commits after the initial
 bootstrap release.
 
+## [0.20.3](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.20.2...fyi_archive-v0.20.3) (2026-08-31)
+
+
+### Bug Fixes
+
+* **archive:** retain attachment gaps and prevent false queue credit ([#408](https://github.com/edithatogo/fyi-archive/issues/408)) ([7793293](https://github.com/edithatogo/fyi-archive/commit/7793293e488bd39d3fbb1e36ceb98820beb40313))
+* **archive:** retain original NZ capture bytes before queue credit ([#404](https://github.com/edithatogo/fyi-archive/issues/404)) ([77e7091](https://github.com/edithatogo/fyi-archive/commit/77e70914df4391c4bde9f3573941fb71de5f9403))
+* **archive:** support capture WARC containers and late failure recovery ([#407](https://github.com/edithatogo/fyi-archive/issues/407)) ([be992fe](https://github.com/edithatogo/fyi-archive/commit/be992fe036d5a270e228b5277e5b5770b9950ad8))
+* **archive:** verify stored WARC bytes without re-decoding ([#406](https://github.com/edithatogo/fyi-archive/issues/406)) ([6764619](https://github.com/edithatogo/fyi-archive/commit/676461907887ace3f3a42a270b0b05ad0ed29ec6))
+
 ## [0.20.2](https://github.com/edithatogo/fyi-archive/compare/fyi_archive-v0.20.1...fyi_archive-v0.20.2) (2026-08-13)
 
 
