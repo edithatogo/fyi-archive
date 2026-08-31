@@ -14,11 +14,12 @@ from warcio.warcwriter import WARCWriter
 from fyi_archive.raw_batch_retention import build_raw_inventory, verify_raw_inventory
 
 
-def make_capture(root: Path, *, encoded_attachment: bool = False) -> None:
+def make_capture(
+    root: Path, *, encoded_attachment: bool = False, html: bytes = b"<html>public fixture</html>"
+) -> None:
     request = root / "data/raw/requests/example/1"
     request.mkdir(parents=True)
     (request / "request.json").write_text('{"id":1}', encoding="utf-8")
-    html = b"<html>public fixture</html>"
     (request / "page.html").write_bytes(html)
     attachment = root / "data/attachments/object"
     attachment.parent.mkdir(parents=True)
@@ -50,6 +51,7 @@ def make_capture(root: Path, *, encoded_attachment: bool = False) -> None:
             writer.write_record(record)
             resources.append({
                 "kind": kind,
+                "url": "https://example.org/" + kind,
                 "size": len(payload),
                 "sha256": hashlib.sha256(payload).hexdigest(),
                 "path": path,
@@ -182,3 +184,20 @@ def test_post_capture_failures_have_retained_diagnostics_before_lease_release() 
         < workflow.index("- name: Retain failed capture ledger for requeue")
         < workflow.index("- name: Release failed lease with retained evidence")
     )
+
+
+def test_missing_attachment_is_retained_as_gap_and_blocks_credit(tmp_path: Path) -> None:
+    make_capture(tmp_path, html=b'<a href="/request/1/attach/1/missing.pdf">file</a>')
+    inventory = build_raw_inventory(tmp_path, expected_requests=1)
+    assert inventory["attachment_census"][0]["missing_count"] == 1
+    assert inventory["attachment_census"][0]["http_status"] is None
+    with pytest.raises(ValueError, match="attachment gaps"):
+        verify_raw_inventory(tmp_path, inventory)
+
+
+def test_complete_attachment_census_does_not_infer_country_completeness(tmp_path: Path) -> None:
+    make_capture(tmp_path)
+    inventory = build_raw_inventory(tmp_path, expected_requests=1)
+    assert inventory["attachment_census"][0]["missing_count"] == 0
+    assert inventory["attachment_census"][0]["scope"] == "pinned_adapter_discovery"
+    verify_raw_inventory(tmp_path, inventory)

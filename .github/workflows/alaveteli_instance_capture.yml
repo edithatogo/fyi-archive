@@ -167,10 +167,12 @@ jobs:
             eligible=false
             reason="outside-window"
           fi
-          echo "eligible=$eligible" >> "$GITHUB_OUTPUT"
-          echo "reason=$reason" >> "$GITHUB_OUTPUT"
-          echo "timezone=$CAPTURE_TIMEZONE" >> "$GITHUB_OUTPUT"
-          echo "local_hour=$hour" >> "$GITHUB_OUTPUT"
+          {
+            echo "eligible=$eligible"
+            echo "reason=$reason"
+            echo "timezone=$CAPTURE_TIMEZONE"
+            echo "local_hour=$hour"
+          } >> "$GITHUB_OUTPUT"
           echo "Live window: eligible=$eligible reason=$reason timezone=$CAPTURE_TIMEZONE local_hour=$hour"
       - name: Record run window
         env:

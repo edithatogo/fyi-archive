@@ -1,0 +1,25 @@
+{
+  "observed_at": "2026-08-30T21:47:26.738311+00:00",
+  "status": "local_passed_hosted_pending",
+  "full_tests": 923,
+  "full_tests_skipped": 1,
+  "overall_coverage_percent": 93.42,
+  "focused_regression_tests": 17,
+  "quality": "passed_with_local_taplo_0.10.0_and_existing_actionlint",
+  "publication": false,
+  "monitor_resumed": false,
+  "cutover": false,
+  "changes": [
+    "Retain pinned-adapter attachment discovery census in the raw inventory.",
+    "Reject queue credit after restoration if discovered attachments were not retained.",
+    "Keep HTTP outcome unknown and record missing URL hashes instead of copying links into diagnostics.",
+    "Pass CI failure metadata as quoted environment values rather than interpolated shell source.",
+    "Repair baseline workflow lint findings while preserving the active loop variables."
+  ],
+  "limitations": [
+    "Discovery census is bounded by captured HTML and JSON and pinned adapter semantics.",
+    "No source rights or public delivery is established.",
+    "Older inventories without the new census cannot earn new credit through this verifier.",
+    "Taplo reports missing optional .taplo.toml but its syntax check passes with defaults."
+  ]
+}

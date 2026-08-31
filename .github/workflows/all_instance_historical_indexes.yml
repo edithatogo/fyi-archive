@@ -143,7 +143,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .tmp/all-instance-core
-          while IFS=$'\t' read -r instance_id base_url status; do
+          while IFS=$'\t' read -r instance_id _base_url _status; do
             cdx=".tmp/all-instance-cdx/${instance_id}.json"
             imported=".tmp/all-instance-core/${instance_id}.historical-index.json"
             filtered=".tmp/all-instance-core/${instance_id}.request-pages-index.json"
@@ -183,7 +183,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .tmp/all-instance-manifests
-          while IFS=$'\t' read -r instance_id base_url status; do
+          while IFS=$'\t' read -r instance_id _base_url _status; do
             uv run python scripts/build_historical_archive_manifest.py \
               --root .tmp \
               --instance-id "$instance_id" \
