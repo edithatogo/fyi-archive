@@ -10,7 +10,9 @@ import yaml
 
 
 def test_workflow_name_is_not_executed(tmp_path: Path) -> None:
-    workflow = yaml.safe_load(Path(".github/workflows/ci-learning-candidates.yml").read_text())
+    workflow = yaml.safe_load(
+        Path(".github/workflows/ci-learning-candidates.yml").read_text(encoding="utf-8")
+    )
     step = next(
         step
         for job in workflow["jobs"].values()
@@ -45,7 +47,7 @@ def test_workflow_name_is_not_executed(tmp_path: Path) -> None:
     )
     assert result.returncode == 0
     assert not (tmp_path / "executed").exists()
-    arguments = json.loads(captured.read_text())
+    arguments = json.loads(captured.read_text(encoding="utf-8"))
     assert (
         arguments[arguments.index("--message") + 1]
         == "CI failure summary candidate for " + unsafe_name

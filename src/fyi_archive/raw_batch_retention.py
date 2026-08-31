@@ -99,10 +99,12 @@ def _check_request(root: Path, request: Path, warc: dict[str, tuple[str, int]]) 
 
 
 def _attachment_census(root: Path, request: Path) -> dict[str, Any]:
-    metadata = json.loads(_safe_file(root, request.parent / "snapshot_meta.json").read_text())
+    metadata = json.loads(
+        _safe_file(root, request.parent / "snapshot_meta.json").read_text(encoding="utf-8")
+    )
     resources = metadata["resources"]
     base_url = next(row["url"] for row in resources if row["kind"] == "html")
-    document = json.loads(_safe_file(root, request).read_text())
+    document = json.loads(_safe_file(root, request).read_text(encoding="utf-8"))
     html = _safe_file(root, request.parent / "page.html").read_bytes()
     discovered = extract_request_artifacts(document, html=html, base_url=base_url)
     expected = {row["url"] for row in discovered["attachments"]}
