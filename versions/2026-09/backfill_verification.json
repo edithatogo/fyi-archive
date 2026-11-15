@@ -8,7 +8,7 @@
     "captured_within_tolerance": true,
     "fully_verified": true,
     "merged_matches_huggingface": true,
-    "merged_matches_zenodo": true,
+    "merged_matches_zenodo": null,
     "merged_minus_huggingface": 0,
     "merged_minus_zenodo": null
   },
