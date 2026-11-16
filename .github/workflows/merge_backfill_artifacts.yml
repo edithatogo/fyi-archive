@@ -49,6 +49,11 @@ jobs:
       SOURCE_RUN_ID: ${{ inputs.run_id }}
       SOURCE_RUN_IDS: ${{ inputs.run_ids || inputs.run_id }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
       - name: Validate explicit side-effect controls
         run: |
           set -euo pipefail
