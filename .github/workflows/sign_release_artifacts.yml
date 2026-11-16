@@ -27,6 +27,11 @@ jobs:
       GH_TOKEN: ${{ secrets.WORKFLOW_PAT }}
       RELEASE_TAG: ${{ inputs.release_tag }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
       - name: Install Cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
 

@@ -108,6 +108,11 @@ jobs:
       ALLOW_HF_RECORD_DECREASE: ${{ inputs.allow_hf_record_decrease || false }}
       HF_REPO_ID_OVERRIDE: ${{ vars.HF_REPO_ID }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false

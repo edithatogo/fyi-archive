@@ -55,6 +55,11 @@ jobs:
       PAGE_LIMIT: ${{ inputs.page_limit || '25' }}
       DELAY_SECONDS: ${{ inputs.delay_seconds || '3' }}
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           persist-credentials: false
