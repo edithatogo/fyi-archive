@@ -359,8 +359,12 @@ def build_backfill_verification_report(
             if zenodo_records is None
             else merged_records - zenodo_records,
             "captured_matches_merged": controller["captured_records"] == merged_records,
-            "merged_matches_huggingface": hf_records is None or merged_records == hf_records,
-            "merged_matches_zenodo": zenodo_records is None or merged_records == zenodo_records,
+            "merged_matches_huggingface": None
+            if hf_records is None
+            else merged_records == hf_records,
+            "merged_matches_zenodo": None
+            if zenodo_records is None
+            else merged_records == zenodo_records,
             "fully_verified": capture_ok and mirrors_match,
         },
     }
