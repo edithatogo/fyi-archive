@@ -36,6 +36,7 @@ outputs/
 dist/
 *.tar.gz
 *.wacz
+!tests/fixtures/offline-seed-v1/*/capture.wacz
 *.warc
 *.warc.gz
 *.parquet

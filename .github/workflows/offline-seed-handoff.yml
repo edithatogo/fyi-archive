@@ -1,0 +1,56 @@
+name: Offline seed handoff
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  offline-seed-handoff:
+    name: Offline seed handoff (Rust)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      FYI_CLI_REVISION: b57810ac83c5b0279064b11607234dfcb4120efb
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          repository: edithatogo/fyi-cli
+          ref: ${{ env.FYI_CLI_REVISION }}
+          path: rust-client
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: "1.100.0"
+      - name: Build the pinned Rust CLI
+        working-directory: rust-client
+        run: |
+          test "$(git rev-parse HEAD)" = "$FYI_CLI_REVISION"
+          rustc --version
+          cargo fetch --locked --target x86_64-unknown-linux-gnu
+          cargo build --locked --offline --package fyi-cli --bin fyi-cli
+          target/debug/fyi-cli --version
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.15.2"
+      - name: Install the hash-locked test environment
+        run: |
+          uv venv --python 3.15.2 .venv
+          .venv/bin/python -c 'import sys; assert sys.version_info[:3] == (3, 15, 2)'
+          uv pip sync --require-hashes --python .venv/bin/python .github/offline-seed-requirements.lock
+      - name: Verify, seed, export, package and roll back the fictional case
+        run: |
+          cli="$GITHUB_WORKSPACE/rust-client/target/debug/fyi-cli"
+          test -x "$cli"
+          sudo unshare --net --setgid "$(id -g)" --setuid "$(id -u)" -- \
+            env FYI_OFFLINE_SEED_CLI="$cli" \
+            "$GITHUB_WORKSPACE/.venv/bin/python" -m pytest -q -ra tests/test_offline_seed_handoff.py

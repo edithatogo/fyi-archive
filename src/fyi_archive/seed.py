@@ -10,8 +10,8 @@ import signal
 import subprocess
 import sys
 import time
-from collections.abc import Iterable, Iterator, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Iterator, Sequence
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -353,6 +353,8 @@ def run_seed(
     fyi_cli_args: Sequence[str] = (),
     min_interval_seconds: float = 0.0,
     continue_on_error: bool = False,
+    capture: Callable[[SeedRequest, Path, Path, SeedCaps, Sequence[str]], dict[str, Any]]
+    | None = None,
 ) -> dict[str, int | str | None]:
     """Run a resumable historical seed over request records."""
     ensure_disk_budget(data_dir, caps.max_disk_gb)
@@ -392,11 +394,14 @@ def run_seed(
                 if remaining:
                     time.sleep(remaining)
             try:
-                capture_summary = capture_with_retry(
+                capture_caps = caps
+                if capture is not None and caps.max_bytes is not None:
+                    capture_caps = replace(caps, max_bytes=max(0, caps.max_bytes - bytes_written))
+                capture_summary = (capture or capture_with_retry)(
                     request,
                     data_dir,
                     dist_dir,
-                    caps,
+                    capture_caps,
                     fyi_cli_args,
                 )
                 last_capture_at = time.monotonic()
@@ -424,7 +429,12 @@ def run_seed(
                 raise
             output_path = Path(str(capture_summary["derived_path"]))
 
-        size = output_path.stat().st_size if output_path.exists() else 0
+        if not dry_run and capture is not None:
+            size = capture_summary.get("bytes_written")
+            if not isinstance(size, int) or isinstance(size, bool) or size < 0:
+                raise ValueError("capture must report a non-negative byte count")
+        else:
+            size = output_path.stat().st_size if output_path.exists() else 0
         bytes_written += size
         processed += 1
         append_ledger(

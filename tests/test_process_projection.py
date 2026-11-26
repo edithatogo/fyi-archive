@@ -112,7 +112,8 @@ def test_merge_is_idempotent_and_rejects_conflicting_revisions(tmp_path: Path) -
         merge_process_event_logs([first, second])
 
 
-def test_projection_applies_latest_retraction_tombstone(tmp_path: Path) -> None:
+@pytest.mark.parametrize("operation", ["retract", "delete"])
+def test_projection_applies_latest_retraction_tombstone(tmp_path: Path, operation: str) -> None:
     events = tmp_path / "events.jsonl"
     _write_jsonl(
         events,
@@ -131,7 +132,7 @@ def test_projection_applies_latest_retraction_tombstone(tmp_path: Path) -> None:
                 "revision": 2,
                 "case_id": "c1",
                 "activity": "opened",
-                "operation": "retract",
+                "operation": operation,
             },
         ],
     )
