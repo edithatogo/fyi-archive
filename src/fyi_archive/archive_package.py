@@ -482,7 +482,7 @@ def verify_archive_package(root: Path) -> dict[str, Any]:
         if path.is_symlink():
             relative = path.relative_to(root).as_posix()
             raise ValueError(f"package paths must not contain symlinks: {relative}")
-        if path.is_file() and path.name != "archive-package.json":
+        if path.is_file() and path != manifest_path:
             actual_paths.add(path.relative_to(root).as_posix())
     if actual_paths != set(declared_paths):
         raise ValueError("package file inventory does not match manifest")

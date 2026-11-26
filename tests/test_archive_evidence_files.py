@@ -102,8 +102,10 @@ def test_cli_retains_each_evidence_file(tmp_path: Path) -> None:
     inputs = _inputs(tmp_path / "inputs")
     capture = tmp_path / "capture.wacz"
     receipt = tmp_path / "receipt.json"
+    prior_manifest = tmp_path / "archive-package.json"
     capture.write_bytes(b"synthetic WACZ")
     receipt.write_bytes(b"synthetic receipt")
+    prior_manifest.write_bytes(b'{"source":"prior-fictional-package"}\n')
     store = tmp_path / "store"
     result = CliRunner().invoke(
         app,
@@ -135,10 +137,17 @@ def test_cli_retains_each_evidence_file(tmp_path: Path) -> None:
             str(capture),
             "--evidence",
             str(receipt),
+            "--evidence",
+            str(prior_manifest),
         ],
     )
     assert result.exit_code == 0, result.output
     package = store / json.loads(result.output)["package_path"]
     assert (package / "evidence" / "capture.wacz").read_bytes() == capture.read_bytes()
     assert (package / "evidence" / "receipt.json").read_bytes() == receipt.read_bytes()
+    assert (package / "evidence" / prior_manifest.name).read_bytes() == prior_manifest.read_bytes()
     assert verify_package_store(store)["verified"]
+    undeclared = package / "metadata" / prior_manifest.name
+    undeclared.write_bytes(prior_manifest.read_bytes())
+    with pytest.raises(ValueError, match="file inventory does not match"):
+        verify_archive_package(package)
