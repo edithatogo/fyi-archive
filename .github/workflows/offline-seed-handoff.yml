@@ -17,7 +17,7 @@ jobs:
       contents: read
       id-token: write # Existing Codecov integration uses OIDC.
     env:
-      FYI_CLI_REVISION: b57810ac83c5b0279064b11607234dfcb4120efb
+      FYI_CLI_REVISION: 12be16891da810256908b5fbf2865dea8c3ff4fb
       CARGO_PROFILE_DEV_DEBUG: "0"
       CARGO_INCREMENTAL: "0"
     steps:
