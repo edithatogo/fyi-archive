@@ -386,6 +386,7 @@ def run_seed(
             skipped += 1
             continue
 
+        size = None
         if dry_run:
             output_path = dry_run_capture(request, derived_dir)
         else:
@@ -429,11 +430,11 @@ def run_seed(
                 raise
             output_path = Path(str(capture_summary["derived_path"]))
 
-        if not dry_run and capture is not None:
-            size = capture_summary.get("bytes_written")
-            if not isinstance(size, int) or isinstance(size, bool) or size < 0:
-                raise ValueError("capture must report a non-negative byte count")
-        else:
+            if capture is not None:
+                size = capture_summary.get("bytes_written")
+                if not isinstance(size, int) or isinstance(size, bool) or size < 0:
+                    raise ValueError("capture must report a non-negative byte count")
+        if size is None:
             size = output_path.stat().st_size if output_path.exists() else 0
         bytes_written += size
         processed += 1

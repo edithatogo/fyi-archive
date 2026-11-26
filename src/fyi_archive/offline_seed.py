@@ -37,15 +37,14 @@ def _safe_locator(value: object) -> str:
     if not isinstance(value, str):
         raise ValueError("attachment URL is missing")
     parsed = urlsplit(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("attachment URL must name an HTTP origin")
     if (
-        parsed.scheme not in {"http", "https"}
-        or not parsed.hostname
-        or parsed.username
-        or parsed.password
+        parsed.username is not None
+        or parsed.password is not None
         or parsed.query
         or parsed.fragment
-        or "\\" in value
-        or any(c.isspace() or ord(c) < 32 for c in value)
+        or any(c.isspace() or ord(c) < 32 or c == "\\" for c in value)
     ):
         raise ValueError("attachment URL is not safe to persist")
     path = parsed.path
@@ -152,17 +151,24 @@ def capture_offline_evidence(
             result = json.loads(copied["result"].read_bytes())
             if not all(isinstance(value, dict) for value in (receipt, link, result)):
                 raise ValueError("source evidence metadata must be JSON objects")
+            responses = receipt.get("responses")
             if (
                 receipt.get("status") != "succeeded"
                 or receipt.get("request_bounds", {}).get("kind") != item.kind
-                or len(receipt.get("responses", [])) != 1
-                or receipt["responses"][0].get("status") != 200
-                or result.get("status") != "succeeded"
-                or result.get("kind") != item.kind
-                or result.get("sha256") != receipt["responses"][0].get("sha256")
-                or result.get("bytes") != receipt["responses"][0].get("bytes")
+                or not isinstance(responses, list)
+                or len(responses) != 1
             ):
-                raise ValueError("source receipt does not describe a complete successful response")
+                raise ValueError("source receipt does not describe one successful response")
+            response = responses[0]
+            if not isinstance(response, dict) or response.get("status") != 200:
+                raise ValueError("source receipt does not describe a complete HTTP response")
+            if (
+                result.get("status") != "succeeded"
+                or result.get("kind") != item.kind
+                or result.get("sha256") != response.get("sha256")
+                or result.get("bytes") != response.get("bytes")
+            ):
+                raise ValueError("source result does not describe the verified response")
             resources.append((item, receipt, link, copied["raw"]))
 
         json_url = urlsplit(_safe_locator(resources[0][1]["responses"][0]["url"]))
