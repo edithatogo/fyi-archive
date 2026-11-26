@@ -86,6 +86,10 @@ dev = [
   "mutmut>=3.3.0",
 ]
 
+[dependency-groups]
+# pip-api 0.0.35 supports the Python 3.15 audit runtime.
+audit = ["pip-audit>=2.10.1", "pip-api>=0.0.35"]
+
 [project.scripts]
 fyi-archive = "fyi_archive.cli:app"
 

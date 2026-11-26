@@ -79,17 +79,19 @@ jobs:
       - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: "3.12"
-      - name: Install the locked environment
-        run: uv sync --extra dev --frozen
-      - name: Update pip security floor
-        run: uv pip install --python .venv/bin/python "pip>=26.2"
-      - name: Audit installed dependencies
+          python-version: "3.15.2"
+      - name: Install the locked audit tool
         run: |
-          uv export --frozen --extra dev --no-emit-project --no-emit-package fyi-cli \
-            --no-emit-package pip \
-            --output-file requirements-audit.txt
-          uv run pip-audit --strict --requirement requirements-audit.txt
+          uv sync --locked --only-group audit --python 3.15.2
+          .venv/bin/python -c 'import sys; assert sys.version_info[:3] == (3, 15, 2)'
+      - name: Audit locked registry dependencies
+        run: |
+          # The Git-sourced fyi-cli dependency's registry dependencies remain in the export.
+          uv export --locked --python .venv/bin/python --extra dev --group audit \
+            --no-emit-project --no-emit-package fyi-cli \
+            --output-file "$RUNNER_TEMP/requirements-audit.txt" >/dev/null
+          .venv/bin/python -m pip_audit --strict --require-hashes --disable-pip \
+            --requirement "$RUNNER_TEMP/requirements-audit.txt"
 
   zizmor-advisory:
     runs-on: ubuntu-latest
