@@ -17,6 +17,7 @@ import polars as pl
 import pytest
 from warcio.archiveiterator import ArchiveIterator
 
+from fyi_archive import offline_seed
 from fyi_archive.archive_package import (
     EvidenceFile,
     PackageInputs,
@@ -277,23 +278,55 @@ def _corrupt(path: Path) -> None:
     path.write_bytes(original[:-1] + bytes([original[-1] ^ 1]))
 
 
-@pytest.mark.parametrize("failure", ["tampered-wacz", "byte-cap"])
+@pytest.mark.parametrize(
+    "failure",
+    [
+        "tampered-wacz",
+        "missing-response",
+        "wrong-resource",
+        "wrong-case",
+        "missing-attachment",
+        "transfer-byte-cap",
+        "derived-byte-cap",
+    ],
+)
 def test_seed_rejects_incomplete_evidence(
     tmp_path: Path, rust_cli: Path, source_evidence: tuple[SourceEvidence, ...], failure: str
 ) -> None:
+    request = REQUEST
+    caps = SeedCaps()
     if failure == "tampered-wacz":
         damaged = tmp_path / "damaged.wacz"
         shutil.copyfile(source_evidence[2].wacz, damaged)
         _corrupt(damaged)
         source_evidence = (*source_evidence[:2], replace(source_evidence[2], wacz=damaged))
-        caps = SeedCaps()
-    else:
+    elif failure == "missing-response":
+        source_evidence = (
+            replace(source_evidence[0], raw=tmp_path / "missing.raw"),
+            *source_evidence[1:],
+        )
+    elif failure == "wrong-resource":
+        source_evidence = (replace(source_evidence[1], kind="request-json"), *source_evidence[1:])
+    elif failure == "wrong-case":
+        request = replace(REQUEST, request_id=702)
+    elif failure == "missing-attachment":
+        source_evidence = source_evidence[:2]
+    elif failure == "transfer-byte-cap":
         caps = SeedCaps(max_bytes=100)
+    elif failure == "derived-byte-cap":
+        # The transferred files fit, but the derived request and attachment sidecar do not.
+        caps = SeedCaps(
+            max_bytes=sum(
+                path.stat().st_size
+                for entry in source_evidence
+                for path in (entry.raw, entry.result, entry.receipt, entry.wacz, entry.link)
+            ),
+        )
     data = tmp_path / "data"
     ledger = data / "ledger.jsonl"
     with pytest.raises(CaptureError):
         run_seed(
-            requests=[REQUEST],
+            requests=[request],
             ledger_path=ledger,
             data_dir=data,
             derived_dir=data / "derived",
@@ -303,4 +336,64 @@ def test_seed_rejects_incomplete_evidence(
         )
     assert load_ledger(ledger) == set()
     assert _read_rows(ledger)[0]["status"] == "failed"
+    assert not (data / "offline-seed" / str(request.request_id)).exists()
+
+
+@pytest.mark.parametrize(
+    ("failure", "message"),
+    [
+        ("request-id", "filename-safe"),
+        ("source-arguments", "does not accept source CLI arguments"),
+        ("no-page", "requires request JSON and page evidence"),
+        ("unexpected-kind", "unexpected source kind"),
+        ("aliased-output", "must not contain symlinks"),
+    ],
+)
+def test_offline_capture_rejects_invalid_setup(
+    tmp_path: Path,
+    rust_cli: Path,
+    source_evidence: tuple[SourceEvidence, ...],
+    failure: str,
+    message: str,
+) -> None:
+    request = REQUEST
+    extra_args = ()
+    data = tmp_path / "data"
+    if failure == "request-id":
+        request = replace(REQUEST, request_id="../outside")
+    elif failure == "source-arguments":
+        extra_args = ("--base-url", "https://source.invalid")
+    elif failure == "no-page":
+        source_evidence = source_evidence[:1]
+    elif failure == "unexpected-kind":
+        source_evidence = (*source_evidence[:2], source_evidence[1])
+    elif failure == "aliased-output":
+        data.mkdir()
+        (data / "offline-seed").symlink_to(tmp_path, target_is_directory=True)
+    with pytest.raises(ValueError, match=message):
+        capture_offline_evidence(
+            request,
+            data,
+            tmp_path / "dist",
+            SeedCaps(),
+            extra_args,
+            evidence=source_evidence,
+            verifier=rust_cli,
+        )
+    assert not (tmp_path / "outside").exists()
+    assert not (tmp_path / "701").exists()
     assert not (data / "offline-seed" / "701").exists()
+
+
+@pytest.mark.parametrize(
+    "locator",
+    [
+        None,
+        "file:///fictional/attachment.txt",
+        "https://source.invalid/attachments/a.txt?credential=fictional",
+        "https://source.invalid/attachments/signed--fictional/a.txt",
+    ],
+)
+def test_offline_capture_rejects_private_or_unsupported_locators(locator: str | None) -> None:
+    with pytest.raises(ValueError, match="attachment URL"):
+        offline_seed._safe_locator(locator)

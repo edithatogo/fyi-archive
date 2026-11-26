@@ -13,6 +13,9 @@ jobs:
     name: Offline seed handoff (Rust)
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write # Existing Codecov integration uses OIDC.
     env:
       FYI_CLI_REVISION: b57810ac83c5b0279064b11607234dfcb4120efb
       CARGO_PROFILE_DEV_DEBUG: "0"
@@ -53,4 +56,16 @@ jobs:
           test -x "$cli"
           sudo unshare --net --setgid "$(id -g)" --setuid "$(id -u)" -- \
             env FYI_OFFLINE_SEED_CLI="$cli" \
-            "$GITHUB_WORKSPACE/.venv/bin/python" -m pytest -q -ra tests/test_offline_seed_handoff.py
+            "$GITHUB_WORKSPACE/.venv/bin/python" -m coverage run -m pytest \
+            -q -ra tests/test_offline_seed_handoff.py
+      - name: Report offline seed coverage
+        # Codecov combines this test's measured lines with the full suite's report.
+        run: .venv/bin/python -m coverage xml --fail-under=0 -o coverage-offline-seed.xml
+      - name: Upload offline seed coverage to Codecov
+        uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
+        with:
+          disable_search: true
+          fail_ci_if_error: true
+          files: ./coverage-offline-seed.xml
+          flags: offline-seed
+          use_oidc: true
