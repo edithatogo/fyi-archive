@@ -9,6 +9,7 @@ from typing import Annotated, Literal, cast
 import typer
 
 from fyi_archive.archive_package import (
+    EvidenceFile,
     PackageInputs,
     build_archive_package,
     verify_archive_package,
@@ -46,6 +47,10 @@ def package_archive(
     base_archive_revision: Annotated[
         int | None, typer.Option(help="Latest indexed revision required by a delta.")
     ] = None,
+    evidence: Annotated[
+        list[Path] | None,
+        typer.Option(help="Evidence file to retain verbatim; repeat for each file."),
+    ] = None,
 ) -> None:
     """Build an immutable local package and atomically update its indexes."""
     if package_kind not in {"snapshot", "delta"}:
@@ -65,6 +70,16 @@ def package_archive(
                 retention_path=retention,
                 package_kind=cast("Literal['snapshot', 'delta']", package_kind),
                 base_archive_revision=base_archive_revision,
+                evidence_files=tuple(
+                    EvidenceFile(
+                        path.name,
+                        path,
+                        {".wacz": "application/wacz", ".json": "application/json"}.get(
+                            path.suffix.lower(), "application/octet-stream"
+                        ),
+                    )
+                    for path in (evidence or [])
+                ),
             ),
             output_root,
         )

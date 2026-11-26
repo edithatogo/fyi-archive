@@ -1,0 +1,7 @@
+# Python dependencies of the isolated archive seed acceptance test.
+coverage==7.14.3
+jsonschema==4.26.0
+polars==1.42.0
+pytest==9.1.1
+pytest-asyncio==1.4.0
+warcio==1.8.1

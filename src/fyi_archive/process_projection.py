@@ -120,7 +120,7 @@ def _materialize_active_events(rows: list[dict[str, Any]]) -> list[dict[str, Any
             str(previous.get("event_id", "")),
         ):
             latest[logical_id] = row
-    return [row for row in latest.values() if row.get("operation") != "retract"]
+    return [row for row in latest.values() if row.get("operation") not in {"retract", "delete"}]
 
 
 def _case_rows(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -322,7 +322,9 @@ def build_process_projection(
         "snapshot_revision": snapshot_revision,
         "event_count": len(events),
         "excluded_event_count": len(raw_events) - len(events),
-        "retracted_event_count": sum(row.get("operation") == "retract" for row in filtered_events),
+        "retracted_event_count": sum(
+            row.get("operation") in {"retract", "delete"} for row in filtered_events
+        ),
         "case_count": len({row["case_id"] for row in events}),
         "attachment_count": len(attachments),
         "source_record_count": len(source_records) if manifest_requests else None,

@@ -23,6 +23,8 @@ CATALOG_SCHEMA_VERSION = "1.0.0"
 EVENT_ORDER_KEY = "source_sequence_then_event_id"
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
+EVIDENCE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+MEDIA_TYPE = re.compile(r"^[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+-]+$")
 PackageKind = Literal["snapshot", "delta"]
 FileRole = Literal["cases", "events", "attachments", "other"]
 
@@ -64,6 +66,15 @@ class PackageIndexEntry(TypedDict):
 
 
 @dataclass(frozen=True, slots=True)
+class EvidenceFile:
+    """An existing evidence file to retain verbatim in the package."""
+
+    name: str
+    path: Path
+    media_type: str
+
+
+@dataclass(frozen=True, slots=True)
 class PackageInputs:
     """Transport-independent inputs for one package revision."""
 
@@ -79,6 +90,7 @@ class PackageInputs:
     retention_path: Path
     package_kind: PackageKind = "snapshot"
     base_archive_revision: int | None = None
+    evidence_files: tuple[EvidenceFile, ...] = ()
 
 
 def canonical_json(value: object) -> bytes:
@@ -207,13 +219,20 @@ def _canonical_sidecar(source: Path, destination: Path, *, label: str) -> dict[s
 
 
 def _file_entry(
-    *, order: int, path: Path, package_root: Path, role: FileRole, row_count: int | None
+    *,
+    order: int,
+    path: Path,
+    package_root: Path,
+    role: FileRole,
+    row_count: int | None,
+    media_type: str | None = None,
 ) -> PackageFile:
     return {
         "order": order,
         "path": path.relative_to(package_root).as_posix(),
         "role": role,
-        "media_type": "application/x-ndjson" if role != "other" else "application/json",
+        "media_type": media_type
+        or ("application/x-ndjson" if role != "other" else "application/json"),
         "sha256": sha256_file(path),
         "byte_count": path.stat().st_size,
         "row_count": row_count,
@@ -291,6 +310,25 @@ def _build_staging(
         (metadata_dir / "retention.json", "other", None),
         (metadata_dir / "takedown-inventory.ndjson", "other", None),
     ]
+    evidence_names: set[str] = set()
+    extra_files: list[tuple[Path, str]] = []
+    for evidence in sorted(inputs.evidence_files, key=lambda item: item.name):
+        if not EVIDENCE_NAME.fullmatch(evidence.name) or not MEDIA_TYPE.fullmatch(
+            evidence.media_type
+        ):
+            raise ValueError("invalid evidence file name or media type")
+        if evidence.name in evidence_names:
+            raise ValueError("duplicate evidence file name")
+        evidence_names.add(evidence.name)
+        if (
+            any(path.is_symlink() for path in (evidence.path, *evidence.path.parents))
+            or not evidence.path.is_file()
+        ):
+            raise ValueError("evidence input must be a regular, non-symlink file")
+        destination = staging / "evidence" / evidence.name
+        destination.parent.mkdir(exist_ok=True)
+        shutil.copyfile(evidence.path, destination)
+        extra_files.append((destination, evidence.media_type))
     files = [
         _file_entry(
             order=order,
@@ -301,6 +339,17 @@ def _build_staging(
         )
         for order, (path, role, row_count) in enumerate(declared, 1)
     ]
+    files.extend(
+        _file_entry(
+            order=len(declared) + index,
+            path=path,
+            package_root=staging,
+            role="other",
+            row_count=None,
+            media_type=media_type,
+        )
+        for index, (path, media_type) in enumerate(extra_files, 1)
+    )
     counts: PackageCounts = {
         "file_count": len(files),
         "case_count": len(cases),
@@ -433,7 +482,7 @@ def verify_archive_package(root: Path) -> dict[str, Any]:
         if path.is_symlink():
             relative = path.relative_to(root).as_posix()
             raise ValueError(f"package paths must not contain symlinks: {relative}")
-        if path.is_file() and path.name != "archive-package.json":
+        if path.is_file() and path != manifest_path:
             actual_paths.add(path.relative_to(root).as_posix())
     if actual_paths != set(declared_paths):
         raise ValueError("package file inventory does not match manifest")
