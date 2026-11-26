@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import os
@@ -392,8 +393,86 @@ def test_offline_capture_rejects_invalid_setup(
         "file:///fictional/attachment.txt",
         "https://source.invalid/attachments/a.txt?credential=fictional",
         "https://source.invalid/attachments/signed--fictional/a.txt",
+        "https://source.invalid/attachments/ambiguous%20file.txt",
     ],
 )
 def test_offline_capture_rejects_private_or_unsupported_locators(locator: str | None) -> None:
     with pytest.raises(ValueError, match="attachment URL"):
         offline_seed._safe_locator(locator)
+
+
+def _json_bytes(value: object) -> bytes:
+    return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+
+def _rewrite_digest(path: Path, document: dict[str, Any], key: str) -> str:
+    del document[key]
+    digest = hashlib.sha256(_json_bytes(document)).hexdigest()
+    document[key] = digest
+    path.write_bytes(_json_bytes(document))
+    return digest
+
+
+@pytest.mark.parametrize(
+    ("projection", "reason"),
+    [
+        ([], "metadata must be JSON objects"),
+        ({"status": "succeeded", "kind": "request-json"}, "result does not describe"),
+    ],
+)
+def test_seed_requires_result_metadata_even_when_digests_match(
+    tmp_path: Path,
+    rust_cli: Path,
+    source_evidence: tuple[SourceEvidence, ...],
+    projection: object,
+    reason: str,
+) -> None:
+    # Keep the receipt and WACZ linkage consistent so the importer must check
+    # the content of this fictional result after the real Rust verifier succeeds.
+    source = source_evidence[0]
+    result, receipt_path, link_path = (
+        tmp_path / "result.json",
+        tmp_path / "receipt.json",
+        tmp_path / "link.json",
+    )
+    encoded = _json_bytes(projection)
+    result.write_bytes(encoded)
+    receipt = json.loads(source.receipt.read_bytes())
+    receipt["result"].update(bytes=len(encoded), sha256=hashlib.sha256(encoded).hexdigest())
+    link = json.loads(source.link.read_bytes())
+    link["receipt_sha256"] = _rewrite_digest(receipt_path, receipt, "receipt_sha256")
+    _rewrite_digest(link_path, link, "link_sha256")
+    altered = replace(source, result=result, receipt=receipt_path, link=link_path)
+    data = tmp_path / "data"
+    with pytest.raises(CaptureError) as error:
+        capture_offline_evidence(
+            REQUEST,
+            data,
+            tmp_path / "dist",
+            SeedCaps(),
+            (),
+            evidence=(altered, *source_evidence[1:]),
+            verifier=rust_cli,
+        )
+    assert reason in str(error.value.__cause__)
+    assert not (data / "offline-seed" / "701").exists()
+
+
+def test_seed_rejects_invalid_capture_byte_count(tmp_path: Path) -> None:
+    derived = _write_rows(tmp_path / "derived.jsonl", [{"request_id": 701}])
+    ledger = tmp_path / "ledger.jsonl"
+
+    def invalid_capture(*_args: object) -> dict[str, Any]:
+        return {"derived_path": str(derived), "bytes_written": -1}
+
+    with pytest.raises(ValueError, match="non-negative byte count"):
+        run_seed(
+            requests=[REQUEST],
+            ledger_path=ledger,
+            data_dir=tmp_path / "data",
+            derived_dir=derived.parent,
+            caps=SeedCaps(),
+            dry_run=False,
+            capture=invalid_capture,
+        )
+    assert load_ledger(ledger) == set()
